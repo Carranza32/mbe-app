@@ -57,6 +57,8 @@ dependencies:
   path: ^1.9.1
   mime: ^2.0.0
   flutter_pdfview: ^1.4.3
+  flutter_credit_card: ^3.0.7
+  awesome_card: ^1.1.7
 
 dev_dependencies:
   flutter_test:

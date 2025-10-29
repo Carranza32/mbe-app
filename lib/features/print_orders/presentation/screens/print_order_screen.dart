@@ -2,20 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
-import 'package:mbe_orders_app/features/print_orders/presentation/widgets/steps/step2_configuration.dart';
-import 'package:mbe_orders_app/features/print_orders/presentation/widgets/steps/step3_delivery_method.dart';
-import 'package:mbe_orders_app/features/print_orders/presentation/widgets/steps/step_4_confirmation.dart';
 import 'package:mbe_orders_app/features/print_orders/providers/stepper_provider.dart';
 
+import '../../providers/print_order_provider.dart';
 import '../widgets/stepper/mbe_stepper.dart';
 import '../widgets/steps/step1_upload_files.dart';
-// import 'steps/step2_print_options.dart';
-// import 'steps/step3_delivery_method.dart';
-// import 'steps/step4_payment.dart';
-// import 'steps/step5_confirm.dart';
-
-// Provider temporal - reemplazar con tu provider real
-// final currentStepProvider = StateProvider<int>((ref) => 1);
+import '../widgets/steps/step2_configuration.dart';
+import '../widgets/steps/step3_delivery_method.dart';
+import '../widgets/steps/step4_confirmation.dart';
+import '../widgets/steps/step5_payment.dart';
 
 class PrintOrderScreen extends HookConsumerWidget {
   const PrintOrderScreen({Key? key}) : super(key: key);
@@ -121,11 +116,21 @@ class PrintOrderScreen extends HookConsumerWidget {
             currentStep: currentStep,
             totalSteps: totalSteps,
             onBack: currentStep > 1
-                ? () => ref.read(currentStepProvider.notifier).state--
+                ? () => ref.read(currentStepProvider.notifier).previous()
                 : null,
             onContinue: currentStep < totalSteps
-                ? () => ref.read(currentStepProvider.notifier).state++
-                : () => _finishOrder(context),
+              ? () async {
+                  if (currentStep == 1) {
+                    // Analizar archivos antes de continuar
+                    final success = await ref.read(printOrderProvider.notifier).analyzeFiles();
+                    if (success) {
+                      ref.read(currentStepProvider.notifier).next();
+                    }
+                  } else {
+                    ref.read(currentStepProvider.notifier).next();
+                  }
+                }
+              : () => _finishOrder(context),
           ),
         ],
       ),
@@ -150,24 +155,10 @@ class PrintOrderScreen extends HookConsumerWidget {
       case 4:
         return const Step4Confirmation();
       case 5:
-        return _buildPlaceholder('Paso 5: Confirmar pedido');
+        return const Step5Payment();
       default:
         return const SizedBox.shrink();
     }
-  }
-
-  Widget _buildPlaceholder(String text) {
-    return Container(
-      padding: const EdgeInsets.all(MBESpacing.xxxl),
-      decoration: MBECardDecoration.card(),
-      child: Center(
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 18),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
   }
 
   void _showOptionsMenu(BuildContext context) {

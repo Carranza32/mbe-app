@@ -5,7 +5,6 @@ import 'package:iconsax/iconsax.dart';
 import '../../../data/constants/print_order_steps.dart';
 import '../../../data/models/step_model.dart';
 
-/// Stepper COMPACTO - Versión mejorada más pequeña
 class MbeStepper extends StatelessWidget {
   final List<StepModel> steps = PrintOrderSteps.steps;
   final int currentStep;
@@ -123,7 +122,6 @@ class _ScrollableStepperContentState extends State<_ScrollableStepperContent> {
   }
 }
 
-/// Indicador de paso - MÁS COMPACTO
 class _StepIndicator extends StatelessWidget {
   final StepModel step;
   final int currentStep;

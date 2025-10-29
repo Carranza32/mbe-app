@@ -41,7 +41,7 @@ final class PrintOrderProvider
   }
 }
 
-String _$printOrderHash() => r'cdd6bea74c8af7fbbe2004d71270cdb5b060c028';
+String _$printOrderHash() => r'ad0591701836d4ddd6817e2739c4bb25ee6f9b65';
 
 abstract class _$PrintOrder extends $Notifier<PrintOrderState> {
   PrintOrderState build();

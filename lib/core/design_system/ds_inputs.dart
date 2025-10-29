@@ -435,3 +435,77 @@ class DSDropdownItem<T> {
     required this.label,
   });
 }
+
+
+class DSCheckbox extends StatelessWidget {
+  final bool value;
+  final Function(bool?) onChanged;
+  final String label;
+  final String? description;
+
+  const DSCheckbox({
+    Key? key,
+    required this.value,
+    required this.onChanged,
+    required this.label,
+    this.description,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AnimatedContainer(
+            duration: MBEDuration.normal,
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: value ? MBETheme.brandBlack : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: value ? MBETheme.brandBlack : MBETheme.neutralGray,
+                width: 2,
+              ),
+            ),
+            child: value
+                ? const Icon(
+                    Icons.check_rounded,
+                    size: 16,
+                    color: Colors.white,
+                  )
+                : null,
+          ),
+          const SizedBox(width: MBESpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (description != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    description!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
