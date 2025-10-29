@@ -1,20 +1,15 @@
-import 'package:flutter/material.dart';
+// lib/features/print_orders/presentation/widgets/steps/step2_configuration.dart
+import 'package:flutter/material.dart' hide Orientation;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import 'package:mbe_orders_app/core/design_system/ds_badges.dart';
 import 'package:mbe_orders_app/core/design_system/ds_inputs.dart';
-import 'package:mbe_orders_app/core/design_system/ds_selection_cards.dart';
+
 import '../../../providers/print_order_provider.dart';
-
-
-// Enums para las opciones
-enum PrintType { blackWhite, color }
-enum PaperSize { letter, legal, a4, a3 }
-enum PaperType { bond, glossy, cardstock }
-enum Orientation { vertical, horizontal }
+import '../../../providers/print_configuration_state_provider.dart';
+import '../../../providers/print_pricing_provider.dart';
 
 class Step2Configuration extends HookConsumerWidget {
   const Step2Configuration({Key? key}) : super(key: key);
@@ -24,19 +19,42 @@ class Step2Configuration extends HookConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    // States locales
-    final printType = useState(PrintType.blackWhite);
-    final paperSize = useState(PaperSize.letter);
-    final paperType = useState(PaperType.bond);
-    final orientation = useState(Orientation.vertical);
-    final copies = useState(1);
-    final doubleSided = useState(false);
-    final stapled = useState(false);
+    // Estados desde providers
+    final userConfig = ref.watch(printConfigurationStateProvider);
+    final configNotifier = ref.read(printConfigurationStateProvider.notifier);
+    final orderState = ref.watch(printOrderProvider);
+    final pricing = ref.watch(printPricingProvider);
 
-    // Cálculo de precio
-    final pricePerPage = printType.value == PrintType.blackWhite ? 0.10 : 1.30;
-    final totalPages = 116; // Temporal - obtener del provider
-    final subtotal = (pricePerPage * totalPages * copies.value).toStringAsFixed(2);
+    // Total de páginas
+    final totalPages = orderState.totalPages ?? 0;
+
+    if (totalPages == 0) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Iconsax.warning_2,
+              size: 48,
+              color: MBETheme.brandRed,
+            ),
+            const SizedBox(height: MBESpacing.lg),
+            Text(
+              'No se detectaron páginas',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: MBESpacing.sm),
+            Text(
+              'Regresa al paso anterior y sube tus archivos',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,7 +93,7 @@ class Step2Configuration extends HookConsumerWidget {
                       ),
                       const SizedBox(height: MBESpacing.xs),
                       Text(
-                        'Personaliza tu pedido • 116 páginas',
+                        'Personaliza tu pedido • $totalPages páginas',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -96,28 +114,33 @@ class Step2Configuration extends HookConsumerWidget {
           delay: const Duration(milliseconds: 100),
           child: _SectionCard(
             title: 'Tipo de Impresión',
-            child: DSToggleButtons<PrintType>(
-              value: printType.value,
-              options: const [
-                DSToggleOption(
-                  value: PrintType.blackWhite,
-                  label: 'Blanco y Negro',
-                  icon: Iconsax.document_text,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _ToggleButton(
+                    label: 'Blanco y Negro',
+                    icon: Iconsax.document_text,
+                    isSelected: userConfig.printType == PrintType.blackWhite,
+                    onTap: () => configNotifier.setPrintType(PrintType.blackWhite),
+                  ),
                 ),
-                DSToggleOption(
-                  value: PrintType.color,
-                  label: 'Color',
-                  icon: Iconsax.color_swatch,
+                const SizedBox(width: MBESpacing.md),
+                Expanded(
+                  child: _ToggleButton(
+                    label: 'Color',
+                    icon: Iconsax.color_swatch,
+                    isSelected: userConfig.printType == PrintType.color,
+                    onTap: () => configNotifier.setPrintType(PrintType.color),
+                  ),
                 ),
               ],
-              onChanged: (value) => printType.value = value,
             ),
           ),
         ),
 
         const SizedBox(height: MBESpacing.lg),
 
-        // Tamaño y Tipo de Papel (en 2 columnas)
+        // Papel
         FadeInUp(
           duration: const Duration(milliseconds: 400),
           delay: const Duration(milliseconds: 200),
@@ -136,55 +159,17 @@ class Step2Configuration extends HookConsumerWidget {
                 const SizedBox(height: MBESpacing.lg),
                 
                 // Tamaño de Papel
-                DSDropdown<PaperSize>(
-                  label: 'Tamaño',
-                  value: paperSize.value,
-                  items: const [
-                    DSDropdownItem(
-                      value: PaperSize.letter,
-                      label: 'Carta (Letter) - Desde \$0.10',
-                    ),
-                    DSDropdownItem(
-                      value: PaperSize.legal,
-                      label: 'Legal - Desde \$0.15',
-                    ),
-                    DSDropdownItem(
-                      value: PaperSize.a4,
-                      label: 'A4 - Desde \$0.12',
-                    ),
-                    DSDropdownItem(
-                      value: PaperSize.a3,
-                      label: 'A3 - Desde \$0.50',
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) paperSize.value = value;
-                  },
+                _PaperSizeSelector(
+                  value: userConfig.paperSize,
+                  onChanged: (size) => configNotifier.setPaperSize(size),
                 ),
 
                 const SizedBox(height: MBESpacing.lg),
 
                 // Tipo de Papel
-                DSDropdown<PaperType>(
-                  label: 'Tipo de Papel',
-                  value: paperType.value,
-                  items: const [
-                    DSDropdownItem(
-                      value: PaperType.bond,
-                      label: 'Papel Bond',
-                    ),
-                    DSDropdownItem(
-                      value: PaperType.glossy,
-                      label: 'Papel Brillante',
-                    ),
-                    DSDropdownItem(
-                      value: PaperType.cardstock,
-                      label: 'Cartulina',
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) paperType.value = value;
-                  },
+                _PaperTypeSelector(
+                  value: userConfig.paperType,
+                  onChanged: (type) => configNotifier.setPaperType(type),
                 ),
               ],
             ),
@@ -199,21 +184,26 @@ class Step2Configuration extends HookConsumerWidget {
           delay: const Duration(milliseconds: 300),
           child: _SectionCard(
             title: 'Orientación',
-            child: DSToggleButtons<Orientation>(
-              value: orientation.value,
-              options: const [
-                DSToggleOption(
-                  value: Orientation.vertical,
-                  label: 'Vertical',
-                  icon: Iconsax.menu,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _ToggleButton(
+                    label: 'Vertical',
+                    icon: Iconsax.menu,
+                    isSelected: userConfig.orientation == Orientation.vertical,
+                    onTap: () => configNotifier.setOrientation(Orientation.vertical),
+                  ),
                 ),
-                DSToggleOption(
-                  value: Orientation.horizontal,
-                  label: 'Horizontal',
-                  icon: Iconsax.row_horizontal,
+                const SizedBox(width: MBESpacing.md),
+                Expanded(
+                  child: _ToggleButton(
+                    label: 'Horizontal',
+                    icon: Iconsax.row_horizontal,
+                    isSelected: userConfig.orientation == Orientation.horizontal,
+                    onTap: () => configNotifier.setOrientation(Orientation.horizontal),
+                  ),
                 ),
               ],
-              onChanged: (value) => orientation.value = value,
             ),
           ),
         ),
@@ -224,77 +214,9 @@ class Step2Configuration extends HookConsumerWidget {
         FadeInUp(
           duration: const Duration(milliseconds: 400),
           delay: const Duration(milliseconds: 400),
-          child: Container(
-            padding: const EdgeInsets.all(MBESpacing.lg),
-            decoration: MBECardDecoration.card(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Número de Copias',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: MBESpacing.lg),
-                Row(
-                  children: [
-                    // Botón -
-                    _CounterButton(
-                      icon: Icons.remove,
-                      onPressed: copies.value > 1
-                          ? () => copies.value--
-                          : null,
-                    ),
-                    
-                    const SizedBox(width: MBESpacing.lg),
-                    
-                    // Número
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: MBESpacing.lg,
-                        ),
-                        decoration: BoxDecoration(
-                          color: MBETheme.lightGray,
-                          borderRadius: BorderRadius.circular(MBERadius.large),
-                          border: Border.all(
-                            color: MBETheme.neutralGray.withValues(alpha: 0.2),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Text(
-                          '${copies.value}',
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                    
-                    const SizedBox(width: MBESpacing.lg),
-                    
-                    // Botón +
-                    _CounterButton(
-                      icon: Icons.add,
-                      onPressed: copies.value < 100
-                          ? () => copies.value++
-                          : null,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: MBESpacing.sm),
-                Center(
-                  child: Text(
-                    'Máximo 100 copias',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          child: _CopiesSelector(
+            copies: userConfig.copies,
+            onChanged: (value) => configNotifier.setCopies(value),
           ),
         ),
 
@@ -322,10 +244,12 @@ class Step2Configuration extends HookConsumerWidget {
                 _OptionCheckbox(
                   icon: Iconsax.copy,
                   title: 'Impresión a Doble Cara',
-                  description: 'Ahorra papel (\$0.20 por página)',
-                  value: doubleSided.value,
-                  onChanged: (value) => doubleSided.value = value ?? false,
-                  badge: DSBadge.success(label: 'Ahorra papel'),
+                  description: pricing.doubleSidedCost > 0 
+                      ? '+\$${pricing.doubleSidedCost.toStringAsFixed(2)}'
+                      : 'Ahorra papel',
+                  value: userConfig.doubleSided,
+                  onChanged: (value) => configNotifier.setDoubleSided(value ?? false),
+                  badge: userConfig.doubleSided ? DSBadge.success(label: 'Eco') : null,
                 ),
                 
                 const SizedBox(height: MBESpacing.md),
@@ -334,9 +258,11 @@ class Step2Configuration extends HookConsumerWidget {
                 _OptionCheckbox(
                   icon: Iconsax.note_21,
                   title: 'Engargolado',
-                  description: 'Presentación profesional y duradera',
-                  value: stapled.value,
-                  onChanged: (value) => stapled.value = value ?? false,
+                  description: pricing.bindingCost > 0
+                      ? '+\$${pricing.bindingCost.toStringAsFixed(2)}'
+                      : 'Presentación profesional',
+                  value: userConfig.binding,
+                  onChanged: (value) => configNotifier.setBinding(value ?? false),
                 ),
               ],
             ),
@@ -349,81 +275,7 @@ class Step2Configuration extends HookConsumerWidget {
         FadeInUp(
           duration: const Duration(milliseconds: 400),
           delay: const Duration(milliseconds: 600),
-          child: Container(
-            padding: const EdgeInsets.all(MBESpacing.lg),
-            decoration: BoxDecoration(
-              color: MBETheme.lightGray,
-              borderRadius: BorderRadius.circular(MBERadius.large),
-              border: Border.all(
-                color: MBETheme.neutralGray.withValues(alpha: 0.2),
-                width: 1.5,
-              ),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Iconsax.money_recive,
-                      size: 24,
-                      color: colorScheme.onSurface,
-                    ),
-                    const SizedBox(width: MBESpacing.md),
-                    Text(
-                      'Resumen de Costos',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: MBESpacing.lg),
-                
-                _CostRow(
-                  label: 'Impresión ($totalPages páginas totales)',
-                  amount: '\$$subtotal',
-                ),
-                
-                if (doubleSided.value) ...[
-                  const SizedBox(height: MBESpacing.sm),
-                  _CostRow(
-                    label: 'Doble cara',
-                    amount: '\$${(totalPages * 0.20 * copies.value).toStringAsFixed(2)}',
-                  ),
-                ],
-                
-                if (stapled.value) ...[
-                  const SizedBox(height: MBESpacing.sm),
-                  _CostRow(
-                    label: 'Engargolado',
-                    amount: '\$5.00',
-                  ),
-                ],
-                
-                const SizedBox(height: MBESpacing.md),
-                const Divider(),
-                const SizedBox(height: MBESpacing.md),
-                
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      '\$$subtotal',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          child: _PricingSummary(pricing: pricing),
         ),
 
         const SizedBox(height: MBESpacing.xxxl),
@@ -432,15 +284,118 @@ class Step2Configuration extends HookConsumerWidget {
   }
 }
 
-// Widget auxiliar: Card de sección
+// Widget: Resumen de precios
+class _PricingSummary extends StatelessWidget {
+  final PriceCalculation pricing;
+
+  const _PricingSummary({required this.pricing});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(MBESpacing.lg),
+      decoration: BoxDecoration(
+        color: MBETheme.lightGray,
+        borderRadius: BorderRadius.circular(MBERadius.large),
+        border: Border.all(
+          color: MBETheme.neutralGray.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                Iconsax.money_recive,
+                size: 24,
+                color: colorScheme.onSurface,
+              ),
+              const SizedBox(width: MBESpacing.md),
+              Text(
+                'Resumen de Costos',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: MBESpacing.lg),
+          
+          _CostRow(
+            label: 'Impresión (${pricing.totalPages} páginas × ${pricing.copies} ${pricing.copies == 1 ? 'copia' : 'copias'})',
+            amount: '\$${pricing.printingCost.toStringAsFixed(2)}',
+            detail: '\$${pricing.pricePerPage.toStringAsFixed(2)} por página',
+          ),
+          
+          if (pricing.doubleSidedCost > 0) ...[
+            const SizedBox(height: MBESpacing.sm),
+            _CostRow(
+              label: 'Doble cara',
+              amount: '+\$${pricing.doubleSidedCost.toStringAsFixed(2)}',
+            ),
+          ],
+          
+          if (pricing.bindingCost > 0) ...[
+            const SizedBox(height: MBESpacing.sm),
+            _CostRow(
+              label: 'Engargolado',
+              amount: '+\$${pricing.bindingCost.toStringAsFixed(2)}',
+            ),
+          ],
+          
+          const SizedBox(height: MBESpacing.md),
+          const Divider(),
+          const SizedBox(height: MBESpacing.md),
+          
+          _CostRow(
+            label: 'Subtotal',
+            amount: '\$${pricing.subtotal.toStringAsFixed(2)}',
+          ),
+          
+          const SizedBox(height: MBESpacing.sm),
+          _CostRow(
+            label: 'IVA (13%)',
+            amount: '\$${pricing.tax.toStringAsFixed(2)}',
+          ),
+          
+          const SizedBox(height: MBESpacing.md),
+          const Divider(),
+          const SizedBox(height: MBESpacing.md),
+          
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                '\$${pricing.total.toStringAsFixed(2)}',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: MBETheme.brandBlack,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Widgets auxiliares existentes...
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _SectionCard({
-    required this.title,
-    required this.child,
-  });
+  const _SectionCard({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -466,15 +421,319 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-// Widget auxiliar: Botón de contador
+class _ToggleButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ToggleButton({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: MBEDuration.normal,
+        padding: const EdgeInsets.all(MBESpacing.lg),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? MBETheme.brandBlack 
+              : MBETheme.lightGray,
+          borderRadius: BorderRadius.circular(MBERadius.large),
+          border: Border.all(
+            color: isSelected 
+                ? MBETheme.brandBlack 
+                : MBETheme.neutralGray.withValues(alpha: 0.2),
+            width: isSelected ? 2 : 1.5,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: isSelected ? Colors.white : MBETheme.neutralGray,
+            ),
+            const SizedBox(height: MBESpacing.sm),
+            Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : theme.colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PaperSizeSelector extends ConsumerWidget {
+  final PaperSize value;
+  final Function(PaperSize) onChanged;
+
+  const _PaperSizeSelector({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pricingNotifier = ref.read(printPricingProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tamaño',
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
+        const SizedBox(height: MBESpacing.sm),
+        ...PaperSize.values.map((size) {
+          final priceRange = pricingNotifier.getPriceRange(size);
+          return _RadioOption<PaperSize>(
+            value: size,
+            groupValue: value,
+            onChanged: onChanged,
+            label: _getPaperSizeLabel(size),
+            description: priceRange,
+          );
+        }),
+      ],
+    );
+  }
+
+  String _getPaperSizeLabel(PaperSize size) {
+    switch (size) {
+      case PaperSize.letter:
+        return 'Carta (Letter)';
+      case PaperSize.legal:
+        return 'Legal';
+      case PaperSize.doubleLetter:
+        return 'Doble Carta';
+    }
+  }
+}
+
+class _PaperTypeSelector extends StatelessWidget {
+  final PaperType value;
+  final Function(PaperType) onChanged;
+
+  const _PaperTypeSelector({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tipo de Papel',
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
+        const SizedBox(height: MBESpacing.sm),
+        _RadioOption<PaperType>(
+          value: PaperType.bond,
+          groupValue: value,
+          onChanged: onChanged,
+          label: 'Papel Bond',
+          description: 'Estándar',
+        ),
+        _RadioOption<PaperType>(
+          value: PaperType.glossy,
+          groupValue: value,
+          onChanged: onChanged,
+          label: 'Papel Brillante',
+          description: 'Para imágenes',
+        ),
+      ],
+    );
+  }
+}
+
+class _RadioOption<T> extends StatelessWidget {
+  final T value;
+  final T groupValue;
+  final Function(T) onChanged;
+  final String label;
+  final String? description;
+
+  const _RadioOption({
+    required this.value,
+    required this.groupValue,
+    required this.onChanged,
+    required this.label,
+    this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isSelected = value == groupValue;
+
+    return GestureDetector(
+      onTap: () => onChanged(value),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: MBESpacing.sm),
+        padding: const EdgeInsets.all(MBESpacing.md),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? MBETheme.brandBlack.withValues(alpha: 0.03) 
+              : MBETheme.lightGray,
+          borderRadius: BorderRadius.circular(MBERadius.medium),
+          border: Border.all(
+            color: isSelected 
+                ? MBETheme.brandBlack 
+                : MBETheme.neutralGray.withValues(alpha: 0.2),
+            width: isSelected ? 2 : 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: MBEDuration.normal,
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? MBETheme.brandBlack : Colors.transparent,
+                border: Border.all(
+                  color: isSelected ? MBETheme.brandBlack : MBETheme.neutralGray,
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? const Center(
+                      child: Icon(
+                        Icons.circle,
+                        size: 10,
+                        color: Colors.white,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: MBESpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (description != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      description!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CopiesSelector extends StatelessWidget {
+  final int copies;
+  final Function(int) onChanged;
+
+  const _CopiesSelector({
+    required this.copies,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(MBESpacing.lg),
+      decoration: MBECardDecoration.card(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Número de Copias',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: MBESpacing.lg),
+          Row(
+            children: [
+              _CounterButton(
+                icon: Icons.remove,
+                onPressed: copies > 1 ? () => onChanged(copies - 1) : null,
+              ),
+              const SizedBox(width: MBESpacing.lg),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: MBESpacing.lg),
+                  decoration: BoxDecoration(
+                    color: MBETheme.lightGray,
+                    borderRadius: BorderRadius.circular(MBERadius.large),
+                    border: Border.all(
+                      color: MBETheme.neutralGray.withValues(alpha: 0.2),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Text(
+                    '$copies',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              const SizedBox(width: MBESpacing.lg),
+              _CounterButton(
+                icon: Icons.add,
+                onPressed: copies < 100 ? () => onChanged(copies + 1) : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: MBESpacing.sm),
+          Center(
+            child: Text(
+              'Máximo 100 copias',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CounterButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
 
-  const _CounterButton({
-    required this.icon,
-    this.onPressed,
-  });
+  const _CounterButton({required this.icon, this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -484,7 +743,9 @@ class _CounterButton extends StatelessWidget {
       width: 56,
       height: 56,
       decoration: BoxDecoration(
-        color: isEnabled ? MBETheme.brandBlack : MBETheme.neutralGray.withValues(alpha: 0.2),
+        color: isEnabled 
+            ? MBETheme.brandBlack 
+            : MBETheme.neutralGray.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(MBERadius.large),
         boxShadow: isEnabled ? MBETheme.shadowMd : [],
       ),
@@ -504,7 +765,6 @@ class _CounterButton extends StatelessWidget {
   }
 }
 
-// Widget auxiliar: Checkbox de opción
 class _OptionCheckbox extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -525,7 +785,6 @@ class _OptionCheckbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     return GestureDetector(
       onTap: () => onChanged(!value),
@@ -533,7 +792,9 @@ class _OptionCheckbox extends StatelessWidget {
         duration: MBEDuration.normal,
         padding: const EdgeInsets.all(MBESpacing.md),
         decoration: BoxDecoration(
-          color: value ? MBETheme.brandBlack.withValues(alpha: 0.03) : MBETheme.lightGray,
+          color: value 
+              ? MBETheme.brandBlack.withValues(alpha: 0.03) 
+              : MBETheme.lightGray,
           borderRadius: BorderRadius.circular(MBERadius.medium),
           border: Border.all(
             color: value 
@@ -544,7 +805,6 @@ class _OptionCheckbox extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Checkbox
             AnimatedContainer(
               duration: MBEDuration.normal,
               width: 24,
@@ -558,26 +818,12 @@ class _OptionCheckbox extends StatelessWidget {
                 ),
               ),
               child: value
-                  ? const Icon(
-                      Icons.check_rounded,
-                      size: 16,
-                      color: Colors.white,
-                    )
+                  ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
                   : null,
             ),
-            
             const SizedBox(width: MBESpacing.md),
-            
-            // Icono
-            Icon(
-              icon,
-              size: 20,
-              color: colorScheme.onSurface,
-            ),
-            
+            Icon(icon, size: 20),
             const SizedBox(width: MBESpacing.md),
-            
-            // Texto
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -600,7 +846,7 @@ class _OptionCheckbox extends StatelessWidget {
                   Text(
                     description,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -613,36 +859,52 @@ class _OptionCheckbox extends StatelessWidget {
   }
 }
 
-// Widget auxiliar: Fila de costo
 class _CostRow extends StatelessWidget {
   final String label;
   final String amount;
+  final String? detail;
 
   const _CostRow({
     required this.label,
     required this.amount,
+    this.detail,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Text(
+              amount,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
-        Text(
-          amount,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+        if (detail != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            detail!,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

@@ -67,7 +67,7 @@ class ApiService {
   /// ```
   Future<T> post<T>({
     required String endpoint,
-    required Map<String, dynamic> data,
+    required dynamic data,
     required T Function(dynamic json) fromJson,
     Map<String, dynamic>? queryParameters,
   }) async {

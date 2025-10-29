@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_service.dart';
 import '../../../../core/network/api_endpoints.dart';
+import '../models/create_order_request.dart';
 import '../models/print_configuration_model.dart';
 import '../models/uploaded_file_model.dart';
 
@@ -39,8 +40,16 @@ class PrintOrderRepository {
 
     return await _apiService.post<FileAnalysisResponse>(
       endpoint: '/print-config/analyze-files',
-      data: Map.fromEntries(formData.fields),
+      data: formData,
       fromJson: (json) => FileAnalysisResponse.fromJson(json),
+    );
+  }
+
+  Future<CreateOrderResponse> createOrder(CreateOrderRequest request) async {
+    return await _apiService.post<CreateOrderResponse>(
+      endpoint: '/print-order/create',
+      data: request.toJson(),
+      fromJson: (json) => CreateOrderResponse.fromJson(json),
     );
   }
 }

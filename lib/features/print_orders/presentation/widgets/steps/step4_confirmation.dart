@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Orientation;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 
@@ -8,8 +7,13 @@ import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import '../../../../../core/design_system/ds_badges.dart';
 import '../../../../../core/design_system/ds_inputs.dart';
 
-// Enum para métodos de pago
-enum PaymentMethod { cash, card, transfer }
+import '../../../providers/print_order_provider.dart';
+import '../../../providers/print_configuration_state_provider.dart';
+import '../../../providers/print_pricing_provider.dart';
+import '../../../providers/delivery_state_provider.dart';
+import '../../../providers/delivery_pricing_provider.dart';
+import '../../../providers/order_total_provider.dart';
+import '../../../providers/confirmation_state_provider.dart';
 
 class Step4Confirmation extends HookConsumerWidget {
   const Step4Confirmation({Key? key}) : super(key: key);
@@ -19,26 +23,17 @@ class Step4Confirmation extends HookConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    // States
-    final paymentMethod = useState(PaymentMethod.card);
-    final fullName = useState('Admin');
-    final email = useState('admin@admin.com');
-    final phone = useState('2222-2222');
-    final notes = useState('');
-
-    // Datos de ejemplo - obtener del provider
-    final orderSummary = {
-      'files': 1,
-      'pages': 116,
-      'printType': 'Blanco y Negro',
-      'paperSize': 'LETTER',
-      'orientation': 'Vertical',
-      'copies': 1,
-      'deliveryMethod': 'Recoger en tienda',
-      'subtotal': 10.44,
-      'delivery': 0.00,
-      'total': 10.44,
-    };
+    // Estados desde providers
+    final confirmationState = ref.watch(confirmationStateProvider);
+    final confirmationNotifier = ref.read(confirmationStateProvider.notifier);
+    
+    // Datos del pedido
+    final orderState = ref.watch(printOrderProvider);
+    final printConfig = ref.watch(printConfigurationStateProvider);
+    final printPricing = ref.watch(printPricingProvider);
+    final deliveryState = ref.watch(deliveryStateProvider);
+    final deliveryPricing = ref.watch(deliveryPricingProvider);
+    final orderTotal = ref.watch(orderTotalCalculatorProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,8 +119,8 @@ class Step4Confirmation extends HookConsumerWidget {
                 // Nombre Completo
                 DSInput.text(
                   label: 'Nombre Completo',
-                  value: fullName.value,
-                  onChanged: (value) => fullName.value = value,
+                  value: confirmationState.fullName,
+                  onChanged: (value) => confirmationNotifier.setFullName(value),
                   required: true,
                   prefixIcon: Iconsax.user,
                 ),
@@ -135,8 +130,8 @@ class Step4Confirmation extends HookConsumerWidget {
                 // Correo Electrónico
                 DSInput.email(
                   label: 'Correo Electrónico',
-                  value: email.value,
-                  onChanged: (value) => email.value = value,
+                  value: confirmationState.email,
+                  onChanged: (value) => confirmationNotifier.setEmail(value),
                   required: true,
                 ),
 
@@ -145,8 +140,8 @@ class Step4Confirmation extends HookConsumerWidget {
                 // Teléfono
                 DSInput.phone(
                   label: 'Teléfono (opcional)',
-                  value: phone.value,
-                  onChanged: (value) => phone.value = value,
+                  value: confirmationState.phone,
+                  onChanged: (value) => confirmationNotifier.setPhone(value),
                 ),
 
                 const SizedBox(height: MBESpacing.lg),
@@ -155,8 +150,8 @@ class Step4Confirmation extends HookConsumerWidget {
                 DSInput.textArea(
                   label: 'Notas Adicionales (opcional)',
                   hint: 'Alguna instrucción especial...',
-                  value: notes.value,
-                  onChanged: (value) => notes.value = value,
+                  value: confirmationState.notes,
+                  onChanged: (value) => confirmationNotifier.setNotes(value),
                   maxLines: 3,
                 ),
               ],
@@ -200,8 +195,8 @@ class Step4Confirmation extends HookConsumerWidget {
                   icon: Iconsax.card,
                   title: 'Tarjeta',
                   subtitle: 'Débito o crédito',
-                  isSelected: paymentMethod.value == PaymentMethod.card,
-                  onTap: () => paymentMethod.value = PaymentMethod.card,
+                  isSelected: confirmationState.paymentMethod == PaymentMethod.card,
+                  onTap: () => confirmationNotifier.setPaymentMethod(PaymentMethod.card),
                 ),
 
                 const SizedBox(height: MBESpacing.md),
@@ -211,8 +206,8 @@ class Step4Confirmation extends HookConsumerWidget {
                   icon: Iconsax.money,
                   title: 'Efectivo',
                   subtitle: 'Paga al recibir tu pedido',
-                  isSelected: paymentMethod.value == PaymentMethod.cash,
-                  onTap: () => paymentMethod.value = PaymentMethod.cash,
+                  isSelected: confirmationState.paymentMethod == PaymentMethod.cash,
+                  onTap: () => confirmationNotifier.setPaymentMethod(PaymentMethod.cash),
                   badge: DSBadge.success(label: 'Sin cargo extra'),
                 ),
 
@@ -223,8 +218,8 @@ class Step4Confirmation extends HookConsumerWidget {
                   icon: Iconsax.bank,
                   title: 'Transferencia',
                   subtitle: 'Banco Agrícola, BAC, etc.',
-                  isSelected: paymentMethod.value == PaymentMethod.transfer,
-                  onTap: () => paymentMethod.value = PaymentMethod.transfer,
+                  isSelected: confirmationState.paymentMethod == PaymentMethod.transfer,
+                  onTap: () => confirmationNotifier.setPaymentMethod(PaymentMethod.transfer),
                 ),
               ],
             ),
@@ -233,7 +228,7 @@ class Step4Confirmation extends HookConsumerWidget {
 
         const SizedBox(height: MBESpacing.lg),
 
-        // Resumen del Pedido (Sticky a la derecha en web, aquí móvil)
+        // Resumen del Pedido CON DATOS REALES
         FadeInUp(
           duration: const Duration(milliseconds: 400),
           delay: const Duration(milliseconds: 300),
@@ -284,11 +279,11 @@ class Step4Confirmation extends HookConsumerWidget {
                   items: [
                     _SummaryItem(
                       'Documentos:',
-                      '${orderSummary['files']}',
+                      '${orderState.files.length}',
                     ),
                     _SummaryItem(
                       'Total páginas:',
-                      '${orderSummary['pages']}',
+                      '${orderState.totalPages ?? 0}',
                     ),
                   ],
                 ),
@@ -304,20 +299,34 @@ class Step4Confirmation extends HookConsumerWidget {
                   items: [
                     _SummaryItem(
                       'Tipo:',
-                      orderSummary['printType'] as String,
+                      printConfig.printType == PrintType.blackWhite 
+                          ? 'Blanco y Negro' 
+                          : 'Color',
                     ),
                     _SummaryItem(
                       'Tamaño:',
-                      orderSummary['paperSize'] as String,
+                      _getPaperSizeName(printConfig.paperSize),
                     ),
                     _SummaryItem(
                       'Orientación:',
-                      orderSummary['orientation'] as String,
+                      printConfig.orientation == Orientation.vertical 
+                          ? 'Vertical' 
+                          : 'Horizontal',
                     ),
                     _SummaryItem(
                       'Copias:',
-                      '${orderSummary['copies']}',
+                      '${printConfig.copies}',
                     ),
+                    if (printConfig.doubleSided)
+                      _SummaryItem(
+                        'Doble cara:',
+                        'Sí',
+                      ),
+                    if (printConfig.binding)
+                      _SummaryItem(
+                        'Engargolado:',
+                        'Sí',
+                      ),
                   ],
                 ),
 
@@ -332,14 +341,23 @@ class Step4Confirmation extends HookConsumerWidget {
                   items: [
                     _SummaryItem(
                       'Método:',
-                      orderSummary['deliveryMethod'] as String,
+                      deliveryState.isPickup 
+                          ? 'Recoger en tienda' 
+                          : 'Envío a domicilio',
                     ),
+                    if (deliveryState.isDelivery && deliveryState.deliveryAddress.isNotEmpty)
+                      _SummaryItem(
+                        'Dirección:',
+                        deliveryState.deliveryAddress.length > 30
+                            ? '${deliveryState.deliveryAddress.substring(0, 30)}...'
+                            : deliveryState.deliveryAddress,
+                      ),
                   ],
                 ),
 
                 const SizedBox(height: MBESpacing.xl),
 
-                // Desglose de Costos
+                // Desglose de Costos CON DATOS REALES
                 Container(
                   padding: const EdgeInsets.all(MBESpacing.lg),
                   decoration: BoxDecoration(
@@ -366,20 +384,68 @@ class Step4Confirmation extends HookConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: MBESpacing.lg),
+                      
+                      // Subtotal de impresión
                       _CostRow(
-                        'Impresión (${orderSummary['pages']} páginas totales)',
-                        '\$${(orderSummary['subtotal'] as double).toStringAsFixed(2)}',
+                        'Subtotal impresión',
+                        '\$${printPricing.subtotal.toStringAsFixed(2)}',
                       ),
-                      if ((orderSummary['delivery'] as double) > 0) ...[
+                      
+                      const SizedBox(height: MBESpacing.sm),
+                      
+                      // IVA
+                      _CostRow(
+                        'IVA (13%)',
+                        '\$${printPricing.tax.toStringAsFixed(2)}',
+                      ),
+                      
+                      // Envío (si aplica)
+                      if (deliveryPricing.deliveryCost > 0) ...[
                         const SizedBox(height: MBESpacing.sm),
                         _CostRow(
                           'Envío',
-                          '\$${(orderSummary['delivery'] as double).toStringAsFixed(2)}',
+                          '\$${deliveryPricing.deliveryCost.toStringAsFixed(2)}',
                         ),
                       ],
+                      
+                      // Envío gratis
+                      if (deliveryState.isDelivery && deliveryPricing.isFreeDelivery) ...[
+                        const SizedBox(height: MBESpacing.sm),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Envío',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  '\$0.00',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF10B981),
+                                  ),
+                                ),
+                                const SizedBox(width: MBESpacing.xs),
+                                const Icon(
+                                  Iconsax.tick_circle,
+                                  size: 16,
+                                  color: Color(0xFF10B981),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                      
                       const SizedBox(height: MBESpacing.lg),
                       const Divider(),
                       const SizedBox(height: MBESpacing.lg),
+                      
+                      // Total final
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -390,7 +456,7 @@ class Step4Confirmation extends HookConsumerWidget {
                             ),
                           ),
                           Text(
-                            '\$${(orderSummary['total'] as double)?.toStringAsFixed(2)}',
+                            '\$${orderTotal.grandTotal.toStringAsFixed(2)}',
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: MBETheme.brandBlack,
@@ -414,7 +480,7 @@ class Step4Confirmation extends HookConsumerWidget {
                             ),
                           ),
                           Text(
-                            _getPaymentMethodName(paymentMethod.value),
+                            confirmationState.getPaymentMethodName(),
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
@@ -472,19 +538,19 @@ class Step4Confirmation extends HookConsumerWidget {
     );
   }
 
-  String _getPaymentMethodName(PaymentMethod method) {
-    switch (method) {
-      case PaymentMethod.card:
-        return 'Tarjeta';
-      case PaymentMethod.cash:
-        return 'Efectivo';
-      case PaymentMethod.transfer:
-        return 'Transferencia';
+  String _getPaperSizeName(PaperSize size) {
+    switch (size) {
+      case PaperSize.letter:
+        return 'Carta';
+      case PaperSize.legal:
+        return 'Legal';
+      case PaperSize.doubleLetter:
+        return 'Doble Carta';
     }
   }
 }
 
-// Widget auxiliar: Opción de pago
+// Widgets auxiliares (mantén los mismos que ya tienes)...
 class _PaymentOption extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -526,7 +592,6 @@ class _PaymentOption extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Radio
             AnimatedContainer(
               duration: MBEDuration.normal,
               width: 24,
@@ -551,19 +616,9 @@ class _PaymentOption extends StatelessWidget {
                     )
                   : null,
             ),
-            
             const SizedBox(width: MBESpacing.md),
-            
-            // Icono
-            Icon(
-              icon,
-              size: 24,
-              color: colorScheme.onSurface,
-            ),
-            
+            Icon(icon, size: 24, color: colorScheme.onSurface),
             const SizedBox(width: MBESpacing.md),
-            
-            // Texto
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -599,7 +654,6 @@ class _PaymentOption extends StatelessWidget {
   }
 }
 
-// Widget auxiliar: Sección de resumen
 class _SummarySection extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -637,7 +691,6 @@ class _SummarySection extends StatelessWidget {
   }
 }
 
-// Widget auxiliar: Item de resumen
 class _SummaryItem extends StatelessWidget {
   final String label;
   final String value;
@@ -654,10 +707,12 @@ class _SummaryItem extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+          Flexible(
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           Text(
@@ -672,7 +727,6 @@ class _SummaryItem extends StatelessWidget {
   }
 }
 
-// Widget auxiliar: Fila de costo
 class _CostRow extends StatelessWidget {
   final String label;
   final String amount;

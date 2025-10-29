@@ -3,7 +3,7 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   // Base URL - Cambiar según tu entorno
-  static const String baseUrl = 'http://192.168.31.44:8000/api';
+  static const String baseUrl = 'http://192.168.31.44:8000/api/v1';
 
   // Auth endpoints
   static const String login = '/auth/login';

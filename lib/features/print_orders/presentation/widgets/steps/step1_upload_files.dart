@@ -1,6 +1,7 @@
 // lib/features/print_orders/presentation/widgets/steps/step1_upload_files.dart
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
@@ -22,42 +23,86 @@ class Step1UploadFiles extends HookConsumerWidget {
     final orderState = ref.watch(printOrderProvider);
     final configAsync = ref.watch(printConfigProvider);
 
+    // Hook para rastrear si ya se inicializó la config
+    final configInitialized = useRef(false);
+
+    // Inicializar config cuando esté disponible
+    useEffect(() {
+      configAsync.whenData((configModel) {
+        if (!configInitialized.value) {
+          debugPrint('🔧 Inicializando configuración desde backend...');
+          
+          final fileConfig = FileUploadConfig(
+            maxFileSizeMB: configModel.config?.limits?.maxFileSizeMb ?? 10,
+            maxFilesPerOrder: configModel.config?.limits?.maxFilesPerOrder ?? 0,
+            allowedTypes: configModel.config?.allowedFileTypes ?? [],
+          );
+
+          // Actualizar config después del frame actual
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(printOrderProvider.notifier).updateConfig(fileConfig);
+            configInitialized.value = true;
+            debugPrint('✅ Configuración inicializada');
+          });
+        }
+      });
+      return null;
+    }, [configAsync]);
+
     return configAsync.when(
-      loading: () => const Center(
-        child: CircularProgressIndicator(),
+      loading: () => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: MBESpacing.lg),
+            Text(
+              'Cargando configuración...',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
       error: (error, stack) => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Iconsax.warning_2, size: 48, color: Colors.red),
+            const Icon(
+              Iconsax.warning_2,
+              size: 48,
+              color: MBETheme.brandRed,
+            ),
             const SizedBox(height: MBESpacing.lg),
-            Text('Error al cargar configuración'),
-            TextButton(
-              onPressed: () => ref.invalidate(printConfigProvider),
-              child: const Text('Reintentar'),
+            Text(
+              'Error al cargar configuración',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: MBESpacing.sm),
+            Text(
+              error.toString(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: MBESpacing.lg),
+            FilledButton.icon(
+              onPressed: () {
+                debugPrint('🔄 Recargando configuración...');
+                ref.read(printConfigProvider.notifier).refresh();
+              },
+              icon: const Icon(Iconsax.refresh),
+              label: const Text('Reintentar'),
+              style: FilledButton.styleFrom(
+                backgroundColor: MBETheme.brandBlack,
+              ),
             ),
           ],
         ),
       ),
       data: (config) {
-        // Actualizar config en el provider si cambió
-        final limits = config.config?.limits;
-        if (limits != null) {
-          final fileConfig = FileUploadConfig(
-            maxFileSizeMB: limits.maxFileSizeMb ?? 50,
-            maxFilesPerOrder: limits.maxFilesPerOrder ?? 5,
-            allowedTypes: config.config?.allowedFileTypes ?? [],
-          );
-          
-          // Solo actualizar si es diferente
-          if (orderState.config != fileConfig) {
-            Future.microtask(() {
-              ref.read(printOrderProvider.notifier).updateConfig(fileConfig);
-            });
-          }
-        }
-
         final files = orderState.files;
         final totalSize = orderState.totalSize;
 
@@ -120,6 +165,7 @@ class Step1UploadFiles extends HookConsumerWidget {
               child: DragDropZone(
                 config: orderState.config,
                 onFilesAdded: (newFiles) {
+                  debugPrint('📁 Agregando ${newFiles.length} archivos...');
                   ref.read(printOrderProvider.notifier).addFiles(newFiles);
                 },
               ),
@@ -141,7 +187,7 @@ class Step1UploadFiles extends HookConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Iconsax.warning_2,
                         color: MBETheme.brandRed,
                         size: 24,
@@ -182,7 +228,8 @@ class Step1UploadFiles extends HookConsumerWidget {
                                 padding: const EdgeInsets.all(MBESpacing.sm),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF10B981),
-                                  borderRadius: BorderRadius.circular(MBERadius.small),
+                                  borderRadius:
+                                      BorderRadius.circular(MBERadius.small),
                                 ),
                                 child: const Icon(
                                   Iconsax.tick_circle5,
@@ -196,7 +243,8 @@ class Step1UploadFiles extends HookConsumerWidget {
                                 children: [
                                   Text(
                                     'Archivos seleccionados',
-                                    style: theme.textTheme.titleSmall?.copyWith(
+                                    style:
+                                        theme.textTheme.titleSmall?.copyWith(
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -240,11 +288,14 @@ class Step1UploadFiles extends HookConsumerWidget {
                             duration: const Duration(milliseconds: 300),
                             delay: Duration(milliseconds: 100 * entry.key),
                             child: Padding(
-                              padding: const EdgeInsets.only(bottom: MBESpacing.md),
+                              padding: const EdgeInsets.only(
+                                  bottom: MBESpacing.md),
                               child: FileListItem(
                                 file: entry.value,
                                 index: entry.key,
                                 onRemove: () {
+                                  debugPrint(
+                                      '🗑️ Eliminando archivo: ${entry.value.name}');
                                   ref
                                       .read(printOrderProvider.notifier)
                                       .removeFile(entry.value.id);
@@ -258,16 +309,130 @@ class Step1UploadFiles extends HookConsumerWidget {
               ),
             ],
 
-            // Tips (igual que antes)
+            // Info y tips cuando no hay archivos
             if (files.isEmpty) ...[
               const SizedBox(height: MBESpacing.lg),
-              // ... resto del código de tips
+              _buildEmptyState(context, theme, colorScheme, orderState),
             ],
 
             const SizedBox(height: MBESpacing.xxxl),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildEmptyState(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme colorScheme,
+    PrintOrderState orderState,
+  ) {
+    return Column(
+      children: [
+        // Info de formatos aceptados
+        FadeIn(
+          delay: const Duration(milliseconds: 300),
+          child: Container(
+            padding: const EdgeInsets.all(MBESpacing.lg),
+            decoration: BoxDecoration(
+              color: MBETheme.lightGray,
+              borderRadius: BorderRadius.circular(MBERadius.large),
+              border: Border.all(
+                color: MBETheme.neutralGray.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Iconsax.info_circle,
+                  color: colorScheme.onSurfaceVariant,
+                  size: 24,
+                ),
+                const SizedBox(width: MBESpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Formatos aceptados',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: MBESpacing.xs),
+                      Text(
+                        orderState.config.allowedExtensions.join(', ').toUpperCase(),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: MBESpacing.xs),
+                      Text(
+                        'Hasta ${orderState.config.maxFilesPerOrder} archivos • ${orderState.config.maxFileSizeMB}MB por archivo',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Tips
+        const SizedBox(height: MBESpacing.lg),
+        FadeIn(
+          delay: const Duration(milliseconds: 400),
+          child: Container(
+            padding: const EdgeInsets.all(MBESpacing.lg),
+            decoration: MBECardDecoration.card(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Iconsax.lamp_on5,
+                      size: 20,
+                      color: Color(0xFFF59E0B),
+                    ),
+                    const SizedBox(width: MBESpacing.sm),
+                    Text(
+                      'Tips para mejores resultados',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: MBESpacing.md),
+                _buildTip(context, '• Usa archivos PDF para mejor calidad'),
+                const SizedBox(height: MBESpacing.xs),
+                _buildTip(context, '• Verifica que el texto sea legible'),
+                const SizedBox(height: MBESpacing.xs),
+                _buildTip(
+                    context, '• Las imágenes deben tener buena resolución'),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTip(BuildContext context, String text) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Text(
+      text,
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: colorScheme.onSurfaceVariant,
+      ),
     );
   }
 }

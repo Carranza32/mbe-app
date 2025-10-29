@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import 'package:mbe_orders_app/features/print_orders/providers/stepper_provider.dart';
 
+import '../../providers/order_processor_provider.dart';
 import '../../providers/print_order_provider.dart';
 import '../widgets/stepper/mbe_stepper.dart';
 import '../widgets/steps/step1_upload_files.dart';
@@ -130,7 +131,7 @@ class PrintOrderScreen extends HookConsumerWidget {
                     ref.read(currentStepProvider.notifier).next();
                   }
                 }
-              : () => _finishOrder(context),
+              : () => _finishOrder(context, ref),
           ),
         ],
       ),
@@ -206,11 +207,98 @@ class PrintOrderScreen extends HookConsumerWidget {
     );
   }
 
-  void _finishOrder(BuildContext context) {
-    // Lógica para finalizar pedido
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pedido finalizado')),
+  Future<void> _finishOrder(BuildContext context, WidgetRef ref) async {
+    // Mostrar loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
     );
+
+    try {
+      // Procesar la orden
+      final success = await ref.read(orderProcessorProvider.notifier).processOrder();
+
+      // Cerrar loading
+      if (context.mounted) Navigator.pop(context);
+
+      if (success) {
+        // Obtener el resultado
+        final orderState = ref.read(orderProcessorProvider);
+
+        // Mostrar success y navegar a confirmación
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              icon: const Icon(
+                Iconsax.tick_circle,
+                size: 64,
+                color: Color(0xFF10B981),
+              ),
+              title: const Text('¡Pedido creado!'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Tu pedido ha sido creado exitosamente',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: MBESpacing.md),
+                  Text(
+                    'ID: ${orderState.orderId}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Cerrar dialog
+                    Navigator.pop(context); // Volver a lista
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: MBETheme.brandBlack,
+                  ),
+                  child: const Text('Aceptar'),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        // Mostrar error
+        final orderState = ref.read(orderProcessorProvider);
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(orderState.errorMessage ?? 'Error al crear el pedido'),
+              backgroundColor: MBETheme.brandRed,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Cerrar loading si está abierto
+      if (context.mounted) Navigator.pop(context);
+      
+      // Mostrar error
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: MBETheme.brandRed,
+          ),
+        );
+      }
+    }
   }
 }
 

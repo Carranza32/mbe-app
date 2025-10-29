@@ -8,6 +8,8 @@ import 'package:iconsax/iconsax.dart';
 import 'package:flutter_credit_card/flutter_credit_card.dart';
 
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
+import '../../../providers/order_total_provider.dart';
+import '../../../providers/confirmation_state_provider.dart';
 
 class Step5Payment extends HookConsumerWidget {
   const Step5Payment({Key? key}) : super(key: key);
@@ -24,7 +26,12 @@ class Step5Payment extends HookConsumerWidget {
     final saveCard = useState(false);
     final formKey = useMemoized(() => GlobalKey<FormState>());
     
-    final orderTotal = 10.44;
+    // Obtener total real
+    final orderTotal = ref.watch(orderTotalCalculatorProvider);
+    final confirmationState = ref.watch(confirmationStateProvider);
+    
+    // Solo mostrar si el método de pago es tarjeta
+    final showCardForm = confirmationState.paymentMethod == PaymentMethod.card;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,7 +51,11 @@ class Step5Payment extends HookConsumerWidget {
                     borderRadius: BorderRadius.circular(MBERadius.medium),
                     boxShadow: MBETheme.shadowSm,
                   ),
-                  child: const Icon(Iconsax.card, size: 28, color: Colors.white),
+                  child: Icon(
+                    showCardForm ? Iconsax.card : Iconsax.money,
+                    size: 28,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(width: MBESpacing.lg),
                 Expanded(
@@ -52,7 +63,7 @@ class Step5Payment extends HookConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Realizar Pago',
+                        showCardForm ? 'Realizar Pago' : 'Confirmar Pedido',
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -67,7 +78,7 @@ class Step5Payment extends HookConsumerWidget {
                             ),
                           ),
                           Text(
-                            '\$$orderTotal',
+                            '\$${orderTotal.grandTotal.toStringAsFixed(2)}',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: MBETheme.brandBlack,
@@ -85,289 +96,221 @@ class Step5Payment extends HookConsumerWidget {
 
         const SizedBox(height: MBESpacing.lg),
 
-        // Security Badge
-        FadeInUp(
-          duration: const Duration(milliseconds: 400),
-          delay: const Duration(milliseconds: 50),
-          child: Container(
-            padding: const EdgeInsets.all(MBESpacing.md),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(MBERadius.large),
-              border: Border.all(
-                color: const Color(0xFF10B981).withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(MBESpacing.sm),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981),
-                    borderRadius: BorderRadius.circular(MBERadius.small),
-                  ),
-                  child: const Icon(
-                    Iconsax.shield_tick,
-                    size: 18,
-                    color: Colors.white,
-                  ),
+        // Security Badge (solo si es tarjeta)
+        if (showCardForm) ...[
+          FadeInUp(
+            duration: const Duration(milliseconds: 400),
+            delay: const Duration(milliseconds: 50),
+            child: Container(
+              padding: const EdgeInsets.all(MBESpacing.md),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(MBERadius.large),
+                border: Border.all(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                  width: 1.5,
                 ),
-                const SizedBox(width: MBESpacing.md),
-                Expanded(
-                  child: Text(
-                    'Pago 100% seguro y encriptado',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF059669),
-                      fontWeight: FontWeight.w600,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(MBESpacing.sm),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981),
+                      borderRadius: BorderRadius.circular(MBERadius.small),
+                    ),
+                    child: const Icon(
+                      Iconsax.shield_tick,
+                      size: 18,
+                      color: Colors.white,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: MBESpacing.xl),
-
-        // Card Preview - Visual de la tarjeta
-        FadeInUp(
-          duration: const Duration(milliseconds: 400),
-          delay: const Duration(milliseconds: 100),
-          child: CreditCardWidget(
-            onCreditCardWidgetChange: (CreditCardBrand brand) {},
-            cardNumber: cardNumber.value,
-            expiryDate: expiryDate.value,
-            cardHolderName: cardHolder.value,
-            cvvCode: cvv.value,
-            showBackView: false,
-            obscureCardNumber: true,
-            obscureCardCvv: true,
-            isHolderNameVisible: true,
-            cardBgColor: MBETheme.brandBlack,
-            glassmorphismConfig: Glassmorphism.defaultConfig(),
-            backgroundImage: null,
-            isSwipeGestureEnabled: true,
-            customCardTypeIcons: <CustomCardTypeIcon>[
-              CustomCardTypeIcon(
-                cardType: CardType.mastercard,
-                cardImage: Image.asset(
-                  'assets/mastercard.png',
-                  height: 48,
-                  width: 48,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: MBESpacing.xl),
-
-        // Card Form usando el paquete
-        FadeInUp(
-          duration: const Duration(milliseconds: 400),
-          delay: const Duration(milliseconds: 200),
-          child: Container(
-            padding: const EdgeInsets.all(MBESpacing.lg),
-            decoration: MBECardDecoration.card(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Iconsax.card_pos, size: 24, color: colorScheme.onSurface),
-                    const SizedBox(width: MBESpacing.md),
-                    Text(
-                      'Información de Tarjeta',
-                      style: theme.textTheme.titleMedium?.copyWith(
+                  const SizedBox(width: MBESpacing.md),
+                  Expanded(
+                    child: Text(
+                      'Pago 100% seguro y encriptado',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF059669),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ],
-                ),
-                
-                const SizedBox(height: MBESpacing.xl),
-
-                // Form con el paquete (personalizado con el tema MBE)
-                CreditCardForm(
-                  formKey: formKey,
-                  cardNumber: cardNumber.value,
-                  expiryDate: expiryDate.value,
-                  cardHolderName: cardHolder.value,
-                  cvvCode: cvv.value,
-                  onCreditCardModelChange: (CreditCardModel data) {
-                    cardNumber.value = data.cardNumber;
-                    expiryDate.value = data.expiryDate;
-                    cardHolder.value = data.cardHolderName;
-                    cvv.value = data.cvvCode;
-                  },
-                  themeColor: MBETheme.brandBlack,
-                  obscureCvv: true,
-                  obscureNumber: false,
-                  isHolderNameVisible: true,
-                  isCardNumberVisible: true,
-                  isExpiryDateVisible: true,
-                  enableCvv: true,
-                  cvvValidationMessage: 'Ingresa un CVV válido',
-                  dateValidationMessage: 'Ingresa una fecha válida',
-                  numberValidationMessage: 'Ingresa un número válido',
-                  cardNumberValidator: (String? cardNumber) {
-                    if (cardNumber == null || cardNumber.isEmpty) {
-                      return 'El número de tarjeta es requerido';
-                    }
-                    if (cardNumber.replaceAll(' ', '').length < 13) {
-                      return 'Número de tarjeta inválido';
-                    }
-                    return null;
-                  },
-                  expiryDateValidator: (String? expiryDate) {
-                    if (expiryDate == null || expiryDate.isEmpty) {
-                      return 'La fecha de vencimiento es requerida';
-                    }
-                    return null;
-                  },
-                  cvvValidator: (String? cvv) {
-                    if (cvv == null || cvv.isEmpty) {
-                      return 'El CVV es requerido';
-                    }
-                    if (cvv.length < 3) {
-                      return 'CVV inválido';
-                    }
-                    return null;
-                  },
-                  cardHolderValidator: (String? cardHolderName) {
-                    if (cardHolderName == null || cardHolderName.isEmpty) {
-                      return 'El nombre del titular es requerido';
-                    }
-                    return null;
-                  },
-                  // Personalización de textos
-                  cardNumberDecoration: InputDecoration(
-                    labelText: 'Número de Tarjeta',
-                    hintText: 'XXXX XXXX XXXX XXXX',
-                    filled: true,
-                    fillColor: colorScheme.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: MBETheme.neutralGray.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: MBETheme.neutralGray.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: colorScheme.primary,
-                        width: 2,
-                      ),
-                    ),
                   ),
-                  expiryDateDecoration: InputDecoration(
-                    labelText: 'Fecha de Vencimiento',
-                    hintText: 'MM/AA',
-                    filled: true,
-                    fillColor: colorScheme.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: MBETheme.neutralGray.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: MBETheme.neutralGray.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: colorScheme.primary,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  cvvCodeDecoration: InputDecoration(
-                    labelText: 'CVV',
-                    hintText: 'XXX',
-                    filled: true,
-                    fillColor: colorScheme.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: MBETheme.neutralGray.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: MBETheme.neutralGray.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: colorScheme.primary,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  cardHolderDecoration: InputDecoration(
-                    labelText: 'Nombre del Titular',
-                    hintText: 'Como aparece en la tarjeta',
-                    filled: true,
-                    fillColor: colorScheme.surface,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: MBETheme.neutralGray.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: MBETheme.neutralGray.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(MBERadius.large),
-                      borderSide: BorderSide(
-                        color: colorScheme.primary,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: MBESpacing.lg),
-
-                // Checkbox
-                // DSCheckbox(
-                //   value: saveCard.value,
-                //   onChanged: (value) => saveCard.value = value ?? false,
-                //   label: 'Guardar tarjeta para futuros pagos',
-                // ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
+          const SizedBox(height: MBESpacing.xl),
+        ],
+
+        // Contenido según método de pago
+        if (showCardForm) ...[
+          // Card Preview
+          FadeInUp(
+            duration: const Duration(milliseconds: 400),
+            delay: const Duration(milliseconds: 100),
+            child: CreditCardWidget(
+              onCreditCardWidgetChange: (CreditCardBrand brand) {},
+              cardNumber: cardNumber.value,
+              expiryDate: expiryDate.value,
+              cardHolderName: cardHolder.value,
+              cvvCode: cvv.value,
+              showBackView: false,
+              obscureCardNumber: true,
+              obscureCardCvv: true,
+              isHolderNameVisible: true,
+              cardBgColor: MBETheme.brandBlack,
+              glassmorphismConfig: Glassmorphism.defaultConfig(),
+              backgroundImage: null,
+              isSwipeGestureEnabled: true,
+            ),
+          ),
+
+          const SizedBox(height: MBESpacing.xl),
+
+          // Card Form
+          FadeInUp(
+            duration: const Duration(milliseconds: 400),
+            delay: const Duration(milliseconds: 200),
+            child: Container(
+              padding: const EdgeInsets.all(MBESpacing.lg),
+              decoration: MBECardDecoration.card(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Iconsax.card_pos, size: 24, color: colorScheme.onSurface),
+                      const SizedBox(width: MBESpacing.md),
+                      Text(
+                        'Información de Tarjeta',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: MBESpacing.xl),
+
+                  CreditCardForm(
+                    formKey: formKey,
+                    cardNumber: cardNumber.value,
+                    expiryDate: expiryDate.value,
+                    cardHolderName: cardHolder.value,
+                    cvvCode: cvv.value,
+                    onCreditCardModelChange: (CreditCardModel data) {
+                      cardNumber.value = data.cardNumber;
+                      expiryDate.value = data.expiryDate;
+                      cardHolder.value = data.cardHolderName;
+                      cvv.value = data.cvvCode;
+                    },
+                    themeColor: MBETheme.brandBlack,
+                    obscureCvv: true,
+                    obscureNumber: false,
+                    isHolderNameVisible: true,
+                    isCardNumberVisible: true,
+                    isExpiryDateVisible: true,
+                    enableCvv: true,
+                    cvvValidationMessage: 'Ingresa un CVV válido',
+                    dateValidationMessage: 'Ingresa una fecha válida',
+                    numberValidationMessage: 'Ingresa un número válido',
+                    cardNumberValidator: (String? cardNumber) {
+                      if (cardNumber == null || cardNumber.isEmpty) {
+                        return 'El número de tarjeta es requerido';
+                      }
+                      if (cardNumber.replaceAll(' ', '').length < 13) {
+                        return 'Número de tarjeta inválido';
+                      }
+                      return null;
+                    },
+                    expiryDateValidator: (String? expiryDate) {
+                      if (expiryDate == null || expiryDate.isEmpty) {
+                        return 'La fecha de vencimiento es requerida';
+                      }
+                      return null;
+                    },
+                    cvvValidator: (String? cvv) {
+                      if (cvv == null || cvv.isEmpty) {
+                        return 'El CVV es requerido';
+                      }
+                      if (cvv.length < 3) {
+                        return 'CVV inválido';
+                      }
+                      return null;
+                    },
+                    cardHolderValidator: (String? cardHolderName) {
+                      if (cardHolderName == null || cardHolderName.isEmpty) {
+                        return 'El nombre del titular es requerido';
+                      }
+                      return null;
+                    },
+                    cardNumberDecoration: _buildInputDecoration(
+                      'Número de Tarjeta',
+                      'XXXX XXXX XXXX XXXX',
+                      colorScheme,
+                    ),
+                    expiryDateDecoration: _buildInputDecoration(
+                      'Fecha de Vencimiento',
+                      'MM/AA',
+                      colorScheme,
+                    ),
+                    cvvCodeDecoration: _buildInputDecoration(
+                      'CVV',
+                      'XXX',
+                      colorScheme,
+                    ),
+                    cardHolderDecoration: _buildInputDecoration(
+                      'Nombre del Titular',
+                      'Como aparece en la tarjeta',
+                      colorScheme,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ] else ...[
+          // Mensaje para otros métodos de pago
+          FadeInUp(
+            duration: const Duration(milliseconds: 400),
+            delay: const Duration(milliseconds: 100),
+            child: Container(
+              padding: const EdgeInsets.all(MBESpacing.xl),
+              decoration: MBECardDecoration.card(),
+              child: Column(
+                children: [
+                  Icon(
+                    confirmationState.paymentMethod == PaymentMethod.cash
+                        ? Iconsax.money
+                        : Iconsax.bank,
+                    size: 64,
+                    color: MBETheme.brandBlack,
+                  ),
+                  const SizedBox(height: MBESpacing.lg),
+                  Text(
+                    _getPaymentMessage(confirmationState.paymentMethod),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: MBESpacing.sm),
+                  Text(
+                    _getPaymentDescription(confirmationState.paymentMethod),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
 
         const SizedBox(height: MBESpacing.lg),
 
-        // Payment Summary (igual que antes)
+        // Payment Summary
         FadeInUp(
           duration: const Duration(milliseconds: 400),
           delay: const Duration(milliseconds: 300),
@@ -395,7 +338,7 @@ class Step5Payment extends HookConsumerWidget {
                       ),
                     ),
                     Text(
-                      '\$$orderTotal',
+                      '\$${orderTotal.grandTotal.toStringAsFixed(2)}',
                       style: theme.textTheme.headlineMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -412,10 +355,14 @@ class Step5Payment extends HookConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Iconsax.card, size: 18, color: Colors.white),
+                      Icon(
+                        _getPaymentIcon(confirmationState.paymentMethod),
+                        size: 18,
+                        color: Colors.white,
+                      ),
                       const SizedBox(width: MBESpacing.sm),
                       Text(
-                        'Tarjeta de crédito/débito',
+                        confirmationState.getPaymentMethodName(),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.white,
                         ),
@@ -465,5 +412,72 @@ class Step5Payment extends HookConsumerWidget {
         const SizedBox(height: MBESpacing.xxxl),
       ],
     );
+  }
+
+  InputDecoration _buildInputDecoration(
+    String label,
+    String hint,
+    ColorScheme colorScheme,
+  ) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      filled: true,
+      fillColor: colorScheme.surface,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(MBERadius.large),
+        borderSide: BorderSide(
+          color: MBETheme.neutralGray.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(MBERadius.large),
+        borderSide: BorderSide(
+          color: MBETheme.neutralGray.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(MBERadius.large),
+        borderSide: BorderSide(
+          color: colorScheme.primary,
+          width: 2,
+        ),
+      ),
+    );
+  }
+
+  String _getPaymentMessage(PaymentMethod method) {
+    switch (method) {
+      case PaymentMethod.cash:
+        return 'Pago en efectivo';
+      case PaymentMethod.transfer:
+        return 'Pago por transferencia';
+      case PaymentMethod.card:
+        return 'Pago con tarjeta';
+    }
+  }
+
+  String _getPaymentDescription(PaymentMethod method) {
+    switch (method) {
+      case PaymentMethod.cash:
+        return 'Pagarás al momento de recibir tu pedido';
+      case PaymentMethod.transfer:
+        return 'Recibirás las instrucciones por correo electrónico';
+      case PaymentMethod.card:
+        return 'Paga de forma segura con tu tarjeta';
+    }
+  }
+
+  IconData _getPaymentIcon(PaymentMethod method) {
+    switch (method) {
+      case PaymentMethod.cash:
+        return Iconsax.money;
+      case PaymentMethod.transfer:
+        return Iconsax.bank;
+      case PaymentMethod.card:
+        return Iconsax.card;
+    }
   }
 }
