@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'auth_providers.dart';
+part of 'auth_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
@@ -8,14 +8,11 @@ part of 'auth_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Provider del estado de autenticación usando Riverpod Generator
 
 @ProviderFor(Auth)
 const authProvider = AuthProvider._();
 
-/// Provider del estado de autenticación usando Riverpod Generator
-final class AuthProvider extends $NotifierProvider<Auth, AuthState> {
-  /// Provider del estado de autenticación usando Riverpod Generator
+final class AuthProvider extends $AsyncNotifierProvider<Auth, User?> {
   const AuthProvider._()
     : super(
         from: null,
@@ -33,32 +30,22 @@ final class AuthProvider extends $NotifierProvider<Auth, AuthState> {
   @$internal
   @override
   Auth create() => Auth();
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AuthState value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<AuthState>(value),
-    );
-  }
 }
 
-String _$authHash() => r'6c91176f14edc7d375cfbac0dc13b95215a3d64b';
+String _$authHash() => r'8dc2ab48a626526160ce8447d0f6ee485f19e3bd';
 
-/// Provider del estado de autenticación usando Riverpod Generator
-
-abstract class _$Auth extends $Notifier<AuthState> {
-  AuthState build();
+abstract class _$Auth extends $AsyncNotifier<User?> {
+  FutureOr<User?> build();
   @$mustCallSuper
   @override
   void runBuild() {
     final created = build();
-    final ref = this.ref as $Ref<AuthState, AuthState>;
+    final ref = this.ref as $Ref<AsyncValue<User?>, User?>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<AuthState, AuthState>,
-              AuthState,
+              AnyNotifier<AsyncValue<User?>, User?>,
+              AsyncValue<User?>,
               Object?,
               Object?
             >;

@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
+import '../../main.dart';
 import 'api_endpoints.dart';
 
 /// Provider para Flutter Secure Storage
@@ -67,9 +70,20 @@ class AuthInterceptor extends Interceptor {
       // if (refreshed) {
       //   return handler.resolve(await _retry(err.requestOptions));
       // }
+
+      // _redirectToLoginGlobal();
     }
 
     handler.next(err);
+  }
+
+  void _redirectToLoginGlobal() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        GoRouter.of(context).go('/auth/login');
+      }
+    });
   }
 
   // Método para refrescar el token (opcional)

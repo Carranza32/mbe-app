@@ -6,14 +6,38 @@ import 'package:mbe_orders_app/features/home/screens/home_screen.dart';
 import 'package:mbe_orders_app/features/home/screens/main_screen.dart';
 import 'package:mbe_orders_app/features/packages/screens/packages_screen.dart';
 import 'package:mbe_orders_app/features/pre_alert/screens/pre_alert_screen.dart';
+import 'package:mbe_orders_app/features/print_orders/presentation/screens/my_orders_screen.dart';
 import 'package:mbe_orders_app/features/print_orders/presentation/screens/print_order_screen.dart';
 import 'package:mbe_orders_app/features/quoter/screens/quote_input_screen.dart';
 import 'package:mbe_orders_app/features/tracking/screens/tracking_screen.dart';
 
+import '../../core/network/dio_provider.dart';
+
 // Provider del router
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/print-orders/create',
+    initialLocation: '/auth/login',
+    redirect: (context, state) async {
+      final storage = ref.read(secureStorageProvider);
+      final token = await storage.read(key: 'auth_token');
+      final hasToken = token != null && token.isNotEmpty;
+
+      // await storage.delete(key: 'auth_token');
+      
+      final isLoginRoute = state.matchedLocation == '/auth/login';
+      
+      // Si no tiene token y no está en login → redirigir a login
+      if (!hasToken && !isLoginRoute) {
+        return '/auth/login';
+      }
+      
+      // Si tiene token y está en login → redirigir a print-orders
+      if (hasToken && isLoginRoute) {
+        return '/print-orders/my-orders';
+      }
+      
+      return null; // No redirigir
+    },
     routes: [
       // Shell route para mantener el bottom navigation
       ShellRoute(
@@ -71,6 +95,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           path: '/print-orders/create',
           name: 'create-print-order',
           builder: (context, state) => const PrintOrderScreen(),
+        ),
+
+        GoRoute(
+          path: '/print-orders/my-orders',
+          name: 'my-print-orders',
+          builder: (context, state) => const MyOrdersScreen(),
         ),
     ],
   );

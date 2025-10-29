@@ -2,9 +2,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_service.dart';
-import '../../../../core/network/api_endpoints.dart';
 import '../models/create_order_request.dart';
 import '../models/print_configuration_model.dart';
+import '../models/print_order_detail.dart';
+import '../models/print_order_model.dart';
 import '../models/uploaded_file_model.dart';
 
 final printOrderRepositoryProvider = Provider<PrintOrderRepository>((ref) {
@@ -46,10 +47,31 @@ class PrintOrderRepository {
   }
 
   Future<CreateOrderResponse> createOrder(CreateOrderRequest request) async {
-    return await _apiService.post<CreateOrderResponse>(
+    final filesMap = <String, String>{};
+    for (int i = 0; i < request.files.length; i++) {
+      filesMap['files[$i]'] = request.files[i];
+    }
+
+    return await _apiService.uploadFiles<CreateOrderResponse>(
       endpoint: '/print-order/create',
+      files: filesMap,
       data: request.toJson(),
-      fromJson: (json) => CreateOrderResponse.fromJson(json),
+      fromJson: (json) => CreateOrderResponse.fromJson(json['data'] ?? json),
+    );
+  }
+
+  Future<OrdersResponse> getMyOrders({int page = 1}) async {
+    return await _apiService.get<OrdersResponse>(
+      endpoint: '/print-orders/my-orders',
+      queryParameters: {'page': page},
+      fromJson: (json) => OrdersResponse.fromJson(json),
+    );
+  }
+
+  Future<PrintOrderDetail> getOrderDetail(String orderNumber) async {
+    return await _apiService.get<PrintOrderDetail>(
+      endpoint: '/print-orders/$orderNumber',
+      fromJson: (json) => PrintOrderDetail.fromJson(json['order']),
     );
   }
 }

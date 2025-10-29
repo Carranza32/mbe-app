@@ -6,11 +6,11 @@ class ApiEndpoints {
   static const String baseUrl = 'http://192.168.31.44:8000/api/v1';
 
   // Auth endpoints
-  static const String login = '/auth/login';
-  static const String register = '/auth/register';
-  static const String logout = '/auth/logout';
-  static const String refreshToken = '/auth/refresh';
-  static const String profile = '/auth/profile';
+  static const String login = '/login';
+  static const String register = '/register';
+  static const String logout = '/logout';
+  static const String refreshToken = '/refresh';
+  static const String profile = '/profile';
 
   // Orders endpoints (pedidos de impresiones)
   static const String orders = '/orders';

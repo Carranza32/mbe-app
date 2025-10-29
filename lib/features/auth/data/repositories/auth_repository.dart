@@ -1,6 +1,7 @@
 import 'package:mbe_orders_app/core/network/api_endpoints.dart';
 import 'package:mbe_orders_app/core/network/api_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../models/auth_response.dart';
 import '../models/user_model.dart';
 
 part 'auth_repository.g.dart';
@@ -11,17 +12,17 @@ class AuthRepository {
   AuthRepository(this._apiService);
 
   /// Login con email y contraseña
-  Future<User> loginWithEmail({
+  Future<AuthResponse> loginWithEmail({
     required String email,
     required String password,
   }) async {
-    return await _apiService.post<User>(
+    return await _apiService.post<AuthResponse>(
       endpoint: ApiEndpoints.login,
       data: {
         'email': email,
         'password': password,
       },
-      fromJson: (json) => User.fromJson(json),
+      fromJson: (json) => AuthResponse.fromJson(json),
     );
   }
 

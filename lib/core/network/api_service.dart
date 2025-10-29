@@ -248,12 +248,23 @@ class ApiService {
         ));
       }
 
-      // Agregar datos adicionales
+      // Agregar datos aplanados
       if (data != null) {
-        data.forEach((key, value) {
+        final flattened = _flattenMap(data);
+      
+        // ✅ LOG PARA DEBUG
+        print('📤 Datos aplanados:');
+        flattened.forEach((key, value) {
+          print('  $key: $value');
           formData.fields.add(MapEntry(key, value.toString()));
         });
       }
+
+       // ✅ LOG DE ARCHIVOS
+        print('📎 Archivos:');
+        for (var file in formData.files) {
+          print('  ${file.key}: ${file.value.filename}');
+        }
 
       final response = await _dio.post(
         endpoint,
@@ -268,6 +279,26 @@ class ApiService {
       if (e is ApiException) rethrow;
       throw ApiException(message: 'Error inesperado: ${e.toString()}');
     }
+  }
+
+  Map<String, dynamic> _flattenMap(Map<String, dynamic> map, [String prefix = '']) {
+    final result = <String, dynamic>{};
+    
+    map.forEach((key, value) {
+      final newKey = prefix.isEmpty ? key : '$prefix[$key]';
+      
+      if (value is Map<String, dynamic>) {
+        result.addAll(_flattenMap(value, newKey));
+      } else if (value != null) {
+        if (value is bool) {
+          result[newKey] = value ? '1' : '0';
+        } else {
+          result[newKey] = value;
+        }
+      }
+    });
+    
+    return result;
   }
 
   /// Procesa la respuesta HTTP y convierte los datos al tipo T

@@ -19,10 +19,10 @@ class Step5Payment extends HookConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    final cardNumber = useState('');
-    final cardHolder = useState('');
-    final expiryDate = useState('');
-    final cvv = useState('');
+    final cardNumber = useState('5100010000000015');
+    final cardHolder = useState('Mario Carranza');
+    final expiryDate = useState('12/28');
+    final cvv = useState('123');
     final saveCard = useState(false);
     final formKey = useMemoized(() => GlobalKey<FormState>());
     

@@ -1,327 +1,179 @@
+// lib/features/auth/presentation/screens/login_screen.dart
 import 'package:flutter/material.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mbe_orders_app/config/theme/mbe_colors.dart';
-import '../../providers/auth_providers.dart';
-import '../widgets/mbe_text_field.dart';
-import '../widgets/mbe_button.dart';
+import '../../../../config/theme/mbe_theme.dart';
+import '../../data/models/user_model.dart';
+import '../../providers/auth_provider.dart';
 
 class LoginScreen extends HookConsumerWidget {
   const LoginScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Hooks para los controllers (se limpian automáticamente)
-    final emailController = useTextEditingController();
-    final passwordController = useTextEditingController();
-    final formKey = useMemoized(() => GlobalKey<FormState>());
-    
+    final emailController = useTextEditingController(text: 'admin@admin.com');
+    final passwordController = useTextEditingController(text: 'super1');
+    final isPasswordVisible = useState(false);
     final authState = ref.watch(authProvider);
-    final size = MediaQuery.of(context).size;
 
-    Future<void> handleEmailLogin() async {
-      if (!formKey.currentState!.validate()) return;
-
-      final success = await ref.read(authProvider.notifier).loginWithEmail(
-            emailController.text.trim(),
-            passwordController.text,
-          );
-
-      if (success && context.mounted) {
-        // Navegar al home
-        // context.go('/home');
+    ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
+      next.whenData((user) {
+        if (user != null) context.go('/print-orders/my-orders');
+      });
+      
+      next.whenOrNull(error: (error, _) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Bienvenido!'),
-            backgroundColor: MBEColors.success,
+          SnackBar(
+            content: Text(error.toString()),
+            backgroundColor: MBETheme.brandRed,
           ),
         );
-      }
-    }
-
-    Future<void> handleGoogleLogin() async {
-      // TODO: Implementar Google Sign In
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Google Sign In - Próximamente'),
-          backgroundColor: MBEColors.info,
-        ),
-      );
-    }
+      });
+    });
 
     return Scaffold(
-      backgroundColor: MBEColors.white,
+      backgroundColor: MBETheme.lightGray,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: SizedBox(
-            height: size.height - MediaQuery.of(context).padding.top,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-                
-                // Logo con animación
-                FadeInDown(
-                  duration: const Duration(milliseconds: 600),
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: MBEColors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: MBEColors.black.withOpacity(0.08),
-                          blurRadius: 30,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Image.asset(
-                      'assets/images/mbe_logo.png',
-                      height: 60,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: const BoxDecoration(
-                                color: MBEColors.primary,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Iconsax.box,
-                                size: 36,
-                                color: MBEColors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'MAIL BOXES ETC.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: MBEColors.black,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const SizedBox(height: 40),
+              
+              // Logo
+              FadeInDown(
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: MBETheme.lightGray,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Image.network(
+                    'https://mbe-sv.com/wp-content/uploads/2023/07/mbe-panama-logo.png',
+                    fit: BoxFit.contain,
                   ),
                 ),
-
-                const SizedBox(height: 48),
-
-                // Título
-                FadeInDown(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 100),
-                  child: const Text(
-                    'Bienvenido',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: MBEColors.black,
-                    ),
-                  ),
+              ),
+              
+              const SizedBox(height: 32),
+              
+              Text(
+                'Bienvenido de nuevo',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
-
-                const SizedBox(height: 8),
-
-                FadeInDown(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 200),
-                  child: Text(
-                    'Ingresa tus credenciales para continuar',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: MBEColors.grey,
-                    ),
-                  ),
+              ),
+              
+              const SizedBox(height: 8),
+              
+              Text(
+                'Inicia sesión para continuar',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: MBETheme.neutralGray,
                 ),
-
-                const SizedBox(height: 48),
-
-                // Formulario
-                FadeInUp(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 300),
-                  child: Form(
-                    key: formKey,
-                    child: Column(
-                      children: [
-                        // Email
-                        MBETextField(
-                          controller: emailController,
-                          label: 'Correo Electrónico',
-                          hint: 'tu@ejemplo.com',
-                          icon: Iconsax.sms,
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingresa tu correo';
-                            }
-                            if (!value.contains('@')) {
-                              return 'Ingresa un correo válido';
-                            }
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Contraseña
-                        MBETextField(
-                          controller: passwordController,
-                          label: 'Contraseña',
-                          hint: '••••••••',
-                          icon: Iconsax.lock,
-                          obscureText: true,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingresa tu contraseña';
-                            }
-                            if (value.length < 6) {
-                              return 'Mínimo 6 caracteres';
-                            }
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // Olvidé mi contraseña
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {
-                              // TODO: Navegar a recuperar contraseña
-                            },
-                            child: const Text(
-                              '¿Olvidaste tu contraseña?',
-                              style: TextStyle(
-                                color: MBEColors.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Botón de login
-                        MBEButton(
-                          text: 'Iniciar Sesión',
-                          onPressed: handleEmailLogin,
-                          isLoading: authState.isLoading,
-                        ),
-
-                        // Mostrar error si existe
-                        if (authState.error != null) ...[
-                          const SizedBox(height: 16),
-                          FadeIn(
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: MBEColors.error.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: MBEColors.error.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Iconsax.warning_2,
-                                    color: MBEColors.error,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      authState.error!,
-                                      style: const TextStyle(
-                                        color: MBEColors.error,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+              ),
+              
+              const SizedBox(height: 48),
+              
+              // Form
+              FadeInUp(
+                delay: const Duration(milliseconds: 200),
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                      ),
+                    ],
                   ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Divider
-                FadeInUp(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 400),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: Divider(color: MBEColors.greyLight),
+                      _TextField(
+                        controller: emailController,
+                        label: 'Correo Electrónico',
+                        hint: 'tu@email.com',
+                        icon: Iconsax.sms,
+                        keyboardType: TextInputType.emailAddress,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'o continúa con',
-                          style: TextStyle(
-                            color: MBEColors.grey,
-                            fontSize: 14,
+                      
+                      const SizedBox(height: 16),
+                      
+                      _TextField(
+                        controller: passwordController,
+                        label: 'Contraseña',
+                        hint: '••••••••',
+                        icon: Iconsax.lock,
+                        obscureText: !isPasswordVisible.value,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            isPasswordVisible.value ? Iconsax.eye : Iconsax.eye_slash,
                           ),
+                          onPressed: () => isPasswordVisible.value = !isPasswordVisible.value,
                         ),
                       ),
-                      Expanded(
-                        child: Divider(color: MBEColors.greyLight),
+                      
+                      const SizedBox(height: 24),
+                      
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: authState.isLoading
+                              ? null
+                              : () async {
+                                  if (emailController.text.isEmpty || 
+                                      passwordController.text.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Completa todos los campos'),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  
+                                  await ref.read(authProvider.notifier).login(
+                                    emailController.text.trim(),
+                                    passwordController.text,
+                                  );
+                                },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: MBETheme.brandBlack,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: authState.isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                                  ),
+                                )
+                              : const Text('Iniciar Sesión'),
+                        ),
                       ),
                     ],
                   ),
                 ),
-
-                const SizedBox(height: 32),
-
-                // Botón de Google
-                FadeInUp(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 500),
-                  child: MBEButton(
-                    text: 'Continuar con Google',
-                    onPressed: handleGoogleLogin,
-                    isOutlined: true,
-                    icon: Iconsax.ghost
-                  ),
-                ),
-
-                const Spacer(),
-
-                // Footer
-                FadeInUp(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 600),
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
-                    child: Text(
-                      '© 2025 Mail Boxes Etc. Todos los derechos reservados.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: MBEColors.grey,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -329,283 +181,59 @@ class LoginScreen extends HookConsumerWidget {
   }
 }
 
-/*
-    return Scaffold(
-      backgroundColor: MBEColors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: SizedBox(
-            height: size.height - MediaQuery.of(context).padding.top,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-                
-                // Logo con animación
-                FadeInDown(
-                  duration: const Duration(milliseconds: 600),
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: MBEColors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: MBEColors.black.withOpacity(0.08),
-                          blurRadius: 30,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Image.asset(
-                      'assets/images/mbe_logo.png', // Debes agregar el logo
-                      height: 60,
-                      errorBuilder: (context, error, stackTrace) {
-                        // Fallback si no hay imagen
-                        return Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: const BoxDecoration(
-                                color: MBEColors.primary,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Iconsax.box,
-                                size: 36,
-                                color: MBEColors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'MAIL BOXES ETC.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: MBEColors.black,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
+class _TextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final IconData icon;
+  final bool obscureText;
+  final TextInputType? keyboardType;
+  final Widget? suffixIcon;
 
-                const SizedBox(height: 48),
+  const _TextField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.icon,
+    this.obscureText = false,
+    this.keyboardType,
+    this.suffixIcon,
+  });
 
-                // Título
-                FadeInDown(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 100),
-                  child: const Text(
-                    'Bienvenido',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: MBEColors.black,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                FadeInDown(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 200),
-                  child: Text(
-                    'Ingresa tus credenciales para continuar',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: MBEColors.grey,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 48),
-
-                // Formulario
-                FadeInUp(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 300),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        // Email
-                        MBETextField(
-                          controller: _emailController,
-                          label: 'Correo Electrónico',
-                          hint: 'tu@ejemplo.com',
-                          icon: Iconsax.sms,
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingresa tu correo';
-                            }
-                            if (!value.contains('@')) {
-                              return 'Ingresa un correo válido';
-                            }
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Contraseña
-                        MBETextField(
-                          controller: _passwordController,
-                          label: 'Contraseña',
-                          hint: '••••••••',
-                          icon: Iconsax.lock,
-                          obscureText: true,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Ingresa tu contraseña';
-                            }
-                            if (value.length < 6) {
-                              return 'Mínimo 6 caracteres';
-                            }
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // Olvidé mi contraseña
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {
-                              // TODO: Navegar a recuperar contraseña
-                            },
-                            child: const Text(
-                              '¿Olvidaste tu contraseña?',
-                              style: TextStyle(
-                                color: MBEColors.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Botón de login
-                        MBEButton(
-                          text: 'Iniciar Sesión',
-                          onPressed: _handleEmailLogin,
-                          isLoading: authState.isLoading,
-                        ),
-
-                        // Mostrar error si existe
-                        if (authState.error != null) ...[
-                          const SizedBox(height: 16),
-                          FadeIn(
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: MBEColors.error.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: MBEColors.error.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Iconsax.warning_2,
-                                    color: MBEColors.error,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      authState.error!,
-                                      style: const TextStyle(
-                                        color: MBEColors.error,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Divider
-                FadeInUp(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 400),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Divider(color: MBEColors.greyLight),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'o continúa con',
-                          style: TextStyle(
-                            color: MBEColors.grey,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(color: MBEColors.greyLight),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Botón de Google
-                FadeInUp(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 500),
-                  child: MBEButton(
-                    text: 'Continuar con Google',
-                    onPressed: _handleGoogleLogin,
-                    isOutlined: true,
-                    icon: Iconsax.google,
-                  ),
-                ),
-
-                const Spacer(),
-
-                // Footer
-                FadeInUp(
-                  duration: const Duration(milliseconds: 600),
-                  delay: const Duration(milliseconds: 600),
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
-                    child: Text(
-                      '© 2025 Mail Boxes Etc. Todos los derechos reservados.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: MBEColors.grey,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: Icon(icon, color: MBETheme.neutralGray),
+            suffixIcon: suffixIcon,
+            filled: true,
+            fillColor: MBETheme.lightGray,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: MBETheme.brandBlack, width: 2),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
-  
-}*/
+}

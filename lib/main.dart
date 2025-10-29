@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'config/router/app_router.dart';
 import 'config/theme/mbe_theme.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   runApp(
     const ProviderScope(
@@ -19,6 +21,7 @@ class MyApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
 
     return MaterialApp.router(
+      key: navigatorKey,
       title: 'MBE El Salvador',
       debugShowCheckedModeBanner: false,
       theme: MBETheme.lightTheme,

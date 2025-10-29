@@ -41,7 +41,7 @@ final class OrderProcessorProvider
   }
 }
 
-String _$orderProcessorHash() => r'f8b610dba2b5a44b0f113cd1a6b03484d4770a0f';
+String _$orderProcessorHash() => r'a24485821e2a6a9d37fea237d3d24572a3320699';
 
 abstract class _$OrderProcessor extends $Notifier<OrderProcessingState> {
   OrderProcessingState build();

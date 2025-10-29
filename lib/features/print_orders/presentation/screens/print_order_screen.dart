@@ -217,87 +217,84 @@ class PrintOrderScreen extends HookConsumerWidget {
       ),
     );
 
+    String? orderId;
+    String? errorMessage;
+
     try {
       // Procesar la orden
       final success = await ref.read(orderProcessorProvider.notifier).processOrder();
 
+      // ✅ LEER ESTADO AQUÍ, antes de cualquier navegación
+      final orderState = ref.read(orderProcessorProvider);
+      orderId = orderState.orderId;
+      errorMessage = orderState.errorMessage;
+
+      if (!context.mounted) return;
+      
       // Cerrar loading
-      if (context.mounted) Navigator.pop(context);
+      Navigator.pop(context);
 
-      if (success) {
-        // Obtener el resultado
-        final orderState = ref.read(orderProcessorProvider);
-
-        // Mostrar success y navegar a confirmación
-        if (context.mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              icon: const Icon(
-                Iconsax.tick_circle,
-                size: 64,
-                color: Color(0xFF10B981),
-              ),
-              title: const Text('¡Pedido creado!'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Tu pedido ha sido creado exitosamente',
-                    textAlign: TextAlign.center,
+      if (success && orderId != null) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            icon: const Icon(
+              Iconsax.tick_circle,
+              size: 64,
+              color: Color(0xFF10B981),
+            ),
+            title: const Text('¡Pedido creado!'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Tu pedido ha sido creado exitosamente',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: MBESpacing.md),
+                Text(
+                  'ID: $orderId',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'monospace',
                   ),
-                  const SizedBox(height: MBESpacing.md),
-                  Text(
-                    'ID: ${orderState.orderId}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                FilledButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Cerrar dialog
-                    Navigator.pop(context); // Volver a lista
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: MBETheme.brandBlack,
-                  ),
-                  child: const Text('Aceptar'),
                 ),
               ],
             ),
-          );
-        }
+            actions: [
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(context); // Cerrar dialog
+                  Navigator.pop(context); // Volver a lista
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: MBETheme.brandBlack,
+                ),
+                child: const Text('Aceptar'),
+              ),
+            ],
+          ),
+        );
       } else {
-        // Mostrar error
-        final orderState = ref.read(orderProcessorProvider);
-        
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(orderState.errorMessage ?? 'Error al crear el pedido'),
-              backgroundColor: MBETheme.brandRed,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      // Cerrar loading si está abierto
-      if (context.mounted) Navigator.pop(context);
-      
-      // Mostrar error
-      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(errorMessage ?? 'Error al crear el pedido'),
             backgroundColor: MBETheme.brandRed,
           ),
         );
       }
+    } catch (e) {
+      if (!context.mounted) return;
+      
+      Navigator.pop(context);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: MBETheme.brandRed,
+        ),
+      );
     }
   }
 }

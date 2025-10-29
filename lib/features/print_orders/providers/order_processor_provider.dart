@@ -92,54 +92,32 @@ class OrderProcessor extends _$OrderProcessor {
       // Construir el request
       final request = CreateOrderRequest(
         customerInfo: CustomerInfo(
-          fullName: confirmationState.fullName,
+          name: confirmationState.fullName,
           email: confirmationState.email,
-          phone: confirmationState.phone.isNotEmpty 
-              ? confirmationState.phone 
-              : null,
+          phone: confirmationState.phone.isNotEmpty ? confirmationState.phone : null,
+          notes: confirmationState.notes.isNotEmpty ? confirmationState.notes : null,
         ),
         printConfig: PrintConfig(
           printType: printConfig.printType == PrintType.blackWhite ? 'bw' : 'color',
           paperSize: _getPaperSizeString(printConfig.paperSize),
-          paperType: printConfig.paperType == PaperType.bond ? 'bond' : 'glossy',
+          paperType: printConfig.paperType == PaperType.bond ? 'bond' : 'photo_glossy',
           orientation: printConfig.orientation == Orientation.vertical 
-              ? 'vertical' 
-              : 'horizontal',
+              ? 'portrait'  // ← Cambio
+              : 'landscape', // ← Cambio
           copies: printConfig.copies,
           doubleSided: printConfig.doubleSided,
           binding: printConfig.binding,
         ),
         deliveryInfo: DeliveryInfo(
-          deliveryMethod: deliveryState.isPickup ? 'pickup' : 'delivery',
-          pickupLocationId: deliveryState.isPickup 
+          method: deliveryState.isPickup ? 'pickup' : 'delivery',
+          pickupLocation: deliveryState.isPickup 
               ? int.tryParse(deliveryState.selectedLocationId ?? '')
               : null,
-          deliveryAddress: deliveryState.isDelivery 
-              ? deliveryState.deliveryAddress 
-              : null,
-          deliveryPhone: deliveryState.isDelivery 
-              ? deliveryState.deliveryPhone 
-              : null,
-          deliveryNotes: deliveryState.isDelivery 
-              ? deliveryState.deliveryNotes 
-              : null,
-        ),
-        paymentInfo: PaymentInfo(
-          paymentMethod: _getPaymentMethodString(confirmationState.paymentMethod),
-          cardInfo: confirmationState.paymentMethod == PaymentMethod.card &&
-                  cardNumber != null
-              ? CardInfo(
-                  cardNumber: cardNumber,
-                  cardHolder: cardHolder ?? '',
-                  expiryDate: expiryDate ?? '',
-                  cvv: cvv ?? '',
-                )
-              : null,
+          address: deliveryState.isDelivery ? deliveryState.deliveryAddress : null,
+          phone: deliveryState.isDelivery ? deliveryState.deliveryPhone : null,
+          notes: deliveryState.isDelivery ? deliveryState.deliveryNotes : null,
         ),
         files: orderState.files.map((f) => f.file.path).toList(),
-        notes: confirmationState.notes.isNotEmpty 
-            ? confirmationState.notes 
-            : null,
       );
 
       // Enviar al backend
@@ -150,7 +128,6 @@ class OrderProcessor extends _$OrderProcessor {
       state = OrderProcessingState(
         status: OrderProcessingStatus.success,
         orderId: response.orderId,
-        paymentUrl: response.paymentUrl,
       );
 
       return true;
