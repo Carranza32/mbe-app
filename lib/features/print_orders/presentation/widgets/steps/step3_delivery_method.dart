@@ -10,8 +10,9 @@ import '../../../../../core/design_system/ds_inputs.dart';
 import '../../../../../core/design_system/ds_location_card.dart';
 import '../../../../../core/design_system/ds_selection_cards.dart';
 
+// ✅ CAMBIO: Importa el provider centralizado
+import '../../../providers/create_order_provider.dart';
 import '../../../providers/print_config_provider.dart';
-import '../../../providers/delivery_state_provider.dart';
 import '../../../providers/delivery_pricing_provider.dart';
 
 class Step3DeliveryMethod extends HookConsumerWidget {
@@ -22,11 +23,15 @@ class Step3DeliveryMethod extends HookConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    // Estados desde providers
-    final deliveryState = ref.watch(deliveryStateProvider);
-    final deliveryNotifier = ref.read(deliveryStateProvider.notifier);
+    // ✅ CAMBIO: Lee desde el provider centralizado
+    final orderState = ref.watch(createOrderProvider);
+    final deliveryInfo = orderState.request?.deliveryInfo;
     final deliveryPricing = ref.watch(deliveryPricingProvider);
     final configAsync = ref.watch(printConfigProvider);
+
+    // ✅ FIX: Determinar método actual (por defecto pickup si es null)
+    final isPickup = deliveryInfo?.method == 'pickup' || deliveryInfo == null;
+    final isDelivery = deliveryInfo?.method == 'delivery';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,8 +96,11 @@ class Step3DeliveryMethod extends HookConsumerWidget {
                 title: 'Recoger en Tienda',
                 description: 'Recoge tu pedido en cualquiera de nuestras ubicaciones',
                 icon: Iconsax.box,
-                isSelected: deliveryState.isPickup,
-                onTap: () => deliveryNotifier.setMethod(DeliveryMethod.pickup),
+                isSelected: isPickup,
+                onTap: () {
+                  // ✅ CAMBIO: Actualiza en el provider centralizado
+                  ref.read(createOrderProvider.notifier).setDeliveryMethod('pickup');
+                },
                 badge: DSBadge.success(label: 'Sin costo adicional'),
               ),
 
@@ -103,8 +111,11 @@ class Step3DeliveryMethod extends HookConsumerWidget {
                 title: 'Envío a Domicilio',
                 description: 'Recibe tu pedido en la puerta de tu casa u oficina',
                 icon: Iconsax.truck_fast,
-                isSelected: deliveryState.isDelivery,
-                onTap: () => deliveryNotifier.setMethod(DeliveryMethod.delivery),
+                isSelected: isDelivery,
+                onTap: () {
+                  // ✅ CAMBIO: Actualiza en el provider centralizado
+                  ref.read(createOrderProvider.notifier).setDeliveryMethod('delivery');
+                },
                 badge: deliveryPricing.isFreeDelivery
                     ? DSBadge.success(label: '¡Envío gratis!')
                     : DSBadge.info(
@@ -117,7 +128,7 @@ class Step3DeliveryMethod extends HookConsumerWidget {
 
         const SizedBox(height: MBESpacing.xl),
 
-        // Contenido según el método seleccionado
+        // ✅ FIX: Contenido según el método seleccionado con keys únicas
         AnimatedSwitcher(
           duration: MBEDuration.normal,
           transitionBuilder: (child, animation) {
@@ -132,20 +143,32 @@ class Step3DeliveryMethod extends HookConsumerWidget {
               ),
             );
           },
-          child: deliveryState.isPickup
+          child: isPickup
               ? _PickupContent(
+                  key: const ValueKey('pickup-content'), // ✅ FIX: Key única
                   configAsync: configAsync,
-                  selectedLocation: deliveryState.selectedLocationId,
+                  selectedLocation: deliveryInfo?.pickupLocation?.toString(),
                   onLocationSelected: (locationId) {
-                    deliveryNotifier.setSelectedLocation(locationId);
+                    ref.read(createOrderProvider.notifier).setPickupLocation(
+                      int.parse(locationId),
+                    );
                   },
                 )
               : _DeliveryContent(
-                  state: deliveryState,
+                  key: const ValueKey('delivery-content'), // ✅ FIX: Key única
+                  address: deliveryInfo?.address ?? '',
+                  phone: deliveryInfo?.phone ?? '',
+                  notes: deliveryInfo?.notes ?? '',
                   pricing: deliveryPricing,
-                  onAddressChanged: (value) => deliveryNotifier.setDeliveryAddress(value),
-                  onPhoneChanged: (value) => deliveryNotifier.setDeliveryPhone(value),
-                  onNotesChanged: (value) => deliveryNotifier.setDeliveryNotes(value),
+                  onAddressChanged: (value) {
+                    ref.read(createOrderProvider.notifier).setDeliveryAddress(value);
+                  },
+                  onPhoneChanged: (value) {
+                    ref.read(createOrderProvider.notifier).setDeliveryPhone(value);
+                  },
+                  onNotesChanged: (value) {
+                    ref.read(createOrderProvider.notifier).setDeliveryNotes(value);
+                  },
                 ),
         ),
 
@@ -162,6 +185,7 @@ class _PickupContent extends StatelessWidget {
   final Function(String) onLocationSelected;
 
   const _PickupContent({
+    super.key, // ✅ Agregado key
     required this.configAsync,
     required this.selectedLocation,
     required this.onLocationSelected,
@@ -181,7 +205,7 @@ class _PickupContent extends StatelessWidget {
           children: [
             const Icon(Iconsax.warning_2, size: 48, color: MBETheme.brandRed),
             const SizedBox(height: MBESpacing.lg),
-            Text('Error al cargar ubicaciones'),
+            const Text('Error al cargar ubicaciones'),
             TextButton(
               onPressed: () {}, // TODO: Retry
               child: const Text('Reintentar'),
@@ -208,7 +232,6 @@ class _PickupContent extends StatelessWidget {
         }
 
         return Column(
-          key: const ValueKey('pickup'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Título de sección
@@ -258,7 +281,7 @@ class _PickupContent extends StatelessWidget {
 
               return FadeInUp(
                 duration: const Duration(milliseconds: 400),
-                delay: Duration(milliseconds: 100),
+                delay: const Duration(milliseconds: 100),
                 child: DSLocationCard(
                   location: dsLocation,
                   isSelected: selectedLocation == dsLocation.id,
@@ -276,14 +299,20 @@ class _PickupContent extends StatelessWidget {
 
 /// Contenido para Envío a Domicilio
 class _DeliveryContent extends StatelessWidget {
-  final UserDeliveryState state;
+  // ✅ FIX: Recibe valores individuales en vez de estado completo
+  final String address;
+  final String phone;
+  final String notes;
   final DeliveryPricingResult pricing;
   final Function(String) onAddressChanged;
   final Function(String) onPhoneChanged;
   final Function(String) onNotesChanged;
 
   const _DeliveryContent({
-    required this.state,
+    super.key, // ✅ Agregado key
+    required this.address,
+    required this.phone,
+    required this.notes,
     required this.pricing,
     required this.onAddressChanged,
     required this.onPhoneChanged,
@@ -296,7 +325,6 @@ class _DeliveryContent extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Column(
-      key: const ValueKey('delivery'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Card de información de envío
@@ -331,7 +359,7 @@ class _DeliveryContent extends StatelessWidget {
                 DSInput.textArea(
                   label: 'Dirección de Entrega',
                   hint: 'Calle, número, colonia, municipio, referencias (ej: portón azul)...',
-                  value: state.deliveryAddress,
+                  value: address,
                   onChanged: onAddressChanged,
                   required: true,
                   maxLines: 3,
@@ -343,7 +371,7 @@ class _DeliveryContent extends StatelessWidget {
                 DSInput.phone(
                   label: 'Teléfono de Contacto',
                   hint: '2222-2222 o 7777-7777',
-                  value: state.deliveryPhone,
+                  value: phone,
                   onChanged: onPhoneChanged,
                   required: true,
                 ),
@@ -354,7 +382,7 @@ class _DeliveryContent extends StatelessWidget {
                 DSInput.textArea(
                   label: 'Notas Adicionales (opcional)',
                   hint: 'Horario preferido, instrucciones especiales, punto de referencia...',
-                  value: state.deliveryNotes,
+                  value: notes,
                   onChanged: onNotesChanged,
                   maxLines: 3,
                 ),
@@ -471,15 +499,15 @@ class _DeliveryContent extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: MBESpacing.md),
-                _TipItem(
+                const _TipItem(
                   '• Asegúrate de incluir referencias claras de tu ubicación',
                 ),
                 const SizedBox(height: MBESpacing.xs),
-                _TipItem(
+                const _TipItem(
                   '• Verifica que tu teléfono esté disponible durante la entrega',
                 ),
                 const SizedBox(height: MBESpacing.xs),
-                _TipItem(
+                const _TipItem(
                   '• Puedes agregar un horario preferido en las notas',
                 ),
               ],

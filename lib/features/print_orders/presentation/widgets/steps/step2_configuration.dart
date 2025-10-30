@@ -5,11 +5,12 @@ import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import 'package:mbe_orders_app/core/design_system/ds_badges.dart';
-import 'package:mbe_orders_app/core/design_system/ds_inputs.dart';
 
-import '../../../providers/print_order_provider.dart';
+// ✅ CAMBIO: Importa el provider centralizado y los helpers
+import '../../../providers/create_order_provider.dart';
 import '../../../providers/print_configuration_state_provider.dart';
 import '../../../providers/print_pricing_provider.dart';
+import '../../../data/helpers/config_converters.dart';
 
 class Step2Configuration extends HookConsumerWidget {
   const Step2Configuration({Key? key}) : super(key: key);
@@ -19,12 +20,13 @@ class Step2Configuration extends HookConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    // Estados desde providers
-    final userConfig = ref.watch(printConfigurationStateProvider);
-    final configNotifier = ref.read(printConfigurationStateProvider.notifier);
-    final orderState = ref.watch(printOrderProvider);
+    // ✅ CAMBIO: Lee desde el provider centralizado
+    final orderState = ref.watch(createOrderProvider);
     final pricing = ref.watch(printPricingProvider);
 
+    // ✅ CAMBIO: Obtener la config del request (puede ser null)
+    final printConfig = orderState.request?.printConfig;
+    
     // Total de páginas
     final totalPages = orderState.totalPages ?? 0;
 
@@ -55,6 +57,27 @@ class Step2Configuration extends HookConsumerWidget {
         ),
       );
     }
+
+    // ✅ Convertir strings a enums para el UI (valores por defecto si es null)
+    final printType = printConfig != null 
+        ? ConfigConverters.printTypeFromString(printConfig.printType)
+        : PrintType.blackWhite;
+    
+    final paperSize = printConfig != null
+        ? ConfigConverters.paperSizeFromString(printConfig.paperSize)
+        : PaperSize.letter;
+    
+    final paperType = printConfig != null
+        ? ConfigConverters.paperTypeFromString(printConfig.paperType)
+        : PaperType.bond;
+    
+    final orientation = printConfig != null
+        ? ConfigConverters.orientationFromString(printConfig.orientation)
+        : Orientation.vertical;
+    
+    final copies = printConfig?.copies ?? 1;
+    final doubleSided = printConfig?.doubleSided ?? false;
+    final binding = printConfig?.binding ?? false;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,8 +143,13 @@ class Step2Configuration extends HookConsumerWidget {
                   child: _ToggleButton(
                     label: 'Blanco y Negro',
                     icon: Iconsax.document_text,
-                    isSelected: userConfig.printType == PrintType.blackWhite,
-                    onTap: () => configNotifier.setPrintType(PrintType.blackWhite),
+                    isSelected: printType == PrintType.blackWhite,
+                    onTap: () {
+                      // ✅ CAMBIO: Actualiza en el provider centralizado
+                      ref.read(createOrderProvider.notifier).setPrintType(
+                        ConfigConverters.printTypeToString(PrintType.blackWhite),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: MBESpacing.md),
@@ -129,8 +157,12 @@ class Step2Configuration extends HookConsumerWidget {
                   child: _ToggleButton(
                     label: 'Color',
                     icon: Iconsax.color_swatch,
-                    isSelected: userConfig.printType == PrintType.color,
-                    onTap: () => configNotifier.setPrintType(PrintType.color),
+                    isSelected: printType == PrintType.color,
+                    onTap: () {
+                      ref.read(createOrderProvider.notifier).setPrintType(
+                        ConfigConverters.printTypeToString(PrintType.color),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -160,16 +192,24 @@ class Step2Configuration extends HookConsumerWidget {
                 
                 // Tamaño de Papel
                 _PaperSizeSelector(
-                  value: userConfig.paperSize,
-                  onChanged: (size) => configNotifier.setPaperSize(size),
+                  value: paperSize,
+                  onChanged: (size) {
+                    ref.read(createOrderProvider.notifier).setPaperSize(
+                      ConfigConverters.paperSizeToString(size),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: MBESpacing.lg),
 
                 // Tipo de Papel
                 _PaperTypeSelector(
-                  value: userConfig.paperType,
-                  onChanged: (type) => configNotifier.setPaperType(type),
+                  value: paperType,
+                  onChanged: (type) {
+                    ref.read(createOrderProvider.notifier).setPaperType(
+                      ConfigConverters.paperTypeToString(type),
+                    );
+                  },
                 ),
               ],
             ),
@@ -190,8 +230,12 @@ class Step2Configuration extends HookConsumerWidget {
                   child: _ToggleButton(
                     label: 'Vertical',
                     icon: Iconsax.menu,
-                    isSelected: userConfig.orientation == Orientation.vertical,
-                    onTap: () => configNotifier.setOrientation(Orientation.vertical),
+                    isSelected: orientation == Orientation.vertical,
+                    onTap: () {
+                      ref.read(createOrderProvider.notifier).setOrientation(
+                        ConfigConverters.orientationToString(Orientation.vertical),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: MBESpacing.md),
@@ -199,8 +243,12 @@ class Step2Configuration extends HookConsumerWidget {
                   child: _ToggleButton(
                     label: 'Horizontal',
                     icon: Iconsax.row_horizontal,
-                    isSelected: userConfig.orientation == Orientation.horizontal,
-                    onTap: () => configNotifier.setOrientation(Orientation.horizontal),
+                    isSelected: orientation == Orientation.horizontal,
+                    onTap: () {
+                      ref.read(createOrderProvider.notifier).setOrientation(
+                        ConfigConverters.orientationToString(Orientation.horizontal),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -215,8 +263,10 @@ class Step2Configuration extends HookConsumerWidget {
           duration: const Duration(milliseconds: 400),
           delay: const Duration(milliseconds: 400),
           child: _CopiesSelector(
-            copies: userConfig.copies,
-            onChanged: (value) => configNotifier.setCopies(value),
+            copies: copies,
+            onChanged: (value) {
+              ref.read(createOrderProvider.notifier).setCopies(value);
+            },
           ),
         ),
 
@@ -247,9 +297,11 @@ class Step2Configuration extends HookConsumerWidget {
                   description: pricing.doubleSidedCost > 0 
                       ? '+\$${pricing.doubleSidedCost.toStringAsFixed(2)}'
                       : 'Ahorra papel',
-                  value: userConfig.doubleSided,
-                  onChanged: (value) => configNotifier.setDoubleSided(value ?? false),
-                  badge: userConfig.doubleSided ? DSBadge.success(label: 'Eco') : null,
+                  value: doubleSided,
+                  onChanged: (value) {
+                    ref.read(createOrderProvider.notifier).setDoubleSided(value ?? false);
+                  },
+                  badge: doubleSided ? DSBadge.success(label: 'Eco') : null,
                 ),
                 
                 const SizedBox(height: MBESpacing.md),
@@ -261,8 +313,10 @@ class Step2Configuration extends HookConsumerWidget {
                   description: pricing.bindingCost > 0
                       ? '+\$${pricing.bindingCost.toStringAsFixed(2)}'
                       : 'Presentación profesional',
-                  value: userConfig.binding,
-                  onChanged: (value) => configNotifier.setBinding(value ?? false),
+                  value: binding,
+                  onChanged: (value) {
+                    ref.read(createOrderProvider.notifier).setBinding(value ?? false);
+                  },
                 ),
               ],
             ),
@@ -284,7 +338,8 @@ class Step2Configuration extends HookConsumerWidget {
   }
 }
 
-// Widget: Resumen de precios
+// ====== WIDGETS AUXILIARES (sin cambios) ======
+
 class _PricingSummary extends StatelessWidget {
   final PriceCalculation pricing;
 
@@ -390,7 +445,6 @@ class _PricingSummary extends StatelessWidget {
   }
 }
 
-// Widgets auxiliares existentes...
 class _SectionCard extends StatelessWidget {
   final String title;
   final Widget child;

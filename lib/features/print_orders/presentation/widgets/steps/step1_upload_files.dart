@@ -6,7 +6,8 @@ import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 
-import '../../../providers/print_order_provider.dart';
+// ✅ NUEVO: Usa el provider centralizado
+import '../../../providers/create_order_provider.dart';
 import '../../../providers/print_config_provider.dart';
 import '../../../data/helpers/file_helpers.dart';
 import '../../../data/models/file_upload_config.dart';
@@ -20,7 +21,9 @@ class Step1UploadFiles extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final orderState = ref.watch(printOrderProvider);
+    
+    // ✅ CAMBIO: Usa el provider centralizado
+    final orderState = ref.watch(createOrderProvider);
     final configAsync = ref.watch(printConfigProvider);
 
     // Hook para rastrear si ya se inicializó la config
@@ -34,13 +37,13 @@ class Step1UploadFiles extends HookConsumerWidget {
           
           final fileConfig = FileUploadConfig(
             maxFileSizeMB: configModel.config?.limits?.maxFileSizeMb ?? 10,
-            maxFilesPerOrder: configModel.config?.limits?.maxFilesPerOrder ?? 0,
+            maxFilesPerOrder: configModel.config?.limits?.maxFilesPerOrder ?? 5,
             allowedTypes: configModel.config?.allowedFileTypes ?? [],
           );
 
-          // Actualizar config después del frame actual
+          // ✅ CAMBIO: Actualizar config en el nuevo provider
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            ref.read(printOrderProvider.notifier).updateConfig(fileConfig);
+            ref.read(createOrderProvider.notifier).updateConfig(fileConfig);
             configInitialized.value = true;
             debugPrint('✅ Configuración inicializada');
           });
@@ -103,7 +106,8 @@ class Step1UploadFiles extends HookConsumerWidget {
         ),
       ),
       data: (config) {
-        final files = orderState.files;
+        // ✅ CAMBIO: Lee desde el nuevo estado
+        final files = orderState.uploadedFiles;
         final totalSize = orderState.totalSize;
 
         return Column(
@@ -166,7 +170,8 @@ class Step1UploadFiles extends HookConsumerWidget {
                 config: orderState.config,
                 onFilesAdded: (newFiles) {
                   debugPrint('📁 Agregando ${newFiles.length} archivos...');
-                  ref.read(printOrderProvider.notifier).addFiles(newFiles);
+                  // ✅ CAMBIO: Usa el nuevo provider
+                  ref.read(createOrderProvider.notifier).addFiles(newFiles);
                 },
               ),
             ),
@@ -296,8 +301,9 @@ class Step1UploadFiles extends HookConsumerWidget {
                                 onRemove: () {
                                   debugPrint(
                                       '🗑️ Eliminando archivo: ${entry.value.name}');
+                                  // ✅ CAMBIO: Usa el nuevo provider
                                   ref
-                                      .read(printOrderProvider.notifier)
+                                      .read(createOrderProvider.notifier)
                                       .removeFile(entry.value.id);
                                 },
                               ),
@@ -326,7 +332,7 @@ class Step1UploadFiles extends HookConsumerWidget {
     BuildContext context,
     ThemeData theme,
     ColorScheme colorScheme,
-    PrintOrderState orderState,
+    CreateOrderState orderState, // ✅ CAMBIO: Tipo actualizado
   ) {
     return Column(
       children: [

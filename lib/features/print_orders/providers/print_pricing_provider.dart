@@ -1,8 +1,10 @@
+// lib/features/print_orders/providers/print_pricing_provider.dart
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/print_configuration_model.dart';
 import 'print_config_provider.dart';
-import 'print_configuration_state_provider.dart';
-import 'print_order_provider.dart';
+import 'print_configuration_state_provider.dart'; // Solo para los enums
+import 'create_order_provider.dart'; // ✅ NUEVO
+import '../data/helpers/config_converters.dart'; // ✅ NUEVO
 
 part 'print_pricing_provider.g.dart';
 
@@ -47,15 +49,33 @@ class PrintPricing extends _$PrintPricing {
   @override
   PriceCalculation build() {
     final configAsync = ref.watch(printConfigProvider);
-    final userConfig = ref.watch(printConfigurationStateProvider);
-    final orderState = ref.watch(printOrderProvider);
+    // ✅ CAMBIO: Lee desde el provider centralizado
+    final orderState = ref.watch(createOrderProvider);
 
     return configAsync.when(
-      data: (configModel) => _calculatePrice(
-        configModel,
-        userConfig,
-        orderState.totalPages ?? 0,
-      ),
+      data: (configModel) {
+        // ✅ CAMBIO: Obtener config del request
+        final printConfig = orderState.request?.printConfig;
+        final totalPages = orderState.totalPages ?? 0;
+
+        if (printConfig == null || totalPages == 0) {
+          return PriceCalculation.zero();
+        }
+
+        // Convertir strings a enums para usar en el cálculo
+        final printType = ConfigConverters.printTypeFromString(printConfig.printType);
+        final paperSize = ConfigConverters.paperSizeFromString(printConfig.paperSize);
+        
+        return _calculatePrice(
+          configModel,
+          printType,
+          paperSize,
+          printConfig.copies,
+          printConfig.doubleSided,
+          printConfig.binding,
+          totalPages,
+        );
+      },
       loading: () => PriceCalculation.zero(),
       error: (_, __) => PriceCalculation.zero(),
     );
@@ -63,7 +83,11 @@ class PrintPricing extends _$PrintPricing {
 
   PriceCalculation _calculatePrice(
     PrintConfigurationModel configModel,
-    UserPrintConfiguration userConfig,
+    PrintType printType,
+    PaperSize paperSize,
+    int copies,
+    bool doubleSided,
+    bool binding,
     int totalPages,
   ) {
     if (totalPages == 0) {
@@ -78,21 +102,21 @@ class PrintPricing extends _$PrintPricing {
     // 1. Obtener precio por página según configuración
     final pricePerPage = _getPricePerPage(
       config!.prices!,
-      userConfig.printType,
-      userConfig.paperSize,
+      printType,
+      paperSize,
       totalPages,
     );
 
     // 2. Calcular costo de impresión base
-    final printingCost = pricePerPage * totalPages * userConfig.copies;
+    final printingCost = pricePerPage * totalPages * copies;
 
     // 3. Calcular costo de doble cara
-    final doubleSidedCost = userConfig.doubleSided
-        ? (config.prices!.doubleSided ?? 0) * totalPages * userConfig.copies
+    final doubleSidedCost = doubleSided
+        ? (config.prices!.doubleSided ?? 0) * totalPages * copies
         : 0.0;
 
     // 4. Calcular costo de engargolado
-    final bindingCost = userConfig.binding
+    final bindingCost = binding
         ? _getBindingPrice(config.prices!.binding, totalPages)
         : 0.0;
 
@@ -115,7 +139,7 @@ class PrintPricing extends _$PrintPricing {
       tax: tax,
       total: total,
       totalPages: totalPages,
-      copies: userConfig.copies,
+      copies: copies,
     );
   }
 

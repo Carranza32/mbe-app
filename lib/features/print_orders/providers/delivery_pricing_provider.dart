@@ -1,7 +1,7 @@
 // lib/features/print_orders/providers/delivery_pricing_provider.dart
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'print_config_provider.dart';
-import 'delivery_state_provider.dart';
+import 'create_order_provider.dart'; // ✅ CAMBIO
 import 'print_pricing_provider.dart';
 
 part 'delivery_pricing_provider.g.dart';
@@ -35,11 +35,16 @@ class DeliveryPricing extends _$DeliveryPricing {
   @override
   DeliveryPricingResult build() {
     final configAsync = ref.watch(printConfigProvider);
-    final deliveryState = ref.watch(deliveryStateProvider);
+    // ✅ CAMBIO: Lee desde el provider centralizado
+    final orderState = ref.watch(createOrderProvider);
     final orderPricing = ref.watch(printPricingProvider);
 
+    // ✅ CAMBIO: Obtener método de entrega del request
+    final deliveryInfo = orderState.request?.deliveryInfo;
+    final isPickup = deliveryInfo?.method == 'pickup' || deliveryInfo == null;
+
     // Si es pickup, no hay costo de envío
-    if (deliveryState.isPickup) {
+    if (isPickup) {
       return DeliveryPricingResult(
         baseCost: 0,
         deliveryCost: 0,
@@ -67,11 +72,6 @@ class DeliveryPricing extends _$DeliveryPricing {
         final message = isFree
             ? '¡Envío gratis! (pedido mayor a \$${freeDeliveryMinimum.toStringAsFixed(2)})'
             : 'Costo de envío: \$${deliveryCost.toStringAsFixed(2)}';
-
-        // Actualizar el costo en el estado de delivery
-        Future.microtask(() {
-          ref.read(deliveryStateProvider.notifier).setDeliveryCost(deliveryCost);
-        });
 
         return DeliveryPricingResult(
           baseCost: baseCost,

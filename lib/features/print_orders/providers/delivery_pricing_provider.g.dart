@@ -41,7 +41,7 @@ final class DeliveryPricingProvider
   }
 }
 
-String _$deliveryPricingHash() => r'44ad0070b024562c3528f35389ff4a7bcc727598';
+String _$deliveryPricingHash() => r'e96a2f68ae57ac02500c70804ee9e003e4aab79d';
 
 abstract class _$DeliveryPricing extends $Notifier<DeliveryPricingResult> {
   DeliveryPricingResult build();

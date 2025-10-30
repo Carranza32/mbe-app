@@ -4,8 +4,9 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import 'package:mbe_orders_app/features/print_orders/providers/stepper_provider.dart';
 
-import '../../providers/order_processor_provider.dart';
-import '../../providers/print_order_provider.dart';
+// ✅ CAMBIO: Importa el nuevo provider centralizado
+import '../../providers/create_order_provider.dart';
+import '../../data/repositories/print_order_repository.dart';
 import '../widgets/stepper/mbe_stepper.dart';
 import '../widgets/steps/step1_upload_files.dart';
 import '../widgets/steps/step2_configuration.dart';
@@ -122,8 +123,8 @@ class PrintOrderScreen extends HookConsumerWidget {
             onContinue: currentStep < totalSteps
               ? () async {
                   if (currentStep == 1) {
-                    // Analizar archivos antes de continuar
-                    final success = await ref.read(printOrderProvider.notifier).analyzeFiles();
+                    // ✅ CAMBIO: Analizar archivos con el nuevo provider
+                    final success = await ref.read(createOrderProvider.notifier).analyzeFiles();
                     if (success) {
                       ref.read(currentStepProvider.notifier).next();
                     }
@@ -221,20 +222,35 @@ class PrintOrderScreen extends HookConsumerWidget {
     String? errorMessage;
 
     try {
-      // Procesar la orden
-      final success = await ref.read(orderProcessorProvider.notifier).processOrder();
+      // ✅ CAMBIO: Obtener el request directamente del provider centralizado
+      final orderState = ref.read(createOrderProvider);
+      final request = orderState.request;
 
-      // ✅ LEER ESTADO AQUÍ, antes de cualquier navegación
-      final orderState = ref.read(orderProcessorProvider);
-      orderId = orderState.orderId;
-      errorMessage = orderState.errorMessage;
+      if (request == null) {
+        if (!context.mounted) return;
+        Navigator.pop(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Faltan datos del pedido'),
+            backgroundColor: MBETheme.brandRed,
+          ),
+        );
+        return;
+      }
+
+      // Enviar al backend
+      final repository = ref.read(printOrderRepositoryProvider);
+      final response = await repository.createOrder(request);
+
+      orderId = response.orderId;
 
       if (!context.mounted) return;
       
       // Cerrar loading
       Navigator.pop(context);
 
-      if (success && orderId != null) {
+      if (orderId.isNotEmpty) {
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -278,8 +294,8 @@ class PrintOrderScreen extends HookConsumerWidget {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage ?? 'Error al crear el pedido'),
+          const SnackBar(
+            content: Text('Error al crear el pedido'),
             backgroundColor: MBETheme.brandRed,
           ),
         );
