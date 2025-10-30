@@ -411,11 +411,11 @@ class _PricingSummary extends StatelessWidget {
             amount: '\$${pricing.subtotal.toStringAsFixed(2)}',
           ),
           
-          const SizedBox(height: MBESpacing.sm),
-          _CostRow(
-            label: 'IVA (13%)',
-            amount: '\$${pricing.tax.toStringAsFixed(2)}',
-          ),
+          // const SizedBox(height: MBESpacing.sm),
+          // _CostRow(
+          //   label: 'IVA (13%)',
+          //   amount: '\$${pricing.tax.toStringAsFixed(2)}',
+          // ),
           
           const SizedBox(height: MBESpacing.md),
           const Divider(),

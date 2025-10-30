@@ -322,6 +322,34 @@ class CreateOrder extends _$CreateOrder {
     state = state.copyWith(request: updatedRequest);
   }
 
+  /// Establecer nombre completo del cliente
+  void setCustomerName(String name) {
+    final currentCustomer = state.request?.customerInfo ?? CustomerInfo(name: '', email: '');
+    final updatedCustomer = currentCustomer.copyWith(name: name);
+    updateCustomerInfo(updatedCustomer);
+  }
+
+  /// Establecer email del cliente
+  void setCustomerEmail(String email) {
+    final currentCustomer = state.request?.customerInfo ?? CustomerInfo(name: '', email: '');
+    final updatedCustomer = currentCustomer.copyWith(email: email);
+    updateCustomerInfo(updatedCustomer);
+  }
+
+  /// Establecer teléfono del cliente (opcional)
+  void setCustomerPhone(String phone) {
+    final currentCustomer = state.request?.customerInfo ?? CustomerInfo(name: '', email: '');
+    final updatedCustomer = currentCustomer.copyWith(phone: phone.isNotEmpty ? phone : null);
+    updateCustomerInfo(updatedCustomer);
+  }
+
+  /// Establecer notas del cliente (opcional)
+  void setCustomerNotes(String notes) {
+    final currentCustomer = state.request?.customerInfo ?? CustomerInfo(name: '', email: '');
+    final updatedCustomer = currentCustomer.copyWith(notes: notes.isNotEmpty ? notes : null);
+    updateCustomerInfo(updatedCustomer);
+  }
+
   // ====== HELPERS ======
   
   void _clearErrorAfterDelay() {

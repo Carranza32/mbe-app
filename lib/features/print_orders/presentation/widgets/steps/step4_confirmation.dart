@@ -1,3 +1,4 @@
+// lib/features/print_orders/presentation/widgets/steps/step4_confirmation.dart
 import 'package:flutter/material.dart' hide Orientation;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
@@ -7,13 +8,13 @@ import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import '../../../../../core/design_system/ds_badges.dart';
 import '../../../../../core/design_system/ds_inputs.dart';
 
-import '../../../providers/print_order_provider.dart';
-import '../../../providers/print_configuration_state_provider.dart';
+// ✅ CAMBIO: Usa el provider centralizado
+import '../../../providers/create_order_provider.dart';
+import '../../../providers/print_configuration_state_provider.dart'; // Solo para enums
 import '../../../providers/print_pricing_provider.dart';
-import '../../../providers/delivery_state_provider.dart';
 import '../../../providers/delivery_pricing_provider.dart';
 import '../../../providers/order_total_provider.dart';
-import '../../../providers/confirmation_state_provider.dart';
+import '../../../providers/confirmation_state_provider.dart'; // Solo para método de pago
 
 class Step4Confirmation extends HookConsumerWidget {
   const Step4Confirmation({Key? key}) : super(key: key);
@@ -23,15 +24,21 @@ class Step4Confirmation extends HookConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    // Estados desde providers
+    // ✅ CAMBIO: Lee desde el provider centralizado
+    final orderState = ref.watch(createOrderProvider);
+    final orderNotifier = ref.read(createOrderProvider.notifier);
+    
+    // Método de pago (mantener en confirmationStateProvider)
     final confirmationState = ref.watch(confirmationStateProvider);
     final confirmationNotifier = ref.read(confirmationStateProvider.notifier);
     
-    // Datos del pedido
-    final orderState = ref.watch(printOrderProvider);
-    final printConfig = ref.watch(printConfigurationStateProvider);
+    // Datos desde el request centralizado
+    final customerInfo = orderState.request?.customerInfo;
+    final printConfig = orderState.request?.printConfig;
+    final deliveryInfo = orderState.request?.deliveryInfo;
+    
+    // Pricing
     final printPricing = ref.watch(printPricingProvider);
-    final deliveryState = ref.watch(deliveryStateProvider);
     final deliveryPricing = ref.watch(deliveryPricingProvider);
     final orderTotal = ref.watch(orderTotalCalculatorProvider);
 
@@ -119,8 +126,8 @@ class Step4Confirmation extends HookConsumerWidget {
                 // Nombre Completo
                 DSInput.text(
                   label: 'Nombre Completo',
-                  value: confirmationState.fullName,
-                  onChanged: (value) => confirmationNotifier.setFullName(value),
+                  value: customerInfo?.name ?? '',
+                  onChanged: (value) => orderNotifier.setCustomerName(value),
                   required: true,
                   prefixIcon: Iconsax.user,
                 ),
@@ -130,8 +137,8 @@ class Step4Confirmation extends HookConsumerWidget {
                 // Correo Electrónico
                 DSInput.email(
                   label: 'Correo Electrónico',
-                  value: confirmationState.email,
-                  onChanged: (value) => confirmationNotifier.setEmail(value),
+                  value: customerInfo?.email ?? '',
+                  onChanged: (value) => orderNotifier.setCustomerEmail(value),
                   required: true,
                 ),
 
@@ -140,8 +147,8 @@ class Step4Confirmation extends HookConsumerWidget {
                 // Teléfono
                 DSInput.phone(
                   label: 'Teléfono (opcional)',
-                  value: confirmationState.phone,
-                  onChanged: (value) => confirmationNotifier.setPhone(value),
+                  value: customerInfo?.phone ?? '',
+                  onChanged: (value) => orderNotifier.setCustomerPhone(value),
                 ),
 
                 const SizedBox(height: MBESpacing.lg),
@@ -150,8 +157,8 @@ class Step4Confirmation extends HookConsumerWidget {
                 DSInput.textArea(
                   label: 'Notas Adicionales (opcional)',
                   hint: 'Alguna instrucción especial...',
-                  value: confirmationState.notes,
-                  onChanged: (value) => confirmationNotifier.setNotes(value),
+                  value: customerInfo?.notes ?? '',
+                  onChanged: (value) => orderNotifier.setCustomerNotes(value),
                   maxLines: 3,
                 ),
               ],
@@ -279,7 +286,7 @@ class Step4Confirmation extends HookConsumerWidget {
                   items: [
                     _SummaryItem(
                       'Documentos:',
-                      '${orderState.files.length}',
+                      '${orderState.uploadedFiles.length}',
                     ),
                     _SummaryItem(
                       'Total páginas:',
@@ -299,30 +306,30 @@ class Step4Confirmation extends HookConsumerWidget {
                   items: [
                     _SummaryItem(
                       'Tipo:',
-                      printConfig.printType == PrintType.blackWhite 
+                      printConfig?.printType == 'bw' 
                           ? 'Blanco y Negro' 
                           : 'Color',
                     ),
                     _SummaryItem(
                       'Tamaño:',
-                      _getPaperSizeName(printConfig.paperSize),
+                      _getPaperSizeName(printConfig?.paperSize ?? 'letter'),
                     ),
                     _SummaryItem(
                       'Orientación:',
-                      printConfig.orientation == Orientation.vertical 
+                      printConfig?.orientation == 'portrait' 
                           ? 'Vertical' 
                           : 'Horizontal',
                     ),
                     _SummaryItem(
                       'Copias:',
-                      '${printConfig.copies}',
+                      '${printConfig?.copies ?? 1}',
                     ),
-                    if (printConfig.doubleSided)
+                    if (printConfig?.doubleSided == true)
                       _SummaryItem(
                         'Doble cara:',
                         'Sí',
                       ),
-                    if (printConfig.binding)
+                    if (printConfig?.binding == true)
                       _SummaryItem(
                         'Engargolado:',
                         'Sí',
@@ -341,16 +348,18 @@ class Step4Confirmation extends HookConsumerWidget {
                   items: [
                     _SummaryItem(
                       'Método:',
-                      deliveryState.isPickup 
+                      deliveryInfo?.method == 'pickup' 
                           ? 'Recoger en tienda' 
                           : 'Envío a domicilio',
                     ),
-                    if (deliveryState.isDelivery && deliveryState.deliveryAddress.isNotEmpty)
+                    if (deliveryInfo?.method == 'delivery' && 
+                        deliveryInfo?.address != null &&
+                        deliveryInfo!.address!.isNotEmpty)
                       _SummaryItem(
                         'Dirección:',
-                        deliveryState.deliveryAddress.length > 30
-                            ? '${deliveryState.deliveryAddress.substring(0, 30)}...'
-                            : deliveryState.deliveryAddress,
+                        deliveryInfo.address!.length > 30
+                            ? '${deliveryInfo.address!.substring(0, 30)}...'
+                            : deliveryInfo.address!,
                       ),
                   ],
                 ),
@@ -394,10 +403,10 @@ class Step4Confirmation extends HookConsumerWidget {
                       const SizedBox(height: MBESpacing.sm),
                       
                       // IVA
-                      _CostRow(
-                        'IVA (13%)',
-                        '\$${printPricing.tax.toStringAsFixed(2)}',
-                      ),
+                      // _CostRow(
+                      //   'IVA (13%)',
+                      //   '\$${printPricing.tax.toStringAsFixed(2)}',
+                      // ),
                       
                       // Envío (si aplica)
                       if (deliveryPricing.deliveryCost > 0) ...[
@@ -409,7 +418,7 @@ class Step4Confirmation extends HookConsumerWidget {
                       ],
                       
                       // Envío gratis
-                      if (deliveryState.isDelivery && deliveryPricing.isFreeDelivery) ...[
+                      if (deliveryInfo?.method == 'delivery' && deliveryPricing.isFreeDelivery) ...[
                         const SizedBox(height: MBESpacing.sm),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -538,19 +547,21 @@ class Step4Confirmation extends HookConsumerWidget {
     );
   }
 
-  String _getPaperSizeName(PaperSize size) {
+  String _getPaperSizeName(String size) {
     switch (size) {
-      case PaperSize.letter:
+      case 'letter':
         return 'Carta';
-      case PaperSize.legal:
+      case 'legal':
         return 'Legal';
-      case PaperSize.doubleLetter:
+      case 'double_letter':
         return 'Doble Carta';
+      default:
+        return 'Carta';
     }
   }
 }
 
-// Widgets auxiliares (mantén los mismos que ya tienes)...
+// Widgets auxiliares
 class _PaymentOption extends StatelessWidget {
   final IconData icon;
   final String title;

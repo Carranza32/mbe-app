@@ -128,7 +128,7 @@ class PrintPricing extends _$PrintPricing {
     final tax = subtotal * taxRate;
 
     // 7. Total
-    final total = subtotal + tax;
+    final total = subtotal;
 
     return PriceCalculation(
       pricePerPage: pricePerPage,

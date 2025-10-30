@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'create_order_provider.dart';
+part of 'card_data_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
@@ -9,52 +9,52 @@ part of 'create_order_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(CreateOrder)
-const createOrderProvider = CreateOrderProvider._();
+@ProviderFor(CardDataNotifier)
+const cardDataProvider = CardDataNotifierProvider._();
 
-final class CreateOrderProvider
-    extends $NotifierProvider<CreateOrder, CreateOrderState> {
-  const CreateOrderProvider._()
+final class CardDataNotifierProvider
+    extends $NotifierProvider<CardDataNotifier, CardData> {
+  const CardDataNotifierProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'createOrderProvider',
+        name: r'cardDataProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$createOrderHash();
+  String debugGetCreateSourceHash() => _$cardDataNotifierHash();
 
   @$internal
   @override
-  CreateOrder create() => CreateOrder();
+  CardDataNotifier create() => CardDataNotifier();
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(CreateOrderState value) {
+  Override overrideWithValue(CardData value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<CreateOrderState>(value),
+      providerOverride: $SyncValueProvider<CardData>(value),
     );
   }
 }
 
-String _$createOrderHash() => r'edb78b1473aeda45e4060c4f2ba64d33baad3779';
+String _$cardDataNotifierHash() => r'618ad42ef0e4e87355fb51d9fed83206f10a223b';
 
-abstract class _$CreateOrder extends $Notifier<CreateOrderState> {
-  CreateOrderState build();
+abstract class _$CardDataNotifier extends $Notifier<CardData> {
+  CardData build();
   @$mustCallSuper
   @override
   void runBuild() {
     final created = build();
-    final ref = this.ref as $Ref<CreateOrderState, CreateOrderState>;
+    final ref = this.ref as $Ref<CardData, CardData>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<CreateOrderState, CreateOrderState>,
-              CreateOrderState,
+              AnyNotifier<CardData, CardData>,
+              CardData,
               Object?,
               Object?
             >;

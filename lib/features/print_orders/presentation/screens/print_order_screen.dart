@@ -4,9 +4,10 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import 'package:mbe_orders_app/features/print_orders/providers/stepper_provider.dart';
 
-// ✅ CAMBIO: Importa el nuevo provider centralizado
+import '../../providers/card_data_provider.dart';
+import '../../providers/confirmation_state_provider.dart';
 import '../../providers/create_order_provider.dart';
-import '../../data/repositories/print_order_repository.dart';
+import '../../providers/order_processor_provider.dart';
 import '../widgets/stepper/mbe_stepper.dart';
 import '../widgets/steps/step1_upload_files.dart';
 import '../widgets/steps/step2_configuration.dart';
@@ -218,39 +219,28 @@ class PrintOrderScreen extends HookConsumerWidget {
       ),
     );
 
-    String? orderId;
-    String? errorMessage;
-
     try {
-      // ✅ CAMBIO: Obtener el request directamente del provider centralizado
-      final orderState = ref.read(createOrderProvider);
-      final request = orderState.request;
-
-      if (request == null) {
-        if (!context.mounted) return;
-        Navigator.pop(context);
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Faltan datos del pedido'),
-            backgroundColor: MBETheme.brandRed,
-          ),
-        );
-        return;
-      }
-
-      // Enviar al backend
-      final repository = ref.read(printOrderRepositoryProvider);
-      final response = await repository.createOrder(request);
-
-      orderId = response.orderId;
+      // Obtener datos de la tarjeta si el método de pago es tarjeta
+      final confirmationState = ref.read(confirmationStateProvider);
+      final cardData = ref.read(cardDataProvider);
+      
+      // Procesar la orden con el processor
+      final success = await ref.read(orderProcessorProvider.notifier).processOrder(
+        cardNumber: confirmationState.paymentMethod == PaymentMethod.card ? cardData.cardNumber : null,
+        cardHolder: confirmationState.paymentMethod == PaymentMethod.card ? cardData.cardHolder : null,
+        expiryDate: confirmationState.paymentMethod == PaymentMethod.card ? cardData.expiryDate : null,
+        cvv: confirmationState.paymentMethod == PaymentMethod.card ? cardData.cvv : null,
+      );
 
       if (!context.mounted) return;
       
       // Cerrar loading
       Navigator.pop(context);
 
-      if (orderId.isNotEmpty) {
+      if (success) {
+        final processorState = ref.read(orderProcessorProvider);
+        final orderId = processorState.orderId ?? '';
+        
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -268,19 +258,16 @@ class PrintOrderScreen extends HookConsumerWidget {
                   'Tu pedido ha sido creado exitosamente',
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: MBESpacing.md),
-                Text(
-                  'ID: $orderId',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'monospace',
-                  ),
-                ),
               ],
             ),
             actions: [
               FilledButton(
                 onPressed: () {
+                  // Limpiar estados
+                  ref.read(createOrderProvider.notifier).reset();
+                  ref.read(cardDataProvider.notifier).reset();
+                  ref.read(orderProcessorProvider.notifier).reset();
+                  
                   Navigator.pop(context); // Cerrar dialog
                   Navigator.pop(context); // Volver a lista
                 },
@@ -293,9 +280,10 @@ class PrintOrderScreen extends HookConsumerWidget {
           ),
         );
       } else {
+        final processorState = ref.read(orderProcessorProvider);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al crear el pedido'),
+          SnackBar(
+            content: Text(processorState.errorMessage ?? 'Error al crear el pedido'),
             backgroundColor: MBETheme.brandRed,
           ),
         );
@@ -307,7 +295,7 @@ class PrintOrderScreen extends HookConsumerWidget {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e'),
+          content: Text('Error inesperado: $e'),
           backgroundColor: MBETheme.brandRed,
         ),
       );

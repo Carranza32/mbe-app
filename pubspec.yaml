@@ -59,6 +59,7 @@ dependencies:
   flutter_pdfview: ^1.4.3
   flutter_credit_card: ^3.0.7
   awesome_card: ^1.1.7
+  credit_card_type_detector: ^3.0.0
 
 dev_dependencies:
   flutter_test:

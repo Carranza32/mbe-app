@@ -1,10 +1,9 @@
+// lib/features/print_orders/providers/order_processor_provider.dart
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/create_order_request.dart';
 import '../data/repositories/print_order_repository.dart';
-import 'print_order_provider.dart';
-import 'print_configuration_state_provider.dart';
-import 'delivery_state_provider.dart';
-import 'confirmation_state_provider.dart';
+import 'create_order_provider.dart'; // ✅ CAMBIO: Usa el provider centralizado
+import 'confirmation_state_provider.dart'; // Solo para método de pago
 
 part 'order_processor_provider.g.dart';
 
@@ -58,14 +57,20 @@ class OrderProcessor extends _$OrderProcessor {
       // Cambiar estado a procesando
       state = OrderProcessingState(status: OrderProcessingStatus.processing);
 
-      // Obtener todos los estados necesarios
-      final orderState = ref.read(printOrderProvider);
-      final printConfig = ref.read(printConfigurationStateProvider);
-      final deliveryState = ref.read(deliveryStateProvider);
-      final confirmationState = ref.read(confirmationStateProvider);
+      // ✅ CAMBIO: Obtener el request del provider centralizado
+      final orderState = ref.read(createOrderProvider);
+      final request = orderState.request;
 
-      // Validar que tenemos todos los datos necesarios
-      if (orderState.files.isEmpty) {
+      // Validaciones
+      if (request == null) {
+        state = OrderProcessingState(
+          status: OrderProcessingStatus.error,
+          errorMessage: 'Faltan datos del pedido',
+        );
+        return false;
+      }
+
+      if (orderState.uploadedFiles.isEmpty) {
         state = OrderProcessingState(
           status: OrderProcessingStatus.error,
           errorMessage: 'No hay archivos para imprimir',
@@ -73,7 +78,8 @@ class OrderProcessor extends _$OrderProcessor {
         return false;
       }
 
-      if (!confirmationState.isValid) {
+      // Validar información del cliente
+      if (!_isCustomerValid(request.customerInfo)) {
         state = OrderProcessingState(
           status: OrderProcessingStatus.error,
           errorMessage: 'Información de contacto incompleta',
@@ -81,7 +87,8 @@ class OrderProcessor extends _$OrderProcessor {
         return false;
       }
 
-      if (!deliveryState.isValid) {
+      // Validar información de entrega
+      if (!_isDeliveryValid(request.deliveryInfo)) {
         state = OrderProcessingState(
           status: OrderProcessingStatus.error,
           errorMessage: 'Información de entrega incompleta',
@@ -89,36 +96,20 @@ class OrderProcessor extends _$OrderProcessor {
         return false;
       }
 
-      // Construir el request
-      final request = CreateOrderRequest(
-        customerInfo: CustomerInfo(
-          name: confirmationState.fullName,
-          email: confirmationState.email,
-          phone: confirmationState.phone.isNotEmpty ? confirmationState.phone : null,
-          notes: confirmationState.notes.isNotEmpty ? confirmationState.notes : null,
-        ),
-        printConfig: PrintConfig(
-          printType: printConfig.printType == PrintType.blackWhite ? 'bw' : 'color',
-          paperSize: _getPaperSizeString(printConfig.paperSize),
-          paperType: printConfig.paperType == PaperType.bond ? 'bond' : 'photo_glossy',
-          orientation: printConfig.orientation == Orientation.vertical 
-              ? 'portrait'  // ← Cambio
-              : 'landscape', // ← Cambio
-          copies: printConfig.copies,
-          doubleSided: printConfig.doubleSided,
-          binding: printConfig.binding,
-        ),
-        deliveryInfo: DeliveryInfo(
-          method: deliveryState.isPickup ? 'pickup' : 'delivery',
-          pickupLocation: deliveryState.isPickup 
-              ? int.tryParse(deliveryState.selectedLocationId ?? '')
-              : null,
-          address: deliveryState.isDelivery ? deliveryState.deliveryAddress : null,
-          phone: deliveryState.isDelivery ? deliveryState.deliveryPhone : null,
-          notes: deliveryState.isDelivery ? deliveryState.deliveryNotes : null,
-        ),
-        files: orderState.files.map((f) => f.file.path).toList(),
-      );
+      // Validar método de pago con tarjeta
+      final confirmationState = ref.read(confirmationStateProvider);
+      if (confirmationState.paymentMethod == PaymentMethod.card) {
+        if (cardNumber == null || cardNumber.isEmpty ||
+            cardHolder == null || cardHolder.isEmpty ||
+            expiryDate == null || expiryDate.isEmpty ||
+            cvv == null || cvv.isEmpty) {
+          state = OrderProcessingState(
+            status: OrderProcessingStatus.error,
+            errorMessage: 'Completa la información de la tarjeta',
+          );
+          return false;
+        }
+      }
 
       // Enviar al backend
       final repository = ref.read(printOrderRepositoryProvider);
@@ -141,28 +132,26 @@ class OrderProcessor extends _$OrderProcessor {
     }
   }
 
-  String _getPaperSizeString(PaperSize size) {
-    switch (size) {
-      case PaperSize.letter:
-        return 'letter';
-      case PaperSize.legal:
-        return 'legal';
-      case PaperSize.doubleLetter:
-        return 'double_letter';
+  /// Validar información del cliente
+  bool _isCustomerValid(CustomerInfo customer) {
+    return customer.name.isNotEmpty && 
+           customer.email.isNotEmpty &&
+           RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(customer.email);
+  }
+
+  /// Validar información de entrega
+  bool _isDeliveryValid(DeliveryInfo delivery) {
+    if (delivery.method == 'pickup') {
+      return delivery.pickupLocation != null;
+    } else {
+      return delivery.address != null && 
+             delivery.address!.isNotEmpty &&
+             delivery.phone != null &&
+             delivery.phone!.isNotEmpty;
     }
   }
 
-  String _getPaymentMethodString(PaymentMethod method) {
-    switch (method) {
-      case PaymentMethod.cash:
-        return 'cash';
-      case PaymentMethod.card:
-        return 'card';
-      case PaymentMethod.transfer:
-        return 'transfer';
-    }
-  }
-
+  /// Resetear el estado
   void reset() {
     state = OrderProcessingState.idle();
   }

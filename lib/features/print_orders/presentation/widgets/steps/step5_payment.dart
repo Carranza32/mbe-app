@@ -1,17 +1,16 @@
-// lib/features/print_orders/presentation/widgets/steps/step5_payment.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_credit_card/credit_card_brand.dart';
+import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:flutter_credit_card/flutter_credit_card.dart';
 
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import '../../../providers/order_total_provider.dart';
 import '../../../providers/confirmation_state_provider.dart';
+import '../../../providers/order_processor_provider.dart';
+import '../../../providers/card_data_provider.dart';
 
-class Step5Payment extends HookConsumerWidget {
+class Step5Payment extends ConsumerWidget {
   const Step5Payment({Key? key}) : super(key: key);
 
   @override
@@ -19,18 +18,12 @@ class Step5Payment extends HookConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    final cardNumber = useState('5100010000000015');
-    final cardHolder = useState('Mario Carranza');
-    final expiryDate = useState('12/28');
-    final cvv = useState('123');
-    final saveCard = useState(false);
-    final formKey = useMemoized(() => GlobalKey<FormState>());
-    
-    // Obtener total real
+    // 🎯 LEER del provider (como en tus otros pasos)
+    final cardData = ref.watch(cardDataProvider);
     final orderTotal = ref.watch(orderTotalCalculatorProvider);
     final confirmationState = ref.watch(confirmationStateProvider);
+    final processorState = ref.watch(orderProcessorProvider);
     
-    // Solo mostrar si el método de pago es tarjeta
     final showCardForm = confirmationState.paymentMethod == PaymentMethod.card;
 
     return Column(
@@ -144,30 +137,16 @@ class Step5Payment extends HookConsumerWidget {
 
         // Contenido según método de pago
         if (showCardForm) ...[
-          // Card Preview
+          // 🎴 Vista previa simple de la tarjeta
           FadeInUp(
             duration: const Duration(milliseconds: 400),
             delay: const Duration(milliseconds: 100),
-            child: CreditCardWidget(
-              onCreditCardWidgetChange: (CreditCardBrand brand) {},
-              cardNumber: cardNumber.value,
-              expiryDate: expiryDate.value,
-              cardHolderName: cardHolder.value,
-              cvvCode: cvv.value,
-              showBackView: false,
-              obscureCardNumber: true,
-              obscureCardCvv: true,
-              isHolderNameVisible: true,
-              cardBgColor: MBETheme.brandBlack,
-              glassmorphismConfig: Glassmorphism.defaultConfig(),
-              backgroundImage: null,
-              isSwipeGestureEnabled: true,
-            ),
+            child: _CardPreview(cardData: cardData),
           ),
 
           const SizedBox(height: MBESpacing.xl),
 
-          // Card Form
+          // 📝 Formulario simple
           FadeInUp(
             duration: const Duration(milliseconds: 400),
             delay: const Duration(milliseconds: 200),
@@ -192,78 +171,45 @@ class Step5Payment extends HookConsumerWidget {
                   
                   const SizedBox(height: MBESpacing.xl),
 
-                  CreditCardForm(
-                    formKey: formKey,
-                    cardNumber: cardNumber.value,
-                    expiryDate: expiryDate.value,
-                    cardHolderName: cardHolder.value,
-                    cvvCode: cvv.value,
-                    onCreditCardModelChange: (CreditCardModel data) {
-                      cardNumber.value = data.cardNumber;
-                      expiryDate.value = data.expiryDate;
-                      cardHolder.value = data.cardHolderName;
-                      cvv.value = data.cvvCode;
+                  // 🎯 Campos individuales simples
+                  _CardNumberField(
+                    initialValue: cardData.cardNumber,
+                    onChanged: (value) {
+                      ref.read(cardDataProvider.notifier).updateCardNumber(value);
                     },
-                    themeColor: MBETheme.brandBlack,
-                    obscureCvv: true,
-                    obscureNumber: false,
-                    isHolderNameVisible: true,
-                    isCardNumberVisible: true,
-                    isExpiryDateVisible: true,
-                    enableCvv: true,
-                    cvvValidationMessage: 'Ingresa un CVV válido',
-                    dateValidationMessage: 'Ingresa una fecha válida',
-                    numberValidationMessage: 'Ingresa un número válido',
-                    cardNumberValidator: (String? cardNumber) {
-                      if (cardNumber == null || cardNumber.isEmpty) {
-                        return 'El número de tarjeta es requerido';
-                      }
-                      if (cardNumber.replaceAll(' ', '').length < 13) {
-                        return 'Número de tarjeta inválido';
-                      }
-                      return null;
+                  ),
+
+                  const SizedBox(height: MBESpacing.lg),
+
+                  _CardHolderField(
+                    initialValue: cardData.cardHolder,
+                    onChanged: (value) {
+                      ref.read(cardDataProvider.notifier).updateCardHolder(value);
                     },
-                    expiryDateValidator: (String? expiryDate) {
-                      if (expiryDate == null || expiryDate.isEmpty) {
-                        return 'La fecha de vencimiento es requerida';
-                      }
-                      return null;
-                    },
-                    cvvValidator: (String? cvv) {
-                      if (cvv == null || cvv.isEmpty) {
-                        return 'El CVV es requerido';
-                      }
-                      if (cvv.length < 3) {
-                        return 'CVV inválido';
-                      }
-                      return null;
-                    },
-                    cardHolderValidator: (String? cardHolderName) {
-                      if (cardHolderName == null || cardHolderName.isEmpty) {
-                        return 'El nombre del titular es requerido';
-                      }
-                      return null;
-                    },
-                    cardNumberDecoration: _buildInputDecoration(
-                      'Número de Tarjeta',
-                      'XXXX XXXX XXXX XXXX',
-                      colorScheme,
-                    ),
-                    expiryDateDecoration: _buildInputDecoration(
-                      'Fecha de Vencimiento',
-                      'MM/AA',
-                      colorScheme,
-                    ),
-                    cvvCodeDecoration: _buildInputDecoration(
-                      'CVV',
-                      'XXX',
-                      colorScheme,
-                    ),
-                    cardHolderDecoration: _buildInputDecoration(
-                      'Nombre del Titular',
-                      'Como aparece en la tarjeta',
-                      colorScheme,
-                    ),
+                  ),
+
+                  const SizedBox(height: MBESpacing.lg),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ExpiryDateField(
+                          initialValue: cardData.expiryDate,
+                          onChanged: (value) {
+                            ref.read(cardDataProvider.notifier).updateExpiryDate(value);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: MBESpacing.md),
+                      Expanded(
+                        child: _CVVField(
+                          initialValue: cardData.cvv,
+                          onChanged: (value) {
+                            ref.read(cardDataProvider.notifier).updateCVV(value);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -377,6 +323,43 @@ class Step5Payment extends HookConsumerWidget {
 
         const SizedBox(height: MBESpacing.lg),
 
+        // Mostrar error si hay
+        if (processorState.isError) ...[
+          FadeInUp(
+            duration: const Duration(milliseconds: 400),
+            child: Container(
+              padding: const EdgeInsets.all(MBESpacing.md),
+              decoration: BoxDecoration(
+                color: MBETheme.brandRed.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(MBERadius.medium),
+                border: Border.all(
+                  color: MBETheme.brandRed.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Iconsax.warning_2,
+                    size: 18,
+                    color: MBETheme.brandRed,
+                  ),
+                  const SizedBox(width: MBESpacing.sm),
+                  Expanded(
+                    child: Text(
+                      processorState.errorMessage ?? 'Error al procesar el pedido',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: MBETheme.brandRed,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: MBESpacing.lg),
+        ],
+
         // Terms
         FadeInUp(
           duration: const Duration(milliseconds: 400),
@@ -414,40 +397,6 @@ class Step5Payment extends HookConsumerWidget {
     );
   }
 
-  InputDecoration _buildInputDecoration(
-    String label,
-    String hint,
-    ColorScheme colorScheme,
-  ) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      filled: true,
-      fillColor: colorScheme.surface,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(MBERadius.large),
-        borderSide: BorderSide(
-          color: MBETheme.neutralGray.withValues(alpha: 0.2),
-          width: 1.5,
-        ),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(MBERadius.large),
-        borderSide: BorderSide(
-          color: MBETheme.neutralGray.withValues(alpha: 0.2),
-          width: 1.5,
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(MBERadius.large),
-        borderSide: BorderSide(
-          color: colorScheme.primary,
-          width: 2,
-        ),
-      ),
-    );
-  }
-
   String _getPaymentMessage(PaymentMethod method) {
     switch (method) {
       case PaymentMethod.cash:
@@ -479,5 +428,294 @@ class Step5Payment extends HookConsumerWidget {
       case PaymentMethod.card:
         return Iconsax.card;
     }
+  }
+}
+
+// 🎴 Vista previa simple de la tarjeta
+class _CardPreview extends StatelessWidget {
+  final CardData cardData;
+
+  const _CardPreview({required this.cardData});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.all(MBESpacing.xl),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            MBETheme.brandBlack,
+            MBETheme.brandBlack.withValues(alpha: 0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(MBERadius.large),
+        boxShadow: MBETheme.shadowLg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(Iconsax.card, size: 40, color: Colors.white.withValues(alpha: 0.8)),
+              Text(
+                'VISA',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            cardData.cardNumber.isEmpty
+                ? '•••• •••• •••• ••••'
+                : _formatCardNumber(cardData.cardNumber),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+              letterSpacing: 2,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TITULAR',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 10,
+                    ),
+                  ),
+                  Text(
+                    cardData.cardHolder.isEmpty
+                        ? 'NOMBRE APELLIDO'
+                        : cardData.cardHolder.toUpperCase(),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'VÁLIDO HASTA',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 10,
+                    ),
+                  ),
+                  Text(
+                    cardData.expiryDate.isEmpty ? 'MM/AA' : cardData.expiryDate,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatCardNumber(String number) {
+    final cleaned = number.replaceAll(' ', '');
+    if (cleaned.length <= 4) return cleaned;
+    
+    final buffer = StringBuffer();
+    for (int i = 0; i < cleaned.length; i++) {
+      if (i > 0 && i % 4 == 0) buffer.write(' ');
+      buffer.write(i < cleaned.length - 4 ? '•' : cleaned[i]);
+    }
+    return buffer.toString();
+  }
+}
+
+// 📝 Campos personalizados simples
+class _CardNumberField extends StatelessWidget {
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+
+  const _CardNumberField({
+    required this.initialValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      initialValue: initialValue,
+      decoration: InputDecoration(
+        labelText: 'Número de Tarjeta',
+        hintText: '1234 5678 9012 3456',
+        prefixIcon: const Icon(Iconsax.card),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(MBERadius.large),
+        ),
+      ),
+      keyboardType: TextInputType.number,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(16),
+        _CardNumberFormatter(),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _CardHolderField extends StatelessWidget {
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+
+  const _CardHolderField({
+    required this.initialValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      initialValue: initialValue,
+      decoration: InputDecoration(
+        labelText: 'Nombre del Titular',
+        hintText: 'Como aparece en la tarjeta',
+        prefixIcon: const Icon(Iconsax.user),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(MBERadius.large),
+        ),
+      ),
+      textCapitalization: TextCapitalization.words,
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _ExpiryDateField extends StatelessWidget {
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+
+  const _ExpiryDateField({
+    required this.initialValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      initialValue: initialValue,
+      decoration: InputDecoration(
+        labelText: 'Vencimiento',
+        hintText: 'MM/AA',
+        prefixIcon: const Icon(Iconsax.calendar),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(MBERadius.large),
+        ),
+      ),
+      keyboardType: TextInputType.number,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(4),
+        _ExpiryDateFormatter(),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _CVVField extends StatelessWidget {
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+
+  const _CVVField({
+    required this.initialValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      initialValue: initialValue,
+      decoration: InputDecoration(
+        labelText: 'CVV',
+        hintText: '123',
+        prefixIcon: const Icon(Iconsax.lock),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(MBERadius.large),
+        ),
+      ),
+      keyboardType: TextInputType.number,
+      obscureText: true,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(4),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
+// 🔧 Formateadores
+class _CardNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty) return newValue;
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      buffer.write(text[i]);
+      final nonZeroIndex = i + 1;
+      if (nonZeroIndex % 4 == 0 && nonZeroIndex != text.length) {
+        buffer.write(' ');
+      }
+    }
+
+    final string = buffer.toString();
+    return newValue.copyWith(
+      text: string,
+      selection: TextSelection.collapsed(offset: string.length),
+    );
+  }
+}
+
+class _ExpiryDateFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty) return newValue;
+
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      buffer.write(text[i]);
+      if (i == 1) buffer.write('/');
+    }
+
+    final string = buffer.toString();
+    return newValue.copyWith(
+      text: string,
+      selection: TextSelection.collapsed(offset: string.length),
+    );
   }
 }
