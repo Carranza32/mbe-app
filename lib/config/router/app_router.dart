@@ -13,7 +13,6 @@ import 'package:mbe_orders_app/features/tracking/screens/tracking_screen.dart';
 
 import '../../core/network/dio_provider.dart';
 
-// Provider del router
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/auth/login',
@@ -26,12 +25,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       
       final isLoginRoute = state.matchedLocation == '/auth/login';
       
-      // Si no tiene token y no está en login → redirigir a login
       if (!hasToken && !isLoginRoute) {
         return '/auth/login';
       }
       
-      // Si tiene token y está en login → redirigir a print-orders
       if (hasToken && isLoginRoute) {
         return '/print-orders/my-orders';
       }
@@ -39,7 +36,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null; // No redirigir
     },
     routes: [
-      // Shell route para mantener el bottom navigation
       ShellRoute(
         builder: (context, state, child) {
           return MainScreen(child: child);

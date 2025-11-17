@@ -1,4 +1,6 @@
-// lib/features/auth/presentation/providers/auth_provider.dart
+// lib/features/auth/providers/auth_provider.dart
+import 'dart:convert';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/network/dio_provider.dart';
 import '../data/models/user_model.dart';
@@ -12,11 +14,17 @@ class Auth extends _$Auth {
   Future<User?> build() async {
     final storage = ref.read(secureStorageProvider);
     final token = await storage.read(key: 'auth_token');
+
+    // await storage.delete(key: 'auth_token');
+    //     await storage.delete(key: 'user');
     
     if (token != null) {
       try {
         return await ref.read(authRepositoryProvider).getCurrentUser();
       } catch (e) {
+        // Si falla obtener usuario, limpiar token inválido
+        await storage.delete(key: 'auth_token');
+        await storage.delete(key: 'user');
         return null;
       }
     }
@@ -35,23 +43,32 @@ class Auth extends _$Auth {
       // Guardar token
       final storage = ref.read(secureStorageProvider);
       await storage.write(key: 'auth_token', value: authResponse.token);
+      await storage.write(key: 'user', value: jsonEncode(authResponse.user.toJson()));
       
       return authResponse.user;
     });
   }
 
+  /// ✅ LOGOUT MEJORADO - Siempre limpia el estado local
   Future<void> logout() async {
-  try {
-    await ref.read(authRepositoryProvider).logout();
-  } catch (e) {
-    print('⚠️ Error en logout backend: $e');
-  } finally {
     final storage = ref.read(secureStorageProvider);
-    await storage.delete(key: 'auth_token');
     
-    if (ref.mounted) {
-      state = const AsyncData(null);
+    try {
+      // 1. Intentar llamar al backend (NO crítico si falla)
+      await ref.read(authRepositoryProvider).logout();
+      print('✅ Logout en backend exitoso');
+    } catch (e) {
+      print('⚠️ Error en logout backend (continuando): $e');
+      // NO lanzar error - continuar con limpieza local
     }
+    
+    // 2. SIEMPRE limpiar token local (crítico)
+    await storage.delete(key: 'auth_token');
+    await storage.delete(key: 'user');
+    print('✅ Token local eliminado');
+    
+    // 3. SIEMPRE actualizar estado a null (crítico)
+    state = const AsyncData(null);
+    print('✅ Estado actualizado a null');
   }
-}
 }

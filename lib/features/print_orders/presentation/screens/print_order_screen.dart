@@ -1,9 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import 'package:mbe_orders_app/features/print_orders/providers/stepper_provider.dart';
 
+import '../../../../core/network/dio_provider.dart';
 import '../../providers/card_data_provider.dart';
 import '../../providers/confirmation_state_provider.dart';
 import '../../providers/create_order_provider.dart';
@@ -25,6 +29,22 @@ class PrintOrderScreen extends HookConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final progress = (currentStep - 1) / (totalSteps - 1);
+
+    final secureStorage = ref.read(secureStorageProvider);
+    final userFuture = useMemoized(() => secureStorage.read(key: 'user'));
+    final userSnapshot = useFuture(userFuture);
+
+    Map<String, dynamic>? userData;
+    if (userSnapshot.hasData && userSnapshot.data != null) {
+      try {
+        userData = jsonDecode(userSnapshot.data!);
+      } catch (e) {
+        print('Error al decodificar usuario: $e');
+      }
+    }
+
+    final name = userData?['name'] ?? 'Usuario';
+    final email = userData?['email'] ?? '';
 
     return Scaffold(
       // Background gris claro estilo Grab
@@ -109,7 +129,7 @@ class PrintOrderScreen extends HookConsumerWidget {
                     ),
                   );
                 },
-                child: _buildStepContent(currentStep, ref),
+                child: _buildStepContent(currentStep, ref, name: name, email: email),
               ),
             ),
           ),
@@ -140,14 +160,14 @@ class PrintOrderScreen extends HookConsumerWidget {
     );
   }
 
-  Widget _buildStepContent(int step, WidgetRef ref) {
+  Widget _buildStepContent(int step, WidgetRef ref, {String name = '', String email = ''}) {
     return KeyedSubtree(
       key: ValueKey(step),
-      child: _getStepWidget(step),
+      child: _getStepWidget(step, name, email),
     );
   }
 
-  Widget _getStepWidget(int step) {
+  Widget _getStepWidget(int step, String name, String email) {
     switch (step) {
       case 1:
         return const Step1UploadFiles();
@@ -156,7 +176,7 @@ class PrintOrderScreen extends HookConsumerWidget {
       case 3:
         return const Step3DeliveryMethod();
       case 4:
-        return const Step4Confirmation();
+        return Step4Confirmation(userName: name, userEmail: email);
       case 5:
         return const Step5Payment();
       default:

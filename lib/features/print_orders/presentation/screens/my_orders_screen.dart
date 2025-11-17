@@ -1,10 +1,14 @@
 // lib/features/print_orders/presentation/screens/my_orders_screen.dart
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../config/theme/mbe_theme.dart';
+import '../../../../core/network/dio_provider.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../data/models/print_order_model.dart';
 import '../../providers/orders_provider.dart';
@@ -267,11 +271,27 @@ class _EmptyState extends StatelessWidget {
 }
 
 // Widget del Drawer
-class _AppDrawer extends ConsumerWidget {
+class _AppDrawer extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final user = authState.value;
+    // final authState = ref.watch(authProvider);
+    // final user = authState.value;
+
+    final secureStorage = ref.read(secureStorageProvider);
+    final userFuture = useMemoized(() => secureStorage.read(key: 'user'));
+    final userSnapshot = useFuture(userFuture);
+
+    Map<String, dynamic>? userData;
+    if (userSnapshot.hasData && userSnapshot.data != null) {
+      try {
+        userData = jsonDecode(userSnapshot.data!);
+      } catch (e) {
+        print('Error al decodificar usuario: $e');
+      }
+    }
+
+    final name = userData?['name'] ?? 'Usuario';
+    final email = userData?['email'] ?? '';
 
     return Drawer(
       child: Column(
@@ -301,7 +321,7 @@ class _AppDrawer extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  user?.name ?? 'Usuario',
+                  name ?? 'Usuario',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -310,7 +330,7 @@ class _AppDrawer extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  user?.email ?? '',
+                  email ?? '',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.7),
                     fontSize: 14,
@@ -360,9 +380,6 @@ class _AppDrawer extends ConsumerWidget {
             title: 'Cerrar Sesión',
             isDestructive: true,
             onTap: () async {
-              final authNotifier = ref.read(authProvider.notifier);
-              final router = GoRouter.of(context);
-
               Navigator.pop(context);
               
               // Mostrar confirmación
@@ -387,14 +404,27 @@ class _AppDrawer extends ConsumerWidget {
                 ),
               );
 
-              if (!context.mounted) return;
+              if (confirm != true) return;
 
-              if (confirm == true) {
-                await authNotifier.logout();
-
-                // Redirigir solo si el context sigue montado
+              try {
+                await ref.read(authProvider.notifier).logout();
+                
+                // 5. Invalidar TODOS los providers relacionados (limpia caché)
+                ref.invalidate(authProvider);
+                
+                // 6. Navegar a login (montado)
                 if (context.mounted) {
-                  router.go('/auth/login');
+                  context.go('/auth/login');
+                }
+              } catch (e) {
+                // 7. Mostrar error si falla
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error al cerrar sesión: $e'),
+                      backgroundColor: MBETheme.brandRed,
+                    ),
+                  );
                 }
               }
             },

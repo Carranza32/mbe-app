@@ -1,4 +1,3 @@
-// lib/features/print_orders/presentation/widgets/steps/step4_confirmation.dart
 import 'package:flutter/material.dart' hide Orientation;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
@@ -17,7 +16,10 @@ import '../../../providers/order_total_provider.dart';
 import '../../../providers/confirmation_state_provider.dart'; // Solo para método de pago
 
 class Step4Confirmation extends HookConsumerWidget {
-  const Step4Confirmation({Key? key}) : super(key: key);
+  final String? userName;
+  final String? userEmail;
+  
+  const Step4Confirmation({super.key, this.userName, this.userEmail});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,6 +43,14 @@ class Step4Confirmation extends HookConsumerWidget {
     final printPricing = ref.watch(printPricingProvider);
     final deliveryPricing = ref.watch(deliveryPricingProvider);
     final orderTotal = ref.watch(orderTotalCalculatorProvider);
+
+    // if (userName != null && (customerInfo == null || customerInfo.name.isEmpty)) {
+    //   orderNotifier.setCustomerName(userName!);
+    // }
+
+    // if (userEmail != null && (customerInfo == null || customerInfo.email.isEmpty)) {
+    //   orderNotifier.setCustomerEmail(userEmail!);
+    // }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

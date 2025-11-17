@@ -46,11 +46,11 @@ class LoginScreen extends HookConsumerWidget {
               // Logo
               FadeInDown(
                 child: Container(
-                  width: 100,
-                  height: 100,
+                  width: 205,
+                  height: 80,
                   decoration: BoxDecoration(
                     color: MBETheme.lightGray,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(15),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.1),
@@ -59,9 +59,12 @@ class LoginScreen extends HookConsumerWidget {
                       ),
                     ],
                   ),
-                  child: Image.network(
-                    'https://mbe-sv.com/wp-content/uploads/2023/07/mbe-panama-logo.png',
-                    fit: BoxFit.contain,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: Image.asset(
+                      'assets/images/logo-mbe_horizontal_2.png',
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
