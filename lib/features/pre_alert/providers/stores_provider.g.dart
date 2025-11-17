@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'auth_provider.dart';
+part of 'stores_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
@@ -9,43 +9,43 @@ part of 'auth_provider.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
-@ProviderFor(Auth)
-const authProvider = AuthProvider._();
+@ProviderFor(Stores)
+const storesProvider = StoresProvider._();
 
-final class AuthProvider extends $AsyncNotifierProvider<Auth, User?> {
-  const AuthProvider._()
+final class StoresProvider extends $AsyncNotifierProvider<Stores, List<Store>> {
+  const StoresProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'authProvider',
+        name: r'storesProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$authHash();
+  String debugGetCreateSourceHash() => _$storesHash();
 
   @$internal
   @override
-  Auth create() => Auth();
+  Stores create() => Stores();
 }
 
-String _$authHash() => r'11fbcacae3d40df8e2f62c47a52005f4ba2ffe5a';
+String _$storesHash() => r'4953aa4b4939f8fb5c50bc2916539f9d8a17fd42';
 
-abstract class _$Auth extends $AsyncNotifier<User?> {
-  FutureOr<User?> build();
+abstract class _$Stores extends $AsyncNotifier<List<Store>> {
+  FutureOr<List<Store>> build();
   @$mustCallSuper
   @override
   void runBuild() {
     final created = build();
-    final ref = this.ref as $Ref<AsyncValue<User?>, User?>;
+    final ref = this.ref as $Ref<AsyncValue<List<Store>>, List<Store>>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<AsyncValue<User?>, User?>,
-              AsyncValue<User?>,
+              AnyNotifier<AsyncValue<List<Store>>, List<Store>>,
+              AsyncValue<List<Store>>,
               Object?,
               Object?
             >;

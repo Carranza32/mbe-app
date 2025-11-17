@@ -41,7 +41,7 @@ final class PrintPricingProvider
   }
 }
 
-String _$printPricingHash() => r'080b6a7fd6c1fbc15cfe007ae942c63fb47af0ba';
+String _$printPricingHash() => r'd98588ce5a2133c6fbdadaa1364bb21192e04226';
 
 abstract class _$PrintPricing extends $Notifier<PriceCalculation> {
   PriceCalculation build();

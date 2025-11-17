@@ -41,7 +41,7 @@ final class CardDataNotifierProvider
   }
 }
 
-String _$cardDataNotifierHash() => r'618ad42ef0e4e87355fb51d9fed83206f10a223b';
+String _$cardDataNotifierHash() => r'ab95a5e0a8e17760efe794d3e34c11212a53d22e';
 
 abstract class _$CardDataNotifier extends $Notifier<CardData> {
   CardData build();

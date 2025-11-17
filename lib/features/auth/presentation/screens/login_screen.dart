@@ -14,8 +14,8 @@ class LoginScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final emailController = useTextEditingController(text: 'admin@admin.com');
-    final passwordController = useTextEditingController(text: 'super1');
+    final emailController = useTextEditingController(text: 'mario.carranza996@gmail.com');
+    final passwordController = useTextEditingController(text: 'Carranza32');
     final isPasswordVisible = useState(false);
     final authState = ref.watch(authProvider);
 

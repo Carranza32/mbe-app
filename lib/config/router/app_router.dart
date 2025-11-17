@@ -5,7 +5,8 @@ import 'package:mbe_orders_app/features/auth/presentation/screens/login_screen.d
 import 'package:mbe_orders_app/features/home/screens/home_screen.dart';
 import 'package:mbe_orders_app/features/home/screens/main_screen.dart';
 import 'package:mbe_orders_app/features/packages/screens/packages_screen.dart';
-import 'package:mbe_orders_app/features/pre_alert/screens/pre_alert_screen.dart';
+import 'package:mbe_orders_app/features/pre_alert/presentation/screens/create_pre_alert_screen.dart';
+import 'package:mbe_orders_app/features/pre_alert/presentation/screens/pre_alerts_list_screen.dart';
 import 'package:mbe_orders_app/features/print_orders/presentation/screens/my_orders_screen.dart';
 import 'package:mbe_orders_app/features/print_orders/presentation/screens/print_order_screen.dart';
 import 'package:mbe_orders_app/features/quoter/screens/quote_input_screen.dart';
@@ -15,7 +16,7 @@ import '../../core/network/dio_provider.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/auth/login',
+    initialLocation: '/',
     redirect: (context, state) async {
       final storage = ref.read(secureStorageProvider);
       final token = await storage.read(key: 'auth_token');
@@ -59,7 +60,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/pre-alert',
             name: 'pre-alert',
             pageBuilder: (context, state) => const NoTransitionPage(
-              child: PreAlertScreen(),
+              child: PreAlertsListScreen(),
             ),
           ),
           GoRoute(
@@ -97,6 +98,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           path: '/print-orders/my-orders',
           name: 'my-print-orders',
           builder: (context, state) => const MyOrdersScreen(),
+        ),
+
+        // GoRoute(
+        //   path: '/pre-alert',
+        //   name: 'pre-alert',
+        //   pageBuilder: (context, state) => const NoTransitionPage(
+        //     child: PreAlertsListScreen(),
+        //   ),
+        // ),
+
+        GoRoute(
+          path: '/pre-alert/create',
+          name: 'create-pre-alert',
+          builder: (context, state) => const CreatePreAlertScreen(),
         ),
     ],
   );
