@@ -9,11 +9,7 @@ import '../../../../../core/design_system/ds_inputs.dart';
 
 // ✅ CAMBIO: Usa el provider centralizado
 import '../../../providers/create_order_provider.dart';
-import '../../../providers/print_configuration_state_provider.dart'; // Solo para enums
-import '../../../providers/print_pricing_provider.dart';
-import '../../../providers/delivery_pricing_provider.dart';
-import '../../../providers/order_total_provider.dart';
-import '../../../providers/confirmation_state_provider.dart'; // Solo para método de pago
+ // Solo para enums
 
 class Step4Confirmation extends HookConsumerWidget {
   final String? userName;
@@ -30,19 +26,14 @@ class Step4Confirmation extends HookConsumerWidget {
     final orderState = ref.watch(createOrderProvider);
     final orderNotifier = ref.read(createOrderProvider.notifier);
     
-    // Método de pago (mantener en confirmationStateProvider)
-    final confirmationState = ref.watch(confirmationStateProvider);
-    final confirmationNotifier = ref.read(confirmationStateProvider.notifier);
-    
     // Datos desde el request centralizado
     final customerInfo = orderState.request?.customerInfo;
     final printConfig = orderState.request?.printConfig;
     final deliveryInfo = orderState.request?.deliveryInfo;
+    final paymentInfo = orderState.paymentInfo;
     
-    // Pricing
-    final printPricing = ref.watch(printPricingProvider);
-    final deliveryPricing = ref.watch(deliveryPricingProvider);
-    final orderTotal = ref.watch(orderTotalCalculatorProvider);
+    // Pricing consolidado
+    final pricing = orderNotifier.calculatePricing();
 
     // if (userName != null && (customerInfo == null || customerInfo.name.isEmpty)) {
     //   orderNotifier.setCustomerName(userName!);
@@ -212,8 +203,8 @@ class Step4Confirmation extends HookConsumerWidget {
                   icon: Iconsax.card,
                   title: 'Tarjeta',
                   subtitle: 'Débito o crédito',
-                  isSelected: confirmationState.paymentMethod == PaymentMethod.card,
-                  onTap: () => confirmationNotifier.setPaymentMethod(PaymentMethod.card),
+                  isSelected: paymentInfo.method == PaymentMethod.card,
+                  onTap: () => orderNotifier.setPaymentMethod(PaymentMethod.card),
                 ),
 
                 const SizedBox(height: MBESpacing.md),
@@ -223,8 +214,8 @@ class Step4Confirmation extends HookConsumerWidget {
                   icon: Iconsax.money,
                   title: 'Efectivo',
                   subtitle: 'Paga al recibir tu pedido',
-                  isSelected: confirmationState.paymentMethod == PaymentMethod.cash,
-                  onTap: () => confirmationNotifier.setPaymentMethod(PaymentMethod.cash),
+                  isSelected: paymentInfo.method == PaymentMethod.cash,
+                  onTap: () => orderNotifier.setPaymentMethod(PaymentMethod.cash),
                   badge: DSBadge.success(label: 'Sin cargo extra'),
                 ),
 
@@ -235,8 +226,8 @@ class Step4Confirmation extends HookConsumerWidget {
                   icon: Iconsax.bank,
                   title: 'Transferencia',
                   subtitle: 'Banco Agrícola, BAC, etc.',
-                  isSelected: confirmationState.paymentMethod == PaymentMethod.transfer,
-                  onTap: () => confirmationNotifier.setPaymentMethod(PaymentMethod.transfer),
+                  isSelected: paymentInfo.method == PaymentMethod.transfer,
+                  onTap: () => orderNotifier.setPaymentMethod(PaymentMethod.transfer),
                 ),
               ],
             ),
@@ -407,7 +398,7 @@ class Step4Confirmation extends HookConsumerWidget {
                       // Subtotal de impresión
                       _CostRow(
                         'Subtotal impresión',
-                        '\$${printPricing.subtotal.toStringAsFixed(2)}',
+                        '\$${pricing.printSubtotal.toStringAsFixed(2)}',
                       ),
                       
                       const SizedBox(height: MBESpacing.sm),
@@ -419,16 +410,16 @@ class Step4Confirmation extends HookConsumerWidget {
                       // ),
                       
                       // Envío (si aplica)
-                      if (deliveryPricing.deliveryCost > 0) ...[
+                      if (pricing.deliveryCost > 0) ...[
                         const SizedBox(height: MBESpacing.sm),
                         _CostRow(
                           'Envío',
-                          '\$${deliveryPricing.deliveryCost.toStringAsFixed(2)}',
+                          '\$${pricing.deliveryCost.toStringAsFixed(2)}',
                         ),
                       ],
                       
                       // Envío gratis
-                      if (deliveryInfo?.method == 'delivery' && deliveryPricing.isFreeDelivery) ...[
+                      if (deliveryInfo?.method == 'delivery' && pricing.isFreeDelivery) ...[
                         const SizedBox(height: MBESpacing.sm),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -475,7 +466,7 @@ class Step4Confirmation extends HookConsumerWidget {
                             ),
                           ),
                           Text(
-                            '\$${orderTotal.grandTotal.toStringAsFixed(2)}',
+                            '\$${pricing.grandTotal.toStringAsFixed(2)}',
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: MBETheme.brandBlack,
@@ -499,7 +490,7 @@ class Step4Confirmation extends HookConsumerWidget {
                             ),
                           ),
                           Text(
-                            confirmationState.getPaymentMethodName(),
+                            _getPaymentMethodName(paymentInfo.method),
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
@@ -709,6 +700,17 @@ class _SummarySection extends StatelessWidget {
         ...items,
       ],
     );
+  }
+}
+
+String _getPaymentMethodName(PaymentMethod method) {
+  switch (method) {
+    case PaymentMethod.card:
+      return 'Tarjeta';
+    case PaymentMethod.cash:
+      return 'Efectivo';
+    case PaymentMethod.transfer:
+      return 'Transferencia';
   }
 }
 

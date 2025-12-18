@@ -100,7 +100,8 @@ class _OrderCard extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => OrderDetailScreen(orderNumber: order.orderNumber)
+                builder: (context) =>
+                    OrderDetailScreen(orderNumber: order.orderNumber),
               ),
             );
           },
@@ -141,15 +142,15 @@ class _OrderCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Info
                 Row(
                   children: [
                     _InfoChip(
-                      icon: order.printType == 'color' 
-                          ? Iconsax.color_swatch 
+                      icon: order.printType == 'color'
+                          ? Iconsax.color_swatch
                           : Iconsax.document_text,
                       label: order.printType == 'color' ? 'Color' : 'B/N',
                     ),
@@ -163,15 +164,15 @@ class _OrderCard extends StatelessWidget {
                       icon: order.deliveryMethod == 'pickup'
                           ? Iconsax.shop
                           : Iconsax.truck,
-                      label: order.deliveryMethod == 'pickup' 
-                          ? 'Recoger' 
+                      label: order.deliveryMethod == 'pickup'
+                          ? 'Recoger'
                           : 'Envío',
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Footer
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -226,10 +227,7 @@ class _InfoChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -252,17 +250,12 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 16),
           const Text(
             'No tienes pedidos',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
             'Crea tu primer pedido de impresión',
-            style: TextStyle(
-              color: MBETheme.neutralGray,
-            ),
+            style: TextStyle(color: MBETheme.neutralGray),
           ),
         ],
       ),
@@ -300,9 +293,7 @@ class _AppDrawer extends HookConsumerWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-            decoration: const BoxDecoration(
-              color: MBETheme.brandBlack,
-            ),
+            decoration: const BoxDecoration(color: MBETheme.brandBlack),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -381,7 +372,7 @@ class _AppDrawer extends HookConsumerWidget {
             isDestructive: true,
             onTap: () async {
               Navigator.pop(context);
-              
+
               // Mostrar confirmación
               final confirm = await showDialog<bool>(
                 context: context,
@@ -406,26 +397,12 @@ class _AppDrawer extends HookConsumerWidget {
 
               if (confirm != true) return;
 
-              try {
-                await ref.read(authProvider.notifier).logout();
-                
-                // 5. Invalidar TODOS los providers relacionados (limpia caché)
-                ref.invalidate(authProvider);
-                
-                // 6. Navegar a login (montado)
-                if (context.mounted) {
-                  context.go('/auth/login');
-                }
-              } catch (e) {
-                // 7. Mostrar error si falla
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error al cerrar sesión: $e'),
-                      backgroundColor: MBETheme.brandRed,
-                    ),
-                  );
-                }
+              // Ejecutar logout (ya maneja errores internamente)
+              await ref.read(authProvider.notifier).logout();
+
+              // Navegar a login si el contexto sigue montado
+              if (context.mounted) {
+                context.go('/auth/login');
               }
             },
           ),
@@ -435,7 +412,6 @@ class _AppDrawer extends HookConsumerWidget {
     );
   }
 }
-
 
 class _DrawerItem extends StatelessWidget {
   final IconData icon;

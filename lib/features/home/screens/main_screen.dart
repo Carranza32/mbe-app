@@ -28,9 +28,9 @@ class _MainScreenState extends State<MainScreen> {
     ),
     NavigationItem(
       icon: Iconsax.radar,
-      activeIcon: Iconsax.radar5,
-      label: 'Rastrear',
-      route: '/tracking',
+      activeIcon: Iconsax.printer,
+      label: 'Impresiones',
+      route: '/print-orders/my-orders',
     ),
     NavigationItem(
       icon: Iconsax.note_add,
@@ -44,12 +44,12 @@ class _MainScreenState extends State<MainScreen> {
       label: 'Cotizar',
       route: '/quoter',
     ),
-    NavigationItem(
-      icon: Iconsax.box,
-      activeIcon: Iconsax.box,
-      label: 'Paquetes',
-      route: '/packages',
-    ),
+    // NavigationItem(
+    //   icon: Iconsax.box,
+    //   activeIcon: Iconsax.box,
+    //   label: 'Paquetes',
+    //   route: '/packages',
+    // ),
   ];
 
   void _onItemTapped(int index) {

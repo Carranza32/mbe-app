@@ -44,6 +44,26 @@ class DSInput {
     );
   }
 
+  static Widget password({
+    required String label,
+    String? value,
+    required Function(String) onChanged,
+    bool enabled = true,
+    bool required = false,
+    String? errorText,
+    TextEditingController? controller,
+  }) {
+    return _DSPasswordField(
+      label: label,
+      value: value,
+      onChanged: onChanged,
+      enabled: enabled,
+      required: required,
+      errorText: errorText,
+      controller: controller,
+    );
+  }
+
   /// TextArea multilinea
   static Widget textArea({
     required String label,
@@ -506,6 +526,129 @@ class DSCheckbox extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DSPasswordField extends StatefulWidget {
+  final String label;
+  final String? value;
+  final Function(String) onChanged;
+  final bool enabled;
+  final bool required;
+  final String? errorText;
+  final TextEditingController? controller;
+
+  const _DSPasswordField({
+    required this.label,
+    this.value,
+    required this.onChanged,
+    this.enabled = true,
+    this.required = false,
+    this.errorText,
+    this.controller,
+  });
+
+  @override
+  State<_DSPasswordField> createState() => _DSPasswordFieldState();
+}
+
+class _DSPasswordFieldState extends State<_DSPasswordField> {
+  late TextEditingController _controller;
+  late FocusNode _focusNode;
+  bool _obscureText = true;
+  bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = widget.controller ?? TextEditingController(text: widget.value);
+    _focusNode = FocusNode();
+    _focusNode.addListener(() {
+      setState(() => _isFocused = _focusNode.hasFocus);
+    });
+  }
+
+  @override
+  void dispose() {
+    if (widget.controller == null) _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              widget.label,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (widget.required) ...[
+              const SizedBox(width: 4),
+              Text(
+                '*',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: MBETheme.brandRed,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: MBETheme.lightGray,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: widget.errorText != null
+                  ? MBETheme.brandRed
+                  : _isFocused
+                      ? MBETheme.brandBlack
+                      : Colors.grey.withOpacity(0.2),
+              width: _isFocused ? 2 : 1,
+            ),
+          ),
+          child: TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            obscureText: _obscureText,
+            enabled: widget.enabled,
+            onChanged: widget.onChanged,
+            style: theme.textTheme.bodyLarge,
+            decoration: InputDecoration(
+              hintText: '••••••••',
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(_obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                onPressed: () => setState(() => _obscureText = !_obscureText),
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+            ),
+          ),
+        ),
+        if (widget.errorText != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            widget.errorText!,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: MBETheme.brandRed,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

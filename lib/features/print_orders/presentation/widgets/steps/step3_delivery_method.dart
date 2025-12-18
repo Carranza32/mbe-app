@@ -13,7 +13,6 @@ import '../../../../../core/design_system/ds_selection_cards.dart';
 // ✅ CAMBIO: Importa el provider centralizado
 import '../../../providers/create_order_provider.dart';
 import '../../../providers/print_config_provider.dart';
-import '../../../providers/delivery_pricing_provider.dart';
 
 class Step3DeliveryMethod extends HookConsumerWidget {
   const Step3DeliveryMethod({Key? key}) : super(key: key);
@@ -25,8 +24,9 @@ class Step3DeliveryMethod extends HookConsumerWidget {
     
     // ✅ CAMBIO: Lee desde el provider centralizado
     final orderState = ref.watch(createOrderProvider);
+    final orderNotifier = ref.read(createOrderProvider.notifier);
     final deliveryInfo = orderState.request?.deliveryInfo;
-    final deliveryPricing = ref.watch(deliveryPricingProvider);
+    final pricing = orderNotifier.calculatePricing();
     final configAsync = ref.watch(printConfigProvider);
 
     // ✅ FIX: Determinar método actual (por defecto pickup si es null)
@@ -116,10 +116,10 @@ class Step3DeliveryMethod extends HookConsumerWidget {
                   // ✅ CAMBIO: Actualiza en el provider centralizado
                   ref.read(createOrderProvider.notifier).setDeliveryMethod('delivery');
                 },
-                badge: deliveryPricing.isFreeDelivery
+                badge: pricing.isFreeDelivery
                     ? DSBadge.success(label: '¡Envío gratis!')
                     : DSBadge.info(
-                        label: 'Desde \$${deliveryPricing.baseCost.toStringAsFixed(2)}',
+                        label: 'Desde \$${pricing.deliveryBaseCost.toStringAsFixed(2)}',
                       ),
               ),
             ],
@@ -156,10 +156,10 @@ class Step3DeliveryMethod extends HookConsumerWidget {
                 )
               : _DeliveryContent(
                   key: const ValueKey('delivery-content'), // ✅ FIX: Key única
-                  address: deliveryInfo?.address ?? '',
-                  phone: deliveryInfo?.phone ?? '',
-                  notes: deliveryInfo?.notes ?? '',
-                  pricing: deliveryPricing,
+                  address: deliveryInfo.address ?? '',
+                  phone: deliveryInfo.phone ?? '',
+                  notes: deliveryInfo.notes ?? '',
+                  pricing: pricing,
                   onAddressChanged: (value) {
                     ref.read(createOrderProvider.notifier).setDeliveryAddress(value);
                   },
@@ -303,7 +303,7 @@ class _DeliveryContent extends StatelessWidget {
   final String address;
   final String phone;
   final String notes;
-  final DeliveryPricingResult pricing;
+  final PriceBreakdown pricing;
   final Function(String) onAddressChanged;
   final Function(String) onPhoneChanged;
   final Function(String) onNotesChanged;
@@ -425,7 +425,9 @@ class _DeliveryContent extends StatelessWidget {
                     const SizedBox(width: MBESpacing.md),
                     Expanded(
                       child: Text(
-                        pricing.message,
+                        pricing.isFreeDelivery
+                            ? '¡Envío gratis! (pedido mayor a \$${pricing.freeDeliveryMinimum.toStringAsFixed(2)})'
+                            : 'Costo de envío: \$${pricing.deliveryCost.toStringAsFixed(2)}',
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: pricing.isFreeDelivery 
@@ -443,7 +445,7 @@ class _DeliveryContent extends StatelessWidget {
                   _InfoRow(
                     icon: Iconsax.dollar_circle,
                     label: 'Costo base',
-                    value: '\$${pricing.baseCost.toStringAsFixed(2)}',
+                    value: '\$${pricing.deliveryBaseCost.toStringAsFixed(2)}',
                     iconColor: const Color(0xFF10B981),
                   ),
                   

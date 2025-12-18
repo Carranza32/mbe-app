@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../config/theme/app_colors.dart';
+import '../../../../core/providers/user_role_provider.dart';
 
-class AppDrawer extends StatelessWidget {
+class AppDrawer extends HookConsumerWidget {
   const AppDrawer({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(isAdminProvider);
+    
     return Drawer(
       backgroundColor: AppColors.backgroundLight,
       child: SafeArea(
@@ -138,25 +143,54 @@ class AppDrawer extends StatelessWidget {
                       _DrawerItem(
                         icon: Iconsax.radar,
                         title: 'Rastrear paquete',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/tracking');
+                        },
                       ),
                       _DrawerItem(
                         icon: Iconsax.note_add,
                         title: 'Pre-alertar',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/pre-alert');
+                        },
                       ),
                       _DrawerItem(
                         icon: Iconsax.calculator,
                         title: 'Cotizar',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/quoter');
+                        },
                       ),
                       _DrawerItem(
                         icon: Iconsax.box,
                         title: 'Tus paquetes',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/packages');
+                        },
                       ),
                     ],
                   ),
+                  if (isAdmin) ...[
+                    const SizedBox(height: 16),
+                    _DrawerSection(
+                      title: 'Administración',
+                      items: [
+                        _DrawerItem(
+                          icon: Iconsax.box,
+                          title: 'Admin - Pre-Alerts',
+                          iconColor: AppColors.warning,
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.go('/admin/pre-alerts');
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   _DrawerSection(
                     title: 'Cuenta',

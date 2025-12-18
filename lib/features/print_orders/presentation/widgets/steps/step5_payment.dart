@@ -5,10 +5,8 @@ import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
-import '../../../providers/order_total_provider.dart';
-import '../../../providers/confirmation_state_provider.dart';
+import '../../../providers/create_order_provider.dart';
 import '../../../providers/order_processor_provider.dart';
-import '../../../providers/card_data_provider.dart';
 
 class Step5Payment extends ConsumerWidget {
   const Step5Payment({Key? key}) : super(key: key);
@@ -17,14 +15,15 @@ class Step5Payment extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
-    // 🎯 LEER del provider (como en tus otros pasos)
-    final cardData = ref.watch(cardDataProvider);
-    final orderTotal = ref.watch(orderTotalCalculatorProvider);
-    final confirmationState = ref.watch(confirmationStateProvider);
+
+    // ✅ CAMBIO: Usa el provider centralizado
+    final orderState = ref.watch(createOrderProvider);
+    final orderNotifier = ref.read(createOrderProvider.notifier);
     final processorState = ref.watch(orderProcessorProvider);
-    
-    final showCardForm = confirmationState.paymentMethod == PaymentMethod.card;
+
+    final paymentInfo = orderState.paymentInfo;
+    final pricing = orderNotifier.calculatePricing();
+    final showCardForm = paymentInfo.method == PaymentMethod.card;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,7 +70,7 @@ class Step5Payment extends ConsumerWidget {
                             ),
                           ),
                           Text(
-                            '\$${orderTotal.grandTotal.toStringAsFixed(2)}',
+                            '\$${pricing.grandTotal.toStringAsFixed(2)}',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: MBETheme.brandBlack,
@@ -141,7 +140,7 @@ class Step5Payment extends ConsumerWidget {
           FadeInUp(
             duration: const Duration(milliseconds: 400),
             delay: const Duration(milliseconds: 100),
-            child: _CardPreview(cardData: cardData),
+            child: _CardPreview(paymentInfo: paymentInfo),
           ),
 
           const SizedBox(height: MBESpacing.xl),
@@ -158,7 +157,11 @@ class Step5Payment extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Iconsax.card_pos, size: 24, color: colorScheme.onSurface),
+                      Icon(
+                        Iconsax.card_pos,
+                        size: 24,
+                        color: colorScheme.onSurface,
+                      ),
                       const SizedBox(width: MBESpacing.md),
                       Text(
                         'Información de Tarjeta',
@@ -168,23 +171,23 @@ class Step5Payment extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: MBESpacing.xl),
 
                   // 🎯 Campos individuales simples
                   _CardNumberField(
-                    initialValue: cardData.cardNumber,
+                    initialValue: paymentInfo.cardNumber ?? '',
                     onChanged: (value) {
-                      ref.read(cardDataProvider.notifier).updateCardNumber(value);
+                      orderNotifier.setCardNumber(value);
                     },
                   ),
 
                   const SizedBox(height: MBESpacing.lg),
 
                   _CardHolderField(
-                    initialValue: cardData.cardHolder,
+                    initialValue: paymentInfo.cardHolder ?? '',
                     onChanged: (value) {
-                      ref.read(cardDataProvider.notifier).updateCardHolder(value);
+                      orderNotifier.setCardHolder(value);
                     },
                   ),
 
@@ -194,18 +197,18 @@ class Step5Payment extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: _ExpiryDateField(
-                          initialValue: cardData.expiryDate,
+                          initialValue: paymentInfo.expiryDate ?? '',
                           onChanged: (value) {
-                            ref.read(cardDataProvider.notifier).updateExpiryDate(value);
+                            orderNotifier.setExpiryDate(value);
                           },
                         ),
                       ),
                       const SizedBox(width: MBESpacing.md),
                       Expanded(
                         child: _CVVField(
-                          initialValue: cardData.cvv,
+                          initialValue: paymentInfo.cvv ?? '',
                           onChanged: (value) {
-                            ref.read(cardDataProvider.notifier).updateCVV(value);
+                            orderNotifier.setCVV(value);
                           },
                         ),
                       ),
@@ -226,7 +229,7 @@ class Step5Payment extends ConsumerWidget {
               child: Column(
                 children: [
                   Icon(
-                    confirmationState.paymentMethod == PaymentMethod.cash
+                    paymentInfo.method == PaymentMethod.cash
                         ? Iconsax.money
                         : Iconsax.bank,
                     size: 64,
@@ -234,7 +237,7 @@ class Step5Payment extends ConsumerWidget {
                   ),
                   const SizedBox(height: MBESpacing.lg),
                   Text(
-                    _getPaymentMessage(confirmationState.paymentMethod),
+                    _getPaymentMessage(paymentInfo.method),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -242,7 +245,7 @@ class Step5Payment extends ConsumerWidget {
                   ),
                   const SizedBox(height: MBESpacing.sm),
                   Text(
-                    _getPaymentDescription(confirmationState.paymentMethod),
+                    _getPaymentDescription(paymentInfo.method),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -284,7 +287,7 @@ class Step5Payment extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      '\$${orderTotal.grandTotal.toStringAsFixed(2)}',
+                      '\$${pricing.grandTotal.toStringAsFixed(2)}',
                       style: theme.textTheme.headlineMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -302,13 +305,13 @@ class Step5Payment extends ConsumerWidget {
                   child: Row(
                     children: [
                       Icon(
-                        _getPaymentIcon(confirmationState.paymentMethod),
+                        _getPaymentIcon(paymentInfo.method),
                         size: 18,
                         color: Colors.white,
                       ),
                       const SizedBox(width: MBESpacing.sm),
                       Text(
-                        confirmationState.getPaymentMethodName(),
+                        _getPaymentMethodName(paymentInfo.method),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.white,
                         ),
@@ -339,15 +342,12 @@ class Step5Payment extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Iconsax.warning_2,
-                    size: 18,
-                    color: MBETheme.brandRed,
-                  ),
+                  Icon(Iconsax.warning_2, size: 18, color: MBETheme.brandRed),
                   const SizedBox(width: MBESpacing.sm),
                   Expanded(
                     child: Text(
-                      processorState.errorMessage ?? 'Error al procesar el pedido',
+                      processorState.errorMessage ??
+                          'Error al procesar el pedido',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: MBETheme.brandRed,
                       ),
@@ -419,6 +419,17 @@ class Step5Payment extends ConsumerWidget {
     }
   }
 
+  String _getPaymentMethodName(PaymentMethod method) {
+    switch (method) {
+      case PaymentMethod.card:
+        return 'Tarjeta';
+      case PaymentMethod.cash:
+        return 'Efectivo';
+      case PaymentMethod.transfer:
+        return 'Transferencia';
+    }
+  }
+
   IconData _getPaymentIcon(PaymentMethod method) {
     switch (method) {
       case PaymentMethod.cash:
@@ -433,14 +444,14 @@ class Step5Payment extends ConsumerWidget {
 
 // 🎴 Vista previa simple de la tarjeta
 class _CardPreview extends StatelessWidget {
-  final CardData cardData;
+  final PaymentInfo paymentInfo;
 
-  const _CardPreview({required this.cardData});
+  const _CardPreview({required this.paymentInfo});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       height: 200,
       padding: const EdgeInsets.all(MBESpacing.xl),
@@ -463,7 +474,11 @@ class _CardPreview extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Iconsax.card, size: 40, color: Colors.white.withValues(alpha: 0.8)),
+              Icon(
+                Iconsax.card,
+                size: 40,
+                color: Colors.white.withValues(alpha: 0.8),
+              ),
               Text(
                 'VISA',
                 style: theme.textTheme.titleLarge?.copyWith(
@@ -474,9 +489,9 @@ class _CardPreview extends StatelessWidget {
             ],
           ),
           Text(
-            cardData.cardNumber.isEmpty
+            paymentInfo.cardNumber?.isEmpty ?? true
                 ? '•••• •••• •••• ••••'
-                : _formatCardNumber(cardData.cardNumber),
+                : _formatCardNumber(paymentInfo.cardNumber ?? ''),
             style: theme.textTheme.headlineSmall?.copyWith(
               color: Colors.white,
               letterSpacing: 2,
@@ -497,9 +512,9 @@ class _CardPreview extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    cardData.cardHolder.isEmpty
+                    paymentInfo.cardHolder?.isEmpty ?? true
                         ? 'NOMBRE APELLIDO'
-                        : cardData.cardHolder.toUpperCase(),
+                        : paymentInfo.cardHolder!.toUpperCase(),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -518,7 +533,9 @@ class _CardPreview extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    cardData.expiryDate.isEmpty ? 'MM/AA' : cardData.expiryDate,
+                    paymentInfo.expiryDate?.isEmpty ?? true
+                        ? 'MM/AA'
+                        : paymentInfo.expiryDate!,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -536,7 +553,7 @@ class _CardPreview extends StatelessWidget {
   String _formatCardNumber(String number) {
     final cleaned = number.replaceAll(' ', '');
     if (cleaned.length <= 4) return cleaned;
-    
+
     final buffer = StringBuffer();
     for (int i = 0; i < cleaned.length; i++) {
       if (i > 0 && i % 4 == 0) buffer.write(' ');
@@ -551,10 +568,7 @@ class _CardNumberField extends StatelessWidget {
   final String initialValue;
   final ValueChanged<String> onChanged;
 
-  const _CardNumberField({
-    required this.initialValue,
-    required this.onChanged,
-  });
+  const _CardNumberField({required this.initialValue, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -583,10 +597,7 @@ class _CardHolderField extends StatelessWidget {
   final String initialValue;
   final ValueChanged<String> onChanged;
 
-  const _CardHolderField({
-    required this.initialValue,
-    required this.onChanged,
-  });
+  const _CardHolderField({required this.initialValue, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -610,10 +621,7 @@ class _ExpiryDateField extends StatelessWidget {
   final String initialValue;
   final ValueChanged<String> onChanged;
 
-  const _ExpiryDateField({
-    required this.initialValue,
-    required this.onChanged,
-  });
+  const _ExpiryDateField({required this.initialValue, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -642,10 +650,7 @@ class _CVVField extends StatelessWidget {
   final String initialValue;
   final ValueChanged<String> onChanged;
 
-  const _CVVField({
-    required this.initialValue,
-    required this.onChanged,
-  });
+  const _CVVField({required this.initialValue, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {

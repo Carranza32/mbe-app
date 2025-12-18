@@ -4,8 +4,10 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:iconsax/iconsax.dart';
+import 'package:mbe_orders_app/features/auth/presentation/screens/register_screen.dart';
 import '../../../../config/theme/mbe_theme.dart';
+import '../../../../core/design_system/ds_inputs.dart';
+import '../../../../core/design_system/ds_buttons.dart';
 import '../../data/models/user_model.dart';
 import '../../providers/auth_provider.dart';
 
@@ -14,10 +16,10 @@ class LoginScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final emailController = useTextEditingController(text: 'mario.carranza996@gmail.com');
-    final passwordController = useTextEditingController(text: 'Carranza32');
-    final isPasswordVisible = useState(false);
+    final email = useState('mario.carranza996@gmail.com');
+    final password = useState('Carranza32');
     final authState = ref.watch(authProvider);
+    final theme = Theme.of(context);
 
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
       next.whenData((user) {
@@ -35,111 +37,120 @@ class LoginScreen extends HookConsumerWidget {
     });
 
     return Scaffold(
-      backgroundColor: MBETheme.lightGray,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const SizedBox(height: 40),
-              
-              // Logo
-              FadeInDown(
-                child: Container(
-                  width: 205,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: MBETheme.lightGray,
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+      backgroundColor: Colors.white,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+                
+                // Logo
+                FadeInDown(
+                  child: Container(
+                    width: 205,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Image.asset(
+                        'assets/images/logo-mbe_horizontal_2.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: MBETheme.brandBlack,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'MAIL BOXES ETC.',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: Image.asset(
-                      'assets/images/logo-mbe_horizontal_2.png',
-                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
-              ),
-              
-              const SizedBox(height: 32),
-              
-              Text(
-                'Bienvenido de nuevo',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              
-              const SizedBox(height: 8),
-              
-              Text(
-                'Inicia sesión para continuar',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: MBETheme.neutralGray,
-                ),
-              ),
-              
-              const SizedBox(height: 48),
-              
-              // Form
-              FadeInUp(
-                delay: const Duration(milliseconds: 200),
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                      ),
-                    ],
+                
+                const SizedBox(height: 40),
+                
+                Text(
+                  'Bienvenido de nuevo',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                  child: Column(
-                    children: [
-                      _TextField(
-                        controller: emailController,
-                        label: 'Correo Electrónico',
-                        hint: 'tu@email.com',
-                        icon: Iconsax.sms,
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      _TextField(
-                        controller: passwordController,
-                        label: 'Contraseña',
-                        hint: '••••••••',
-                        icon: Iconsax.lock,
-                        obscureText: !isPasswordVisible.value,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            isPasswordVisible.value ? Iconsax.eye : Iconsax.eye_slash,
-                          ),
-                          onPressed: () => isPasswordVisible.value = !isPasswordVisible.value,
+                ),
+                
+                const SizedBox(height: 8),
+                
+                Text(
+                  'Inicia sesión para continuar',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: MBETheme.neutralGray,
+                  ),
+                ),
+                
+                const SizedBox(height: 48),
+                
+                // Form
+                FadeInUp(
+                  delay: const Duration(milliseconds: 200),
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
                         ),
-                      ),
-                      
-                      const SizedBox(height: 24),
-                      
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        DSInput.email(
+                          label: 'Correo Electrónico',
+                          value: email.value,
+                          onChanged: (value) => email.value = value,
+                          required: true,
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        DSInput.password(
+                          label: 'Contraseña',
+                          value: password.value,
+                          onChanged: (value) => password.value = value,
+                          required: true,
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        DSButton.primary(
+                          label: 'Iniciar Sesión',
                           onPressed: authState.isLoading
                               ? null
                               : () async {
-                                  if (emailController.text.isEmpty || 
-                                      passwordController.text.isEmpty) {
+                                  if (email.value.isEmpty || password.value.isEmpty) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text('Completa todos los campos'),
@@ -149,94 +160,53 @@ class LoginScreen extends HookConsumerWidget {
                                   }
                                   
                                   await ref.read(authProvider.notifier).login(
-                                    emailController.text.trim(),
-                                    passwordController.text,
+                                    email.value.trim(),
+                                    password.value,
                                   );
                                 },
-                          style: FilledButton.styleFrom(
-                            backgroundColor: MBETheme.brandBlack,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                          isLoading: authState.isLoading,
+                          fullWidth: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Link a registro
+                FadeInUp(
+                  delay: const Duration(milliseconds: 400),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '¿No tienes una cuenta? ',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RegisterScreen(),
                           ),
-                          child: authState.isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(Colors.white),
-                                  ),
-                                )
-                              : const Text('Iniciar Sesión'),
+                        ),
+                        child: Text(
+                          'Crear cuenta',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: MBETheme.brandRed,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _TextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final IconData icon;
-  final bool obscureText;
-  final TextInputType? keyboardType;
-  final Widget? suffixIcon;
-
-  const _TextField({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    required this.icon,
-    this.obscureText = false,
-    this.keyboardType,
-    this.suffixIcon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: Icon(icon, color: MBETheme.neutralGray),
-            suffixIcon: suffixIcon,
-            filled: true,
-            fillColor: MBETheme.lightGray,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: MBETheme.brandBlack, width: 2),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

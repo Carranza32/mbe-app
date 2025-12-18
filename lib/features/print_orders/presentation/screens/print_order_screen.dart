@@ -8,8 +8,6 @@ import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import 'package:mbe_orders_app/features/print_orders/providers/stepper_provider.dart';
 
 import '../../../../core/network/dio_provider.dart';
-import '../../providers/card_data_provider.dart';
-import '../../providers/confirmation_state_provider.dart';
 import '../../providers/create_order_provider.dart';
 import '../../providers/order_processor_provider.dart';
 import '../widgets/stepper/mbe_stepper.dart';
@@ -240,16 +238,16 @@ class PrintOrderScreen extends HookConsumerWidget {
     );
 
     try {
-      // Obtener datos de la tarjeta si el método de pago es tarjeta
-      final confirmationState = ref.read(confirmationStateProvider);
-      final cardData = ref.read(cardDataProvider);
+      // ✅ CAMBIO: Obtener datos del provider centralizado
+      final orderState = ref.read(createOrderProvider);
+      final paymentInfo = orderState.paymentInfo;
       
       // Procesar la orden con el processor
       final success = await ref.read(orderProcessorProvider.notifier).processOrder(
-        cardNumber: confirmationState.paymentMethod == PaymentMethod.card ? cardData.cardNumber : null,
-        cardHolder: confirmationState.paymentMethod == PaymentMethod.card ? cardData.cardHolder : null,
-        expiryDate: confirmationState.paymentMethod == PaymentMethod.card ? cardData.expiryDate : null,
-        cvv: confirmationState.paymentMethod == PaymentMethod.card ? cardData.cvv : null,
+        cardNumber: paymentInfo.method == PaymentMethod.card ? paymentInfo.cardNumber : null,
+        cardHolder: paymentInfo.method == PaymentMethod.card ? paymentInfo.cardHolder : null,
+        expiryDate: paymentInfo.method == PaymentMethod.card ? paymentInfo.expiryDate : null,
+        cvv: paymentInfo.method == PaymentMethod.card ? paymentInfo.cvv : null,
       );
 
       if (!context.mounted) return;
@@ -285,7 +283,6 @@ class PrintOrderScreen extends HookConsumerWidget {
                 onPressed: () {
                   // Limpiar estados
                   ref.read(createOrderProvider.notifier).reset();
-                  ref.read(cardDataProvider.notifier).reset();
                   ref.read(orderProcessorProvider.notifier).reset();
                   
                   Navigator.pop(context); // Cerrar dialog

@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mbe_orders_app/features/auth/presentation/screens/login_screen.dart';
+import 'package:mbe_orders_app/features/auth/presentation/screens/register_screen.dart';
 import 'package:mbe_orders_app/features/home/screens/home_screen.dart';
 import 'package:mbe_orders_app/features/home/screens/main_screen.dart';
 import 'package:mbe_orders_app/features/packages/screens/packages_screen.dart';
@@ -11,8 +11,10 @@ import 'package:mbe_orders_app/features/print_orders/presentation/screens/my_ord
 import 'package:mbe_orders_app/features/print_orders/presentation/screens/print_order_screen.dart';
 import 'package:mbe_orders_app/features/quoter/screens/quote_input_screen.dart';
 import 'package:mbe_orders_app/features/tracking/screens/tracking_screen.dart';
+import 'package:mbe_orders_app/features/admin/pre_alert/presentation/screens/admin_pre_alerts_list_screen.dart';
 
 import '../../core/network/dio_provider.dart';
+import '../../core/providers/user_role_provider.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -21,10 +23,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final storage = ref.read(secureStorageProvider);
       final token = await storage.read(key: 'auth_token');
       final hasToken = token != null && token.isNotEmpty;
-
-      // await storage.delete(key: 'auth_token');
       
-      final isLoginRoute = state.matchedLocation == '/auth/login';
+      final isLoginRoute = state.matchedLocation == '/auth/login' || 
+                          state.matchedLocation == '/auth/register';
+      
+      final isAdminRoute = state.matchedLocation.startsWith('/admin');
+      
+      if (isAdminRoute) {
+        if (!hasToken) {
+          return '/auth/login';
+        }
+        final isAdmin = ref.read(isAdminProvider);
+        if (!isAdmin) {
+          return '/print-orders/my-orders';
+        }
+      }
       
       if (!hasToken && !isLoginRoute) {
         return '/auth/login';
@@ -34,7 +47,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/print-orders/my-orders';
       }
       
-      return null; // No redirigir
+      return null;
     },
     routes: [
       ShellRoute(
@@ -47,6 +60,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             name: 'home',
             pageBuilder: (context, state) => const NoTransitionPage(
               child: HomeScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/print-orders/my-orders',
+            name: 'my-print-orders',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: MyOrdersScreen(),
             ),
           ),
           GoRoute(
@@ -77,6 +97,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               child: PackagesScreen(),
             ),
           ),
+          GoRoute(
+            path: '/admin/pre-alerts',
+            name: 'admin-pre-alerts',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: AdminPreAlertsListScreen(),
+            ),
+          ),
         ],
       ),
 
@@ -87,26 +114,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           builder: (context, state) => const LoginScreen()
         ),
 
+        GoRoute(
+          path: '/auth/register',
+          name: 'register',
+          builder: (context, state) => const RegisterScreen(),
+        ),
+
         //Modulo de impresiones
         GoRoute(
           path: '/print-orders/create',
           name: 'create-print-order',
           builder: (context, state) => const PrintOrderScreen(),
         ),
-
-        GoRoute(
-          path: '/print-orders/my-orders',
-          name: 'my-print-orders',
-          builder: (context, state) => const MyOrdersScreen(),
-        ),
-
-        // GoRoute(
-        //   path: '/pre-alert',
-        //   name: 'pre-alert',
-        //   pageBuilder: (context, state) => const NoTransitionPage(
-        //     child: PreAlertsListScreen(),
-        //   ),
-        // ),
 
         GoRoute(
           path: '/pre-alert/create',

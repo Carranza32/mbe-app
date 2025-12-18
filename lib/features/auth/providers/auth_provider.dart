@@ -14,15 +14,14 @@ class Auth extends _$Auth {
   Future<User?> build() async {
     final storage = ref.read(secureStorageProvider);
     final token = await storage.read(key: 'auth_token');
-
-    // await storage.delete(key: 'auth_token');
-    //     await storage.delete(key: 'user');
     
-    if (token != null) {
+    if (token != null && token.isNotEmpty) {
       try {
-        return await ref.read(authRepositoryProvider).getCurrentUser();
+        // Intentar obtener el usuario actual desde el servidor
+        final user = await ref.read(authRepositoryProvider).getCurrentUser();
+        return user;
       } catch (e) {
-        // Si falla obtener usuario, limpiar token inválido
+        // Si falla (token inválido/expirado), limpiar datos locales
         await storage.delete(key: 'auth_token');
         await storage.delete(key: 'user');
         return null;
@@ -31,16 +30,23 @@ class Auth extends _$Auth {
     return null;
   }
 
+  /// Login con email y contraseña
   Future<void> login(String email, String password) async {
     state = const AsyncLoading();
     
     state = await AsyncValue.guard(() async {
+      // Validación básica
+      if (email.isEmpty || password.isEmpty) {
+        throw Exception('Email y contraseña son requeridos');
+      }
+      
+      // Llamar al repositorio
       final authResponse = await ref.read(authRepositoryProvider).loginWithEmail(
-        email: email,
+        email: email.trim(),
         password: password,
       );
       
-      // Guardar token
+      // Guardar token y usuario en secure storage
       final storage = ref.read(secureStorageProvider);
       await storage.write(key: 'auth_token', value: authResponse.token);
       await storage.write(key: 'user', value: jsonEncode(authResponse.user.toJson()));
@@ -49,26 +55,26 @@ class Auth extends _$Auth {
     });
   }
 
-  /// ✅ LOGOUT MEJORADO - Siempre limpia el estado local
+  /// Cerrar sesión - Limpia token y estado
   Future<void> logout() async {
     final storage = ref.read(secureStorageProvider);
     
     try {
-      // 1. Intentar llamar al backend (NO crítico si falla)
+      // 1. Intentar llamar al backend para invalidar el token (opcional, no crítico)
       await ref.read(authRepositoryProvider).logout();
-      print('✅ Logout en backend exitoso');
     } catch (e) {
-      print('⚠️ Error en logout backend (continuando): $e');
-      // NO lanzar error - continuar con limpieza local
+      // Si falla el logout en el backend, continuar con limpieza local
+      // Esto es importante para que el logout siempre funcione incluso sin conexión
     }
     
-    // 2. SIEMPRE limpiar token local (crítico)
+    // 2. SIEMPRE limpiar datos locales (crítico)
     await storage.delete(key: 'auth_token');
     await storage.delete(key: 'user');
-    print('✅ Token local eliminado');
     
-    // 3. SIEMPRE actualizar estado a null (crítico)
+    // 3. SIEMPRE actualizar estado a null para forzar rebuild
     state = const AsyncData(null);
-    print('✅ Estado actualizado a null');
+    
+    // 4. Invalidar el provider para forzar reconstrucción en el próximo acceso
+    ref.invalidateSelf();
   }
 }

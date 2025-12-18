@@ -3,17 +3,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/create_order_request.dart';
 import '../data/repositories/print_order_repository.dart';
 import 'create_order_provider.dart'; // ✅ CAMBIO: Usa el provider centralizado
-import 'confirmation_state_provider.dart'; // Solo para método de pago
 
 part 'order_processor_provider.g.dart';
 
 /// Estado del procesamiento de orden
-enum OrderProcessingStatus {
-  idle,
-  processing,
-  success,
-  error,
-}
+enum OrderProcessingStatus { idle, processing, success, error }
 
 class OrderProcessingState {
   final OrderProcessingStatus status;
@@ -29,10 +23,10 @@ class OrderProcessingState {
   });
 
   OrderProcessingState.idle()
-      : status = OrderProcessingStatus.idle,
-        orderId = null,
-        errorMessage = null,
-        paymentUrl = null;
+    : status = OrderProcessingStatus.idle,
+      orderId = null,
+      errorMessage = null,
+      paymentUrl = null;
 
   bool get isProcessing => status == OrderProcessingStatus.processing;
   bool get isSuccess => status == OrderProcessingStatus.success;
@@ -97,12 +91,16 @@ class OrderProcessor extends _$OrderProcessor {
       }
 
       // Validar método de pago con tarjeta
-      final confirmationState = ref.read(confirmationStateProvider);
-      if (confirmationState.paymentMethod == PaymentMethod.card) {
-        if (cardNumber == null || cardNumber.isEmpty ||
-            cardHolder == null || cardHolder.isEmpty ||
-            expiryDate == null || expiryDate.isEmpty ||
-            cvv == null || cvv.isEmpty) {
+      final paymentInfo = orderState.paymentInfo;
+      if (paymentInfo.method == PaymentMethod.card) {
+        if (cardNumber == null ||
+            cardNumber.isEmpty ||
+            cardHolder == null ||
+            cardHolder.isEmpty ||
+            expiryDate == null ||
+            expiryDate.isEmpty ||
+            cvv == null ||
+            cvv.isEmpty) {
           state = OrderProcessingState(
             status: OrderProcessingStatus.error,
             errorMessage: 'Completa la información de la tarjeta',
@@ -134,9 +132,9 @@ class OrderProcessor extends _$OrderProcessor {
 
   /// Validar información del cliente
   bool _isCustomerValid(CustomerInfo customer) {
-    return customer.name.isNotEmpty && 
-           customer.email.isNotEmpty &&
-           RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(customer.email);
+    return customer.name.isNotEmpty &&
+        customer.email.isNotEmpty &&
+        RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(customer.email);
   }
 
   /// Validar información de entrega
@@ -144,10 +142,10 @@ class OrderProcessor extends _$OrderProcessor {
     if (delivery.method == 'pickup') {
       return delivery.pickupLocation != null;
     } else {
-      return delivery.address != null && 
-             delivery.address!.isNotEmpty &&
-             delivery.phone != null &&
-             delivery.phone!.isNotEmpty;
+      return delivery.address != null &&
+          delivery.address!.isNotEmpty &&
+          delivery.phone != null &&
+          delivery.phone!.isNotEmpty;
     }
   }
 

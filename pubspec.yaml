@@ -60,6 +60,7 @@ dependencies:
   flutter_credit_card: ^3.0.7
   awesome_card: ^1.1.7
   credit_card_type_detector: ^3.0.0
+  mobile_scanner: ^5.2.3
 
 dev_dependencies:
   flutter_test:

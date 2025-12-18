@@ -9,7 +9,6 @@ import 'package:mbe_orders_app/core/design_system/ds_badges.dart';
 // ✅ CAMBIO: Importa el provider centralizado y los helpers
 import '../../../providers/create_order_provider.dart';
 import '../../../providers/print_configuration_state_provider.dart';
-import '../../../providers/print_pricing_provider.dart';
 import '../../../data/helpers/config_converters.dart';
 
 class Step2Configuration extends HookConsumerWidget {
@@ -22,7 +21,8 @@ class Step2Configuration extends HookConsumerWidget {
     
     // ✅ CAMBIO: Lee desde el provider centralizado
     final orderState = ref.watch(createOrderProvider);
-    final pricing = ref.watch(printPricingProvider);
+    final orderNotifier = ref.read(createOrderProvider.notifier);
+    final pricing = orderNotifier.calculatePricing();
 
     // ✅ CAMBIO: Obtener la config del request (puede ser null)
     final printConfig = orderState.request?.printConfig;
@@ -341,7 +341,7 @@ class Step2Configuration extends HookConsumerWidget {
 // ====== WIDGETS AUXILIARES (sin cambios) ======
 
 class _PricingSummary extends StatelessWidget {
-  final PriceCalculation pricing;
+  final PriceBreakdown pricing;
 
   const _PricingSummary({required this.pricing});
 
@@ -408,7 +408,7 @@ class _PricingSummary extends StatelessWidget {
           
           _CostRow(
             label: 'Subtotal',
-            amount: '\$${pricing.subtotal.toStringAsFixed(2)}',
+            amount: '\$${pricing.printSubtotal.toStringAsFixed(2)}',
           ),
           
           // const SizedBox(height: MBESpacing.sm),
@@ -431,7 +431,7 @@ class _PricingSummary extends StatelessWidget {
                 ),
               ),
               Text(
-                '\$${pricing.total.toStringAsFixed(2)}',
+                '\$${pricing.printTotal.toStringAsFixed(2)}',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: MBETheme.brandBlack,
@@ -543,7 +543,7 @@ class _PaperSizeSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final pricingNotifier = ref.read(printPricingProvider.notifier);
+    final orderNotifier = ref.read(createOrderProvider.notifier);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -554,7 +554,7 @@ class _PaperSizeSelector extends ConsumerWidget {
         ),
         const SizedBox(height: MBESpacing.sm),
         ...PaperSize.values.map((size) {
-          final priceRange = pricingNotifier.getPriceRange(size);
+          final priceRange = orderNotifier.getPriceRange(size);
           return _RadioOption<PaperSize>(
             value: size,
             groupValue: value,
