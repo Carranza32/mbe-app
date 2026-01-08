@@ -128,6 +128,15 @@ class _BaseButton extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final isEnabled = onPressed != null && !isLoading;
 
+    // Determinar el color del texto e icono según el tipo de botón
+    final textColor = type == _ButtonType.primary
+        ? (isEnabled ? Colors.white : MBETheme.neutralGray)
+        : (isEnabled ? colorScheme.onSurface : MBETheme.neutralGray);
+    
+    final iconColor = type == _ButtonType.primary
+        ? (isEnabled ? Colors.white : MBETheme.neutralGray)
+        : (isEnabled ? colorScheme.onSurface : MBETheme.neutralGray);
+
     Widget child = Row(
       mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -146,13 +155,16 @@ class _BaseButton extends StatelessWidget {
             ),
           )
         else if (icon != null)
-          Icon(icon, size: 20),
+          Icon(icon, size: 20, color: iconColor),
         if ((icon != null || isLoading) && label.isNotEmpty)
           const SizedBox(width: MBESpacing.sm),
         if (label.isNotEmpty)
           Text(
             label,
-            style: theme.textTheme.labelLarge,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w600,
+            ),
           ),
       ],
     );
@@ -181,12 +193,7 @@ class _BaseButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(MBERadius.large),
               child: Padding(
                 padding: effectivePadding,
-                child: DefaultTextStyle(
-                  style: theme.textTheme.labelLarge!.copyWith(
-                    color: isEnabled ? Colors.white : MBETheme.neutralGray,
-                  ),
-                  child: child,
-                ),
+                child: child,
               ),
             ),
           ),
@@ -258,8 +265,6 @@ class _IconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final isEnabled = onPressed != null;
 
     return AnimatedContainer(

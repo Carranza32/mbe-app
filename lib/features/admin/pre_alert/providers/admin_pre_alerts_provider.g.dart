@@ -33,7 +33,7 @@ final class AdminPreAlertsProvider
   AdminPreAlerts create() => AdminPreAlerts();
 }
 
-String _$adminPreAlertsHash() => r'0d8e8f371c1ec37d59793cacb06e6a7a38d10843';
+String _$adminPreAlertsHash() => r'4457f8fdf87c637f5971552a213ff4a5162224da';
 
 abstract class _$AdminPreAlerts extends $AsyncNotifier<List<AdminPreAlert>> {
   FutureOr<List<AdminPreAlert>> build();

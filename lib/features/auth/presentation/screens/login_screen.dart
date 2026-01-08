@@ -18,22 +18,30 @@ class LoginScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final email = useState('mario.carranza996@gmail.com');
     final password = useState('Carranza32');
+    // final email = useState('admin@admin.com');
+    // final password = useState('super1');
     final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
 
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
       next.whenData((user) {
-        if (user != null) context.go('/print-orders/my-orders');
+        if (user != null) {
+          // Redirigir según el rol del usuario
+          final isAdmin = user.isAdmin;
+          context.go(isAdmin ? '/' : '/print-orders/my-orders');
+        }
       });
-      
-      next.whenOrNull(error: (error, _) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString()),
-            backgroundColor: MBETheme.brandRed,
-          ),
-        );
-      });
+
+      next.whenOrNull(
+        error: (error, _) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(error.toString()),
+              backgroundColor: MBETheme.brandRed,
+            ),
+          );
+        },
+      );
     });
 
     return Scaffold(
@@ -46,7 +54,7 @@ class LoginScreen extends HookConsumerWidget {
             child: Column(
               children: [
                 const SizedBox(height: 40),
-                
+
                 // Logo
                 FadeInDown(
                   child: Container(
@@ -89,27 +97,27 @@ class LoginScreen extends HookConsumerWidget {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 40),
-                
+
                 Text(
                   'Bienvenido de nuevo',
                   style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 Text(
                   'Inicia sesión para continuar',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: MBETheme.neutralGray,
                   ),
                 ),
-                
+
                 const SizedBox(height: 48),
-                
+
                 // Form
                 FadeInUp(
                   delay: const Duration(milliseconds: 200),
@@ -133,36 +141,41 @@ class LoginScreen extends HookConsumerWidget {
                           onChanged: (value) => email.value = value,
                           required: true,
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         DSInput.password(
                           label: 'Contraseña',
                           value: password.value,
                           onChanged: (value) => password.value = value,
                           required: true,
                         ),
-                        
+
                         const SizedBox(height: 24),
-                        
+
                         DSButton.primary(
                           label: 'Iniciar Sesión',
                           onPressed: authState.isLoading
                               ? null
                               : () async {
-                                  if (email.value.isEmpty || password.value.isEmpty) {
+                                  if (email.value.isEmpty ||
+                                      password.value.isEmpty) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Completa todos los campos'),
+                                        content: Text(
+                                          'Completa todos los campos',
+                                        ),
                                       ),
                                     );
                                     return;
                                   }
-                                  
-                                  await ref.read(authProvider.notifier).login(
-                                    email.value.trim(),
-                                    password.value,
-                                  );
+
+                                  await ref
+                                      .read(authProvider.notifier)
+                                      .login(
+                                        email.value.trim(),
+                                        password.value,
+                                      );
                                 },
                           isLoading: authState.isLoading,
                           fullWidth: true,
@@ -171,9 +184,9 @@ class LoginScreen extends HookConsumerWidget {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Link a registro
                 FadeInUp(
                   delay: const Duration(milliseconds: 400),

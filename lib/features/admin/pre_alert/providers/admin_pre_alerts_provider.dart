@@ -1,24 +1,111 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/admin_pre_alert_model.dart';
 import '../data/models/package_status.dart';
+import '../data/repositories/admin_pre_alerts_repository.dart';
+import '../presentation/widgets/context_filter_segmented.dart';
 
 part 'admin_pre_alerts_provider.g.dart';
 
 @riverpod
 class AdminPreAlerts extends _$AdminPreAlerts {
+  String?
+  _currentStatusFilter; // 'por_recibir', 'en_bodega', 'para_entregar', o estado específico
+  int _currentPage = 1;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  List<AdminPreAlert> _allItems = [];
+
   @override
   Future<List<AdminPreAlert>> build() async {
-    return _getMockData();
+    _currentPage = 1;
+    _hasMore = true;
+    _allItems = [];
+
+    // Aplicar filtro por defecto si no hay uno establecido
+    if (_currentStatusFilter == null) {
+      _currentStatusFilter = 'por_recibir'; // Filtro por defecto
+    }
+
+    return await _loadPage(1);
   }
 
-  void filterByStatus(PackageStatus? status) {
-    final currentData = state.value ?? [];
-    if (status == null) {
-      state = AsyncData(currentData);
-      return;
+  Future<List<AdminPreAlert>> _loadPage(int page) async {
+    if (_isLoadingMore && page > 1) return _allItems;
+
+    _isLoadingMore = true;
+    try {
+      final repository = ref.read(adminPreAlertsRepositoryProvider);
+      final response = await repository.getPreAlerts(
+        statusFilter: _currentStatusFilter,
+        page: page,
+        perPage: 15,
+      );
+
+      if (page == 1) {
+        _allItems = List.from(response.data);
+      } else {
+        _allItems = [..._allItems, ...response.data];
+      }
+
+      _currentPage = response.currentPage;
+      _hasMore = response.hasMorePages;
+
+      // Debug: imprimir información de la respuesta
+      print(
+        '📦 Cargados ${response.data.length} paquetes de ${response.total} totales',
+      );
+      print('📄 Página ${response.currentPage} de ${response.lastPage}');
+
+      return List.from(_allItems);
+    } catch (e, stackTrace) {
+      // Si hay error, lanzarlo para que se muestre en el estado
+      print('❌ Error al cargar paquetes: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
+    } finally {
+      _isLoadingMore = false;
     }
-    final filtered = currentData.where((p) => p.status == status).toList();
-    state = AsyncData(filtered);
+  }
+
+  Future<void> loadMore() async {
+    if (!_hasMore || _isLoadingMore) return;
+
+    final currentState = state.value;
+    if (currentState == null) return;
+
+    final nextPage = _currentPage + 1;
+    await _loadPage(nextPage);
+
+    state = AsyncData([..._allItems]);
+  }
+
+  /// Filtrar por contexto (por_recibir, en_bodega, para_entregar)
+  void filterByContext(PackageContext context) {
+    String statusFilter;
+    switch (context) {
+      case PackageContext.porRecibir:
+        // Estado: lista_para_recibir (solo listos para recibir, no ingresadas)
+        statusFilter = 'por_recibir';
+        break;
+      case PackageContext.enBodega:
+        // Estado: en_tienda
+        statusFilter = 'en_bodega';
+        break;
+      case PackageContext.paraEntregar:
+        // Incluye estados: lista_retiro (pickup), confirmada_recoleccion (delivery)
+        statusFilter = 'para_entregar';
+        break;
+    }
+    _currentStatusFilter = statusFilter;
+    // Forzar estado de carga para mostrar shimmer
+    state = const AsyncLoading();
+    ref.invalidateSelf();
+  }
+
+  /// Filtrar por estado específico
+  void filterByStatus(PackageStatus? status) {
+    _currentStatusFilter = status?.key;
+    ref.invalidateSelf();
   }
 
   void search(String query) {
@@ -26,9 +113,8 @@ class AdminPreAlerts extends _$AdminPreAlerts {
       ref.invalidateSelf();
       return;
     }
-    final allData = _getMockData();
     final lowerQuery = query.toLowerCase();
-    final filtered = allData.where((p) {
+    final filtered = _allItems.where((p) {
       return p.trackingNumber.toLowerCase().contains(lowerQuery) ||
           p.eboxCode.toLowerCase().contains(lowerQuery) ||
           p.clientName.toLowerCase().contains(lowerQuery) ||
@@ -38,92 +124,13 @@ class AdminPreAlerts extends _$AdminPreAlerts {
   }
 
   Future<void> refresh() async {
+    _currentPage = 1;
+    _hasMore = true;
+    _allItems = [];
     state = const AsyncLoading();
-    await Future.delayed(const Duration(milliseconds: 500));
-    state = AsyncData(_getMockData());
+    state = await AsyncValue.guard(() => build());
   }
 
-  List<AdminPreAlert> _getMockData() {
-    return [
-      AdminPreAlert(
-        id: '1',
-        trackingNumber: '0340309409439043',
-        eboxCode: 'eeeeeeee',
-        clientName: 'Mario Carranza',
-        provider: 'ABERCROMBIE AND FITCH',
-        total: 300.00,
-        productCount: 1,
-        store: 'Imprenta Central San Salvador',
-        deliveryMethod: null,
-        status: PackageStatus.pendingConfirmation,
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      ),
-      AdminPreAlert(
-        id: '2',
-        trackingNumber: '1Z999AA10123456784',
-        eboxCode: 'SAL1400',
-        clientName: 'Juan Pérez',
-        provider: 'AMAZON',
-        total: 150.50,
-        productCount: 3,
-        store: 'Imprenta Santa Ana - Santa Ana',
-        deliveryMethod: 'delivery',
-        status: PackageStatus.readyToExport,
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-      AdminPreAlert(
-        id: '3',
-        trackingNumber: '1Z999AA10123456785',
-        eboxCode: 'SAL1401',
-        clientName: 'María González',
-        provider: 'EBAY',
-        total: 89.99,
-        productCount: 2,
-        store: 'Imprenta Central San Salvador',
-        deliveryMethod: 'pickup',
-        status: PackageStatus.delivery,
-        createdAt: DateTime.now().subtract(const Duration(hours: 12)),
-      ),
-      AdminPreAlert(
-        id: '4',
-        trackingNumber: '1Z999AA10123456786',
-        eboxCode: 'SAL1402',
-        clientName: 'Carlos Rodríguez',
-        provider: 'WALMART',
-        total: 245.75,
-        productCount: 5,
-        store: 'Imprenta Santa Ana - Santa Ana',
-        deliveryMethod: 'pickup',
-        status: PackageStatus.pickup,
-        createdAt: DateTime.now().subtract(const Duration(hours: 6)),
-      ),
-      AdminPreAlert(
-        id: '5',
-        trackingNumber: '1Z999AA10123456787',
-        eboxCode: 'SAL1403',
-        clientName: 'Ana Martínez',
-        provider: 'TARGET',
-        total: 199.99,
-        productCount: 1,
-        store: 'Imprenta Central San Salvador',
-        deliveryMethod: 'delivery',
-        status: PackageStatus.readyToExport,
-        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-      ),
-      AdminPreAlert(
-        id: '6',
-        trackingNumber: '1Z999AA10123456788',
-        eboxCode: 'SAL1404',
-        clientName: 'Luis Hernández',
-        provider: 'BEST BUY',
-        total: 450.00,
-        productCount: 2,
-        store: 'Imprenta Santa Ana - Santa Ana',
-        deliveryMethod: null,
-        status: PackageStatus.pendingConfirmation,
-        createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-      ),
-    ];
-  }
+  bool get isLoadingMore => _isLoadingMore;
+  bool get hasMore => _hasMore;
 }
-

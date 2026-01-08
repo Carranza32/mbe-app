@@ -19,10 +19,11 @@ class CreatePreAlertRequest {
 
   Map<String, dynamic> toJson() {
     return {
-      'tracking_number': trackingNumber,
-      'mailbox_number': mailboxNumber,
-      'store_id': storeId,
-      'total_value': totalValue.toString(),
+      'track_number': trackingNumber,
+      'locker_code': mailboxNumber,
+      'provider_id': int.tryParse(storeId) ?? 0, // Convertir a int
+      'total': totalValue,
+      'product_count': products.length,
       'products': products.map((p) => p.toJson()).toList(),
     };
   }
@@ -47,7 +48,7 @@ class CreatePreAlertRequest {
 }
 
 class PreAlertProduct {
-  final String productId;
+  final String productId; // product_category_id
   final String productName;
   final int quantity;
   final double price;
@@ -61,10 +62,9 @@ class PreAlertProduct {
 
   Map<String, dynamic> toJson() {
     return {
-      'product_id': productId,
-      'product_name': productName,
+      'product_category_id': int.tryParse(productId) ?? 0,
       'quantity': quantity,
-      'price': price.toString(),
+      'price': price,
     };
   }
 
@@ -89,15 +89,9 @@ class Store {
   final String id;
   final String name;
 
-  Store({
-    required this.id,
-    required this.name,
-  });
+  Store({required this.id, required this.name});
 
   factory Store.fromJson(Map<String, dynamic> json) {
-    return Store(
-      id: json['id'].toString(),
-      name: json['name'] as String,
-    );
+    return Store(id: json['id'].toString(), name: json['name'] as String);
   }
 }

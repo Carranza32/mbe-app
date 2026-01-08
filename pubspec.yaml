@@ -61,6 +61,8 @@ dependencies:
   awesome_card: ^1.1.7
   credit_card_type_detector: ^3.0.0
   mobile_scanner: ^5.2.3
+  signature: ^6.3.0
+  dropdown_search: ^5.0.6
 
 dev_dependencies:
   flutter_test:

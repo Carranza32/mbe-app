@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import '../../../../config/theme/mbe_theme.dart';
 import '../../data/models/create_pre_alert_request.dart';
-import '../../providers/products_provider.dart';
+import '../../../../features/admin/pre_alert/data/models/product_category_model.dart';
+import '../../../../features/admin/pre_alert/providers/product_categories_provider.dart';
 
 class ProductFormItem extends HookConsumerWidget {
   final int index;
@@ -29,7 +31,6 @@ class ProductFormItem extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final productsAsync = ref.watch(productsProvider);
 
     return FadeInUp(
       duration: const Duration(milliseconds: 300),
@@ -39,9 +40,7 @@ class ProductFormItem extends HookConsumerWidget {
         decoration: BoxDecoration(
           color: MBETheme.lightGray.withOpacity(0.5),
           borderRadius: BorderRadius.circular(MBERadius.medium),
-          border: Border.all(
-            color: MBETheme.neutralGray.withOpacity(0.2),
-          ),
+          border: Border.all(color: MBETheme.neutralGray.withOpacity(0.2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,66 +91,106 @@ class ProductFormItem extends HookConsumerWidget {
 
             const SizedBox(height: MBESpacing.md),
 
-            // Dropdown Producto
-            productsAsync.when(
-              data: (products) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Producto',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '*',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: MBETheme.brandRed,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: MBESpacing.xs),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(MBERadius.medium),
-                      border: Border.all(
-                        color: MBETheme.neutralGray.withOpacity(0.2),
+            // Dropdown Producto con búsqueda
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Categoría del Producto',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    child: DropdownButtonFormField<String>(
-                      value: product.productId.isEmpty ? null : product.productId,
-                      decoration: const InputDecoration(
-                        hintText: 'Buscar producto...',
+                    const SizedBox(width: 4),
+                    Text(
+                      '*',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: MBETheme.brandRed,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: MBESpacing.xs),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(MBERadius.medium),
+                    border: Border.all(
+                      color: MBETheme.neutralGray.withOpacity(0.2),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: MBESpacing.sm,
+                    vertical: MBESpacing.xs,
+                  ),
+                  child: DropdownSearch<ProductCategory>(
+                    selectedItem: product.productId.isNotEmpty
+                        ? ProductCategory(
+                            id: int.tryParse(product.productId) ?? 0,
+                            name: product.productName,
+                          )
+                        : null,
+                    popupProps: PopupProps.menu(
+                      showSearchBox: true,
+                      searchFieldProps: TextFieldProps(
+                        decoration: InputDecoration(
+                          hintText: 'Buscar categoría...',
+                          prefixIcon: const Icon(Iconsax.search_normal),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                              MBERadius.medium,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: MBESpacing.md,
+                            vertical: MBESpacing.md,
+                          ),
+                        ),
+                      ),
+                      menuProps: MenuProps(
+                        backgroundColor: Colors.white,
+                        elevation: 8,
+                        borderRadius: BorderRadius.circular(MBERadius.medium),
+                      ),
+                    ),
+                    asyncItems: (String? search) async {
+                      // Búsqueda del servidor
+                      final provider = productCategoriesProvider(
+                        search: search?.isEmpty == true ? null : search,
+                        perPage: 50,
+                      );
+                      final categoriesAsync = ref.read(provider);
+                      return await categoriesAsync.when(
+                        data: (categories) => categories,
+                        loading: () => <ProductCategory>[],
+                        error: (_, __) => <ProductCategory>[],
+                      );
+                    },
+                    itemAsString: (item) => item.name,
+                    dropdownDecoratorProps: DropDownDecoratorProps(
+                      dropdownSearchDecoration: InputDecoration(
+                        hintText: 'Selecciona o busca una categoría...',
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
+                        contentPadding: const EdgeInsets.symmetric(
                           horizontal: MBESpacing.md,
                           vertical: MBESpacing.sm,
                         ),
                       ),
-                      items: products.map((p) {
-                        return DropdownMenuItem<String>(
-                          value: p.id,
-                          child: Text(p.name),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          final selectedProduct = products.firstWhere((p) => p.id == value);
-                          onProductChanged(value, selectedProduct.name);
-                        }
-                      },
                     ),
+                    onChanged: (ProductCategory? selectedCategory) {
+                      if (selectedCategory != null) {
+                        onProductChanged(
+                          selectedCategory.id.toString(),
+                          selectedCategory.name,
+                        );
+                      }
+                    },
                   ),
-                ],
-              ),
-              loading: () => const CircularProgressIndicator(),
-              error: (_, __) => const Text('Error al cargar productos'),
+                ),
+              ],
             ),
 
             const SizedBox(height: MBESpacing.md),
@@ -250,7 +289,9 @@ class ProductFormItem extends HookConsumerWidget {
                           ),
                         ),
                         child: TextFormField(
-                          initialValue: product.price > 0 ? product.price.toString() : '',
+                          initialValue: product.price > 0
+                              ? product.price.toString()
+                              : '',
                           decoration: const InputDecoration(
                             hintText: '\$ 0.00',
                             border: InputBorder.none,
@@ -261,7 +302,9 @@ class ProductFormItem extends HookConsumerWidget {
                           ),
                           keyboardType: TextInputType.number,
                           inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d*\.?\d{0,2}'),
+                            ),
                           ],
                           onChanged: (value) {
                             final parsed = double.tryParse(value) ?? 0;

@@ -8,11 +8,46 @@ import '../../../../config/theme/mbe_theme.dart';
 import '../../data/models/pre_alert_model.dart';
 import '../../providers/pre_alerts_provider.dart';
 
-class PreAlertsListScreen extends HookConsumerWidget {
+class PreAlertsListScreen extends ConsumerStatefulWidget {
   const PreAlertsListScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PreAlertsListScreen> createState() =>
+      _PreAlertsListScreenState();
+}
+
+class _PreAlertsListScreenState extends ConsumerState<PreAlertsListScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    // Cargar más cuando se acerca al final
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.8) {
+      final notifier = ref.read(preAlertsProvider.notifier);
+      if (notifier.hasMore && !notifier.isLoadingMore) {
+        notifier.loadMore().then((_) {
+          if (mounted) {
+            setState(() {});
+          }
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final preAlertsState = ref.watch(preAlertsProvider);
 
     return Scaffold(
@@ -32,19 +67,47 @@ class PreAlertsListScreen extends HookConsumerWidget {
         ],
       ),
       body: preAlertsState.when(
-        data: (response) => RefreshIndicator(
-          onRefresh: () => ref.read(preAlertsProvider.notifier).refresh(),
-          child: response.preAlerts.isEmpty
-              ? _EmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: response.preAlerts.length,
-                  itemBuilder: (context, index) {
-                    final preAlert = response.preAlerts[index];
-                    return _PreAlertCard(preAlert: preAlert);
-                  },
-                ),
-        ),
+        data: (preAlerts) {
+          if (preAlerts.isEmpty) {
+            return _EmptyState();
+          }
+
+          final notifier = ref.read(preAlertsProvider.notifier);
+          final isLoadingMore = notifier.isLoadingMore;
+          final hasMore = notifier.hasMore;
+          
+          // Verificar si hay pre-alertas que requieren acción
+          final hasPendingActions = preAlerts.any((p) => p.requiresAction);
+
+          return RefreshIndicator.adaptive(
+            onRefresh: () => ref.read(preAlertsProvider.notifier).refresh(),
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: preAlerts.length + 
+                  (hasPendingActions ? 1 : 0) + 
+                  (hasMore && isLoadingMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                // Mostrar banner de alerta al inicio si hay acciones pendientes
+                if (hasPendingActions && index == 0) {
+                  return _ActionRequiredBanner();
+                }
+                
+                // Ajustar índice si hay banner
+                final adjustedIndex = hasPendingActions ? index - 1 : index;
+                
+                if (adjustedIndex == preAlerts.length) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                final preAlert = preAlerts[adjustedIndex];
+                return _PreAlertCard(preAlert: preAlert);
+              },
+            ),
+          );
+        },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Column(
@@ -122,6 +185,25 @@ class _PreAlertCard extends StatelessWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+                        // Badge de acción requerida
+                        if (preAlert.requiresAction) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Iconsax.danger,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -282,6 +364,79 @@ class _InfoItem extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ActionRequiredBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.orange.shade50,
+            Colors.amber.shade50,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.orange.shade300,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.orange.shade500,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Iconsax.box,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Acción Requerida',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tienes paquetes en tienda que requieren seleccionar método de entrega',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.orange.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

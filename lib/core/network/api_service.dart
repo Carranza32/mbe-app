@@ -314,20 +314,25 @@ class ApiService {
       try {
         dynamic dataToConvert = response.data;
 
-        // Si la respuesta tiene estructura { success, message, data }
+        // Si la respuesta tiene estructura { status, message, data }
         // extraer el campo 'data'
         if (response.data is Map<String, dynamic>) {
           final map = response.data as Map<String, dynamic>;
           
-          // Si tiene un campo 'data', usar ese para la conversión
-          if (map.containsKey('data')) {
+          // Si tiene un campo 'data' y no es null, usar ese para la conversión
+          if (map.containsKey('data') && map['data'] != null) {
             dataToConvert = map['data'];
+            print('📦 ApiService: Extraído campo "data" de la respuesta');
           }
           // Si no tiene 'data' pero tiene 'result', usar ese
-          else if (map.containsKey('result')) {
+          else if (map.containsKey('result') && map['result'] != null) {
             dataToConvert = map['result'];
+            print('📦 ApiService: Extraído campo "result" de la respuesta');
           }
           // Si no, usar todo el map
+          else {
+            print('📦 ApiService: Usando toda la respuesta como data');
+          }
         }
 
         // Convertir los datos usando fromJson

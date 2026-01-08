@@ -1,7 +1,7 @@
 // lib/features/pre_alert/providers/create_pre_alert_provider.dart
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:flutter/material.dart';
 import '../data/models/create_pre_alert_request.dart';
+import '../data/repositories/pre_alerts_repository.dart';
 import 'dart:io';
 
 part 'create_pre_alert_provider.g.dart';
@@ -171,15 +171,19 @@ class CreatePreAlert extends _$CreatePreAlert {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      // TODO: Aquí irá la llamada a la API
-      await Future.delayed(const Duration(seconds: 2)); // Simulación
+      final repository = ref.read(preAlertsRepositoryProvider);
+      
+      await repository.createPreAlert(
+        request: state.request!,
+        invoiceFile: state.invoiceFile,
+      );
 
       state = state.copyWith(isLoading: false);
       return true;
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: 'Error al crear la pre-alerta: $e',
+        error: 'Error al crear la pre-alerta: ${e.toString()}',
       );
       return false;
     }

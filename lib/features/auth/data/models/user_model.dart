@@ -8,7 +8,7 @@ class User {
     required this.id,
     required this.email,
     required this.name,
-    this.role = 'customer',
+    required this.role,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -16,7 +16,7 @@ class User {
       id: json['id'] as int,
       email: json['email'] as String,
       name: json['name'] as String,
-      role: json['role'] as String? ?? 'customer',
+      role: json['role_name'] as String? ?? 'customer',
     );
   }
 

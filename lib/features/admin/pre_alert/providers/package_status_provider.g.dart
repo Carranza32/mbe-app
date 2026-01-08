@@ -34,7 +34,7 @@ final class PackageStatusManagerProvider
 }
 
 String _$packageStatusManagerHash() =>
-    r'e9f64a49baacef5957f861818ef3889906bb7eca';
+    r'f3f6874e6823b26f86b48398cdc0ddecf502ddbd';
 
 abstract class _$PackageStatusManager extends $AsyncNotifier<void> {
   FutureOr<void> build();

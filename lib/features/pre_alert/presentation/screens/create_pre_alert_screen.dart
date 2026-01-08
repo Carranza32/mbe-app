@@ -11,7 +11,7 @@ import '../../../../config/theme/mbe_theme.dart';
 import '../../../../core/design_system/ds_inputs.dart';
 import '../../providers/create_pre_alert_provider.dart';
 import '../../providers/stores_provider.dart';
-import '../../providers/products_provider.dart';
+import '../../providers/pre_alerts_provider.dart';
 import '../widgets/product_form_item.dart';
 
 class CreatePreAlertScreen extends HookConsumerWidget {
@@ -94,9 +94,9 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                   ),
                 ),
               ),
-        
+
               const SizedBox(height: MBESpacing.xl),
-        
+
               // Formulario Principal
               FadeInUp(
                 duration: const Duration(milliseconds: 400),
@@ -120,21 +120,9 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                         required: true,
                         prefixIcon: Iconsax.truck_fast,
                       ),
-        
+
                       const SizedBox(height: MBESpacing.lg),
-        
-                      // Número de Casillero
-                      DSInput.text(
-                        label: 'Número de casillero',
-                        hint: 'SAL1400',
-                        value: state.request?.mailboxNumber ?? '',
-                        onChanged: notifier.setMailboxNumber,
-                        required: true,
-                        prefixIcon: Iconsax.box_1,
-                      ),
-        
-                      const SizedBox(height: MBESpacing.lg),
-        
+
                       // Tienda (Dropdown)
                       storesAsync.when(
                         data: (stores) => _StoreDropdown(
@@ -145,120 +133,116 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                         loading: () => const CircularProgressIndicator(),
                         error: (_, __) => const Text('Error al cargar tiendas'),
                       ),
-        
+
                       const SizedBox(height: MBESpacing.lg),
-        
-                      // Valor Total
-                      DSInput.text(
-                        label: 'Valor total de su compra en US\$',
-                        hint: '\$ 49.98',
-                        value: state.request?.totalValue.toString() ?? '',
-                        onChanged: (value) {
-                          final parsed = double.tryParse(value) ?? 0;
-                          notifier.setTotalValue(parsed);
-                        },
-                        required: true,
-                        prefixIcon: Iconsax.dollar_circle,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                        ],
-                      ),
-        
-                      const SizedBox(height: MBESpacing.lg),
-        
+
                       // Subir Factura
                       _FileUploadSection(
                         file: state.invoiceFile,
                         onFilePicked: notifier.setInvoiceFile,
                       ),
-                    ],
-                  ),
-                ),
-              ),
-        
-              const SizedBox(height: MBESpacing.xl),
-        
-              // Sección de Productos
-              FadeInUp(
-                duration: const Duration(milliseconds: 400),
-                delay: const Duration(milliseconds: 200),
-                child: Container(
-                  padding: const EdgeInsets.all(MBESpacing.lg),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(MBERadius.large),
-                    boxShadow: MBETheme.shadowSm,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+
+                      const SizedBox(height: MBESpacing.lg),
+
+                      //Productos dentro del paquete
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Iconsax.box,
-                            size: 20,
-                            color: MBETheme.brandBlack,
+                          Row(
+                            children: [
+                              const Icon(
+                                Iconsax.box,
+                                size: 20,
+                                color: MBETheme.brandBlack,
+                              ),
+                              const SizedBox(width: MBESpacing.sm),
+                              Text(
+                                'Productos dentro del paquete',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: MBESpacing.sm),
+                              // Text(
+                              //   '${state.request?.products.length ?? 0} productos',
+                              //   style: theme.textTheme.bodySmall?.copyWith(
+                              //     color: MBETheme.neutralGray,
+                              //   ),
+                              // ),
+                              Text(
+                                '*',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: MBETheme.brandRed,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: MBESpacing.sm),
-                          Text(
-                            'Cantidad de productos dentro del paquete',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
+
+                          // Lista de productos
+                          ...List.generate(
+                            state.request?.products.length ?? 0,
+                            (index) {
+                              final product = state.request!.products[index];
+                              return ProductFormItem(
+                                key: ValueKey('product_$index'),
+                                index: index,
+                                product: product,
+                                onRemove: () => notifier.removeProduct(index),
+                                onProductChanged: (productId, productName) =>
+                                    notifier.setProductName(
+                                      index,
+                                      productId,
+                                      productName,
+                                    ),
+                                onQuantityChanged: (quantity) => notifier
+                                    .setProductQuantity(index, quantity),
+                                onPriceChanged: (price) =>
+                                    notifier.setProductPrice(index, price),
+                              );
+                            },
+                          ),
+
+                          const SizedBox(height: MBESpacing.md),
+
+                          // Botón Agregar Producto
+                          OutlinedButton.icon(
+                            onPressed: notifier.addProduct,
+                            icon: const Icon(Iconsax.add),
+                            label: const Text('Agregar Producto'),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  MBERadius.medium,
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: MBESpacing.xs),
-                      Text(
-                        '*',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: MBETheme.brandRed,
-                        ),
-                      ),
-                      const SizedBox(height: MBESpacing.lg),
-        
-                      // Lista de productos
-                      ...List.generate(
-                        state.request?.products.length ?? 0,
-                        (index) {
-                          final product = state.request!.products[index];
-                          return ProductFormItem(
-                            key: ValueKey('product_$index'),
-                            index: index,
-                            product: product,
-                            onRemove: () => notifier.removeProduct(index),
-                            onProductChanged: (productId, productName) =>
-                                notifier.setProductName(index, productId, productName),
-                            onQuantityChanged: (quantity) =>
-                                notifier.setProductQuantity(index, quantity),
-                            onPriceChanged: (price) =>
-                                notifier.setProductPrice(index, price),
-                          );
-                        },
-                      ),
-        
-                      const SizedBox(height: MBESpacing.md),
-        
-                      // Botón Agregar Producto
-                      OutlinedButton.icon(
-                        onPressed: notifier.addProduct,
-                        icon: const Icon(Iconsax.add),
-                        label: const Text('Agregar Producto'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(MBERadius.medium),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
               ),
-        
+
               const SizedBox(height: MBESpacing.xl),
-        
+
+              // Sección de Productos
+              // FadeInUp(
+              //   duration: const Duration(milliseconds: 400),
+              //   delay: const Duration(milliseconds: 200),
+              //   child: Container(
+              //     padding: const EdgeInsets.all(MBESpacing.lg),
+              //     decoration: BoxDecoration(
+              //       color: Colors.white,
+              //       borderRadius: BorderRadius.circular(MBERadius.large),
+              //       boxShadow: MBETheme.shadowSm,
+              //     ),
+              //     child:
+              //   ),
+              // ),
+              const SizedBox(height: MBESpacing.xl),
+
               // Suma de Productos (Warning si no coincide)
               if (state.hasProducts) ...[
                 _ProductsSummary(
@@ -271,7 +255,7 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                 ),
                 const SizedBox(height: MBESpacing.xl),
               ],
-        
+
               // Nota
               FadeInUp(
                 duration: const Duration(milliseconds: 400),
@@ -306,9 +290,9 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                   ),
                 ),
               ),
-        
+
               const SizedBox(height: MBESpacing.xl),
-        
+
               // Botón Crear Prealerta
               FadeInUp(
                 duration: const Duration(milliseconds: 400),
@@ -320,7 +304,9 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(double.infinity, 56),
                     backgroundColor: MBETheme.brandRed,
-                    disabledBackgroundColor: MBETheme.neutralGray.withOpacity(0.3),
+                    disabledBackgroundColor: MBETheme.neutralGray.withOpacity(
+                      0.3,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(MBERadius.medium),
                     ),
@@ -350,7 +336,7 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                         ),
                 ),
               ),
-        
+
               const SizedBox(height: MBESpacing.xl),
             ],
           ),
@@ -365,33 +351,93 @@ class CreatePreAlertScreen extends HookConsumerWidget {
     if (!context.mounted) return;
 
     if (success) {
+      // Invalidar la lista de pre-alertas para refrescar
+      ref.invalidate(preAlertsProvider);
+
+      // Mostrar mensaje de éxito con animación
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          icon: const Icon(
-            Iconsax.tick_circle,
-            size: 64,
-            color: Color(0xFF10B981),
+        barrierColor: Colors.black54,
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(MBERadius.large),
           ),
-          title: const Text('¡Prealerta creada!'),
-          content: const Text(
-            'Tu prealerta ha sido registrada exitosamente',
-            textAlign: TextAlign.center,
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () {
-                ref.read(createPreAlertProvider.notifier).reset();
-                Navigator.pop(context); // Cerrar dialog
-                Navigator.pop(context); // Volver a lista
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: MBETheme.brandBlack,
-              ),
-              child: const Text('Aceptar'),
+          child: Padding(
+            padding: const EdgeInsets.all(MBESpacing.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icono animado
+                FadeIn(
+                  duration: const Duration(milliseconds: 500),
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Iconsax.tick_circle,
+                      size: 48,
+                      color: Color(0xFF10B981),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: MBESpacing.lg),
+
+                // Título
+                FadeInUp(
+                  duration: const Duration(milliseconds: 500),
+                  delay: const Duration(milliseconds: 100),
+                  child: Text(
+                    '¡Prealerta creada!',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: MBETheme.brandBlack,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: MBESpacing.sm),
+
+                // Mensaje
+                FadeInUp(
+                  duration: const Duration(milliseconds: 500),
+                  delay: const Duration(milliseconds: 200),
+                  child: Text(
+                    'Tu prealerta ha sido registrada exitosamente',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: MBETheme.neutralGray,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: MBESpacing.xl),
+
+                // Botón
+                FadeInUp(
+                  duration: const Duration(milliseconds: 500),
+                  delay: const Duration(milliseconds: 300),
+                  child: FilledButton(
+                    onPressed: () {
+                      ref.read(createPreAlertProvider.notifier).reset();
+                      Navigator.pop(context); // Cerrar dialog
+                      context.pop(); // Volver a lista usando go_router
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: MBETheme.brandBlack,
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(MBERadius.medium),
+                      ),
+                    ),
+                    child: const Text('Aceptar'),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       );
     } else {
@@ -449,9 +495,7 @@ class _StoreDropdown extends ConsumerWidget {
           decoration: BoxDecoration(
             color: MBETheme.lightGray,
             borderRadius: BorderRadius.circular(MBERadius.medium),
-            border: Border.all(
-              color: MBETheme.neutralGray.withOpacity(0.2),
-            ),
+            border: Border.all(color: MBETheme.neutralGray.withOpacity(0.2)),
           ),
           child: DropdownButtonFormField<String>(
             value: selectedStoreId?.isEmpty == true ? null : selectedStoreId,
@@ -484,17 +528,14 @@ class _FileUploadSection extends StatelessWidget {
   final File? file;
   final Function(File) onFilePicked;
 
-  const _FileUploadSection({
-    required this.file,
-    required this.onFilePicked,
-  });
+  const _FileUploadSection({required this.file, required this.onFilePicked});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Subir factura relacionada a esta compra',
@@ -519,16 +560,22 @@ class _FileUploadSection extends StatelessWidget {
             child: Column(
               children: [
                 Icon(
-                  file != null ? Iconsax.document_upload : Iconsax.document_upload,
+                  file != null
+                      ? Iconsax.document_upload
+                      : Iconsax.document_upload,
                   size: 48,
-                  color: file != null ? MBETheme.brandBlack : MBETheme.neutralGray,
+                  color: file != null
+                      ? MBETheme.brandBlack
+                      : MBETheme.neutralGray,
                 ),
                 const SizedBox(height: MBESpacing.md),
                 Text(
                   file != null ? 'Archivo seleccionado' : 'Seleccionar archivo',
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: file != null ? MBETheme.brandBlack : MBETheme.neutralGray,
+                    color: file != null
+                        ? MBETheme.brandBlack
+                        : MBETheme.neutralGray,
                   ),
                 ),
                 const SizedBox(height: MBESpacing.xs),
@@ -626,14 +673,18 @@ class _ProductsSummary extends StatelessWidget {
               Icon(
                 isValid ? Iconsax.tick_circle : Iconsax.warning_2,
                 size: 20,
-                color: isValid ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                color: isValid
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFF59E0B),
               ),
               const SizedBox(width: MBESpacing.sm),
               Text(
                 'Suma de Productos',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: isValid ? const Color(0xFF15803D) : const Color(0xFF92400E),
+                  color: isValid
+                      ? const Color(0xFF15803D)
+                      : const Color(0xFF92400E),
                 ),
               ),
               const Spacer(),
@@ -641,7 +692,9 @@ class _ProductsSummary extends StatelessWidget {
                 '\$${productsTotal.toStringAsFixed(2)}',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: isValid ? const Color(0xFF15803D) : const Color(0xFF92400E),
+                  color: isValid
+                      ? const Color(0xFF15803D)
+                      : const Color(0xFF92400E),
                 ),
               ),
             ],

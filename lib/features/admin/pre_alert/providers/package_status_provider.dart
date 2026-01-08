@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/models/package_status.dart';
+import '../data/repositories/admin_pre_alerts_repository.dart';
 import 'admin_pre_alerts_provider.dart';
 
 part 'package_status_provider.g.dart';
@@ -16,24 +17,21 @@ class PackageStatusManager extends _$PackageStatusManager {
     state = const AsyncLoading();
     
     try {
-      await Future.delayed(const Duration(seconds: 1));
+      final repository = ref.read(adminPreAlertsRepositoryProvider);
       
-      final alertsProvider = ref.read(adminPreAlertsProvider.notifier);
-      final currentData = ref.read(adminPreAlertsProvider).value ?? [];
+      if (packageIds.length == 1) {
+        await repository.updateStatus(
+          id: packageIds.first,
+          status: newStatus,
+        );
+      } else {
+        await repository.bulkUpdateStatus(
+          ids: packageIds,
+          status: newStatus,
+        );
+      }
       
-      final updatedData = currentData.map((alert) {
-        if (packageIds.contains(alert.id)) {
-          return alert.copyWith(
-            status: newStatus,
-            exportedAt: newStatus == PackageStatus.exported 
-                ? DateTime.now() 
-                : alert.exportedAt,
-          );
-        }
-        return alert;
-      }).toList();
-      
-      alertsProvider.state = AsyncData(updatedData);
+      ref.invalidate(adminPreAlertsProvider);
       
       state = const AsyncData(null);
       return true;
