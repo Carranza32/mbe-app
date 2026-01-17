@@ -94,3 +94,45 @@ final class HasPendingActionsProvider
 }
 
 String _$hasPendingActionsHash() => r'de4166aaa5cc099f5ad8a07f87e23607654b9486';
+
+@ProviderFor(pendingActionsCount)
+const pendingActionsCountProvider = PendingActionsCountProvider._();
+
+final class PendingActionsCountProvider
+    extends $FunctionalProvider<int, int, int>
+    with $Provider<int> {
+  const PendingActionsCountProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'pendingActionsCountProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$pendingActionsCountHash();
+
+  @$internal
+  @override
+  $ProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  int create(Ref ref) {
+    return pendingActionsCount(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(int value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<int>(value),
+    );
+  }
+}
+
+String _$pendingActionsCountHash() =>
+    r'26d332392b94974aa5c96f1bfe61676b05f7c706';

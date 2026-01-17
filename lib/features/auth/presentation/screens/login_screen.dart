@@ -16,10 +16,10 @@ class LoginScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final email = useState('mario.carranza996@gmail.com');
-    final password = useState('Carranza32');
-    // final email = useState('admin@admin.com');
-    // final password = useState('super1');
+    // final email = useState('mario.carranza996@gmail.com');
+    // final password = useState('Carranza32');
+    final email = useState('admin@admin.com');
+    final password = useState('super1');
     final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
 

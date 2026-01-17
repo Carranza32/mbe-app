@@ -21,7 +21,26 @@ class Auth extends _$Auth {
         final user = await ref.read(authRepositoryProvider).getCurrentUser();
         return user;
       } catch (e) {
-        // Si falla (token inválido/expirado), limpiar datos locales
+        // Si falla, verificar si es un error de autenticación (401) o un error temporal
+        // Solo limpiar el token si es un error 401 (no autorizado)
+        // Para otros errores (red, servidor, etc.), mantener el token y usuario en storage
+        print('⚠️ Error al obtener usuario actual: $e');
+        
+        // Intentar leer el usuario desde storage como fallback
+        final userJson = await storage.read(key: 'user');
+        if (userJson != null) {
+          try {
+            final userData = jsonDecode(userJson) as Map<String, dynamic>;
+            return User.fromJson(userData);
+          } catch (_) {
+            // Si no se puede parsear el usuario desde storage, solo entonces limpiar
+            await storage.delete(key: 'auth_token');
+            await storage.delete(key: 'user');
+            return null;
+          }
+        }
+        
+        // Si no hay usuario en storage y hay error, limpiar todo
         await storage.delete(key: 'auth_token');
         await storage.delete(key: 'user');
         return null;
@@ -46,13 +65,74 @@ class Auth extends _$Auth {
         password: password,
       );
       
+      // Verificar que el provider aún está montado
+      if (!ref.mounted) {
+        throw Exception('Provider disposed during login');
+      }
+      
       // Guardar token y usuario en secure storage
       final storage = ref.read(secureStorageProvider);
       await storage.write(key: 'auth_token', value: authResponse.token);
       await storage.write(key: 'user', value: jsonEncode(authResponse.user.toJson()));
       
+      // Guardar customer si existe
+      if (authResponse.user.customer != null) {
+        await storage.write(
+          key: 'customer',
+          value: jsonEncode(authResponse.user.customer!.toJson()),
+        );
+      }
+      
+      // Verificar nuevamente antes de retornar
+      if (!ref.mounted) {
+        throw Exception('Provider disposed during login');
+      }
+      
       return authResponse.user;
     });
+  }
+
+  /// Establecer datos de autenticación (para registro)
+  Future<void> setAuthData(String token, User user) async {
+    if (!ref.mounted) return;
+    
+    final storage = ref.read(secureStorageProvider);
+    await storage.write(key: 'auth_token', value: token);
+    await storage.write(key: 'user', value: jsonEncode(user.toJson()));
+    
+    // Guardar customer si existe
+    if (user.customer != null) {
+      await storage.write(
+        key: 'customer',
+        value: jsonEncode(user.customer!.toJson()),
+      );
+    }
+    
+    if (ref.mounted) {
+      state = AsyncData(user);
+    }
+  }
+
+  /// Actualizar usuario (para verificación de email, etc.)
+  Future<void> updateUser(User user) async {
+    // Capturar storage antes de operaciones asíncronas
+    if (!ref.mounted) return;
+    
+    final storage = ref.read(secureStorageProvider);
+    await storage.write(key: 'user', value: jsonEncode(user.toJson()));
+    
+    // Actualizar customer si existe
+    if (user.customer != null) {
+      await storage.write(
+        key: 'customer',
+        value: jsonEncode(user.customer!.toJson()),
+      );
+    }
+    
+    // Verificar que el provider aún está montado antes de actualizar el estado
+    if (ref.mounted) {
+      state = AsyncData(user);
+    }
   }
 
   /// Cerrar sesión - Limpia token y estado
@@ -70,6 +150,7 @@ class Auth extends _$Auth {
     // 2. SIEMPRE limpiar datos locales (crítico)
     await storage.delete(key: 'auth_token');
     await storage.delete(key: 'user');
+    await storage.delete(key: 'customer');
     
     // 3. SIEMPRE actualizar estado a null para forzar rebuild
     state = const AsyncData(null);

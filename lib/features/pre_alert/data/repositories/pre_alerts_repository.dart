@@ -4,6 +4,7 @@ import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/network/api_service.dart';
 import '../models/pre_alert_model.dart';
 import '../models/create_pre_alert_request.dart';
+import '../models/promotion_model.dart';
 
 part 'pre_alerts_repository.g.dart';
 
@@ -17,10 +18,7 @@ class PreAlertsRepository {
 
   PreAlertsRepository(this._apiService);
 
-  Future<PreAlertsResponse> getPreAlerts({
-    int? page,
-    int? perPage,
-  }) async {
+  Future<PreAlertsResponse> getPreAlerts({int? page, int? perPage}) async {
     final queryParams = <String, dynamic>{};
     if (page != null) queryParams['page'] = page;
     if (perPage != null) queryParams['per_page'] = perPage;
@@ -28,7 +26,8 @@ class PreAlertsRepository {
     return await _apiService.get<PreAlertsResponse>(
       endpoint: ApiEndpoints.preAlerts,
       queryParameters: queryParams.isEmpty ? null : queryParams,
-      fromJson: (json) => PreAlertsResponse.fromJson(json as Map<String, dynamic>),
+      fromJson: (json) =>
+          PreAlertsResponse.fromJson(json as Map<String, dynamic>),
     );
   }
 
@@ -37,7 +36,7 @@ class PreAlertsRepository {
     File? invoiceFile,
   }) async {
     final data = request.toJson();
-    
+
     // Mapear los campos según lo esperado por el backend
     // El backend espera: track_number, locker_code, provider_id, total, product_count, products
     final formData = <String, dynamic>{
@@ -65,13 +64,13 @@ class PreAlertsRepository {
           if (json == null) {
             throw Exception('Respuesta vacía del servidor');
           }
-          
+
           // La respuesta tiene formato: {status: true, message: "...", data: {...}}
           // El ApiService ya extrae el 'data', así que json debería ser directamente el objeto PreAlert
           if (json is Map<String, dynamic>) {
             return PreAlert.fromJson(json);
           }
-          
+
           throw Exception('Formato de respuesta inesperado');
         },
       );
@@ -83,15 +82,70 @@ class PreAlertsRepository {
           if (json == null) {
             throw Exception('Respuesta vacía del servidor');
           }
-          
+
           if (json is Map<String, dynamic>) {
             return PreAlert.fromJson(json);
           }
-          
+
           throw Exception('Formato de respuesta inesperado');
         },
       );
     }
   }
-}
 
+  /// Completar información de pre-alerta
+  Future<PreAlert> completePreAlertInfo({
+    required String preAlertId,
+    required Map<String, dynamic> data,
+  }) async {
+    return await _apiService.put<PreAlert>(
+      endpoint: ApiEndpoints.completePreAlertInfo(preAlertId),
+      data: data,
+      fromJson: (json) {
+        if (json == null) {
+          throw Exception('Respuesta vacía del servidor');
+        }
+
+        if (json is Map<String, dynamic>) {
+          return PreAlert.fromJson(json);
+        }
+
+        throw Exception('Formato de respuesta inesperado');
+      },
+    );
+  }
+
+  /// Obtener la mejor promoción disponible
+  /// Retorna null si no hay promoción (404 es esperado)
+  Future<BestPromotionResponse?> getBestPromotion({
+    required BestPromotionRequest request,
+  }) async {
+    try {
+      return await _apiService.post<BestPromotionResponse>(
+        endpoint: ApiEndpoints.bestPromotion,
+        data: request.toJson(),
+        fromJson: (json) {
+          if (json == null) {
+            return BestPromotionResponse(success: false, data: null);
+          }
+
+          if (json is Map<String, dynamic>) {
+            return BestPromotionResponse.fromJson(json);
+          }
+
+          return BestPromotionResponse(success: false, data: null);
+        },
+      );
+    } catch (e) {
+      // 404 es esperado cuando no hay promoción, retornar null
+      final errorMessage = e.toString();
+      if (errorMessage.contains('404') || 
+          errorMessage.contains('no encontrado') ||
+          errorMessage.contains('not found')) {
+        return BestPromotionResponse(success: false, data: null);
+      }
+      // Para otros errores, relanzar la excepción
+      rethrow;
+    }
+  }
+}

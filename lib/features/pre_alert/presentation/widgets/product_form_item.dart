@@ -4,11 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:dropdown_search/dropdown_search.dart';
 import '../../../../config/theme/mbe_theme.dart';
 import '../../data/models/create_pre_alert_request.dart';
 import '../../../../features/admin/pre_alert/data/models/product_category_model.dart';
 import '../../../../features/admin/pre_alert/providers/product_categories_provider.dart';
+import '../../../../core/design_system/ds_dropdown_search.dart';
 
 class ProductFormItem extends HookConsumerWidget {
   final int index;
@@ -114,81 +114,28 @@ class ProductFormItem extends HookConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: MBESpacing.xs),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(MBERadius.medium),
-                    border: Border.all(
-                      color: MBETheme.neutralGray.withOpacity(0.2),
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: MBESpacing.sm,
-                    vertical: MBESpacing.xs,
-                  ),
-                  child: DropdownSearch<ProductCategory>(
-                    selectedItem: product.productId.isNotEmpty
-                        ? ProductCategory(
-                            id: int.tryParse(product.productId) ?? 0,
-                            name: product.productName,
-                          )
-                        : null,
-                    popupProps: PopupProps.menu(
-                      showSearchBox: true,
-                      searchFieldProps: TextFieldProps(
-                        decoration: InputDecoration(
-                          hintText: 'Buscar categoría...',
-                          prefixIcon: const Icon(Iconsax.search_normal),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                              MBERadius.medium,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: MBESpacing.md,
-                            vertical: MBESpacing.md,
-                          ),
-                        ),
-                      ),
-                      menuProps: MenuProps(
-                        backgroundColor: Colors.white,
-                        elevation: 8,
-                        borderRadius: BorderRadius.circular(MBERadius.medium),
-                      ),
-                    ),
-                    asyncItems: (String? search) async {
-                      // Búsqueda del servidor
-                      final provider = productCategoriesProvider(
-                        search: search?.isEmpty == true ? null : search,
-                        perPage: 50,
+                DSDropdownSearch<ProductCategory>(
+                  label: '',
+                  selectedItem: product.productId.isNotEmpty
+                      ? ProductCategory(
+                          id: int.tryParse(product.productId) ?? 0,
+                          name: product.productName,
+                        )
+                      : null,
+                  provider: allProductCategoriesProvider,
+                  itemAsString: (item) => item.name,
+                  onChanged: (ProductCategory? selectedCategory) {
+                    if (selectedCategory != null) {
+                      onProductChanged(
+                        selectedCategory.id.toString(),
+                        selectedCategory.name,
                       );
-                      final categoriesAsync = ref.read(provider);
-                      return await categoriesAsync.when(
-                        data: (categories) => categories,
-                        loading: () => <ProductCategory>[],
-                        error: (_, __) => <ProductCategory>[],
-                      );
-                    },
-                    itemAsString: (item) => item.name,
-                    dropdownDecoratorProps: DropDownDecoratorProps(
-                      dropdownSearchDecoration: InputDecoration(
-                        hintText: 'Selecciona o busca una categoría...',
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: MBESpacing.md,
-                          vertical: MBESpacing.sm,
-                        ),
-                      ),
-                    ),
-                    onChanged: (ProductCategory? selectedCategory) {
-                      if (selectedCategory != null) {
-                        onProductChanged(
-                          selectedCategory.id.toString(),
-                          selectedCategory.name,
-                        );
-                      }
-                    },
-                  ),
+                    }
+                  },
+                  required: true,
+                  hint: 'Selecciona o busca una categoría...',
+                  searchHint: 'Buscar categoría...',
+                  enableSearch: true,
                 ),
               ],
             ),

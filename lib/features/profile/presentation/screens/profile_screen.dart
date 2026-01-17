@@ -1,0 +1,533 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../config/theme/mbe_theme.dart';
+import '../../../../features/auth/providers/auth_provider.dart';
+import '../../../../features/auth/data/models/user_model.dart';
+import '../widgets/change_password_sheet.dart';
+import '../widgets/edit_info_sheet.dart';
+
+class ProfileScreen extends HookConsumerWidget {
+  const ProfileScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F8FA), // Fondo gris muy suave moderno
+      body: authState.when(
+        data: (userData) {
+          if (userData == null) return const Center(child: Text('Sin sesión'));
+          return CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // 1. App Bar Personalizado
+              SliverAppBar(
+                backgroundColor: const Color(0xFFF6F8FA),
+                elevation: 0,
+                pinned: true,
+                centerTitle: false,
+                expandedHeight: 0, // No expandible, solo sticky
+                title: Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: Text(
+                    'Mi Perfil',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: MBETheme.brandBlack,
+                    ),
+                  ),
+                ),
+                actions: [
+                  // Botón sutil de notificaciones o configuración rápida
+                  IconButton(
+                    onPressed: () {},
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Iconsax.notification,
+                        size: 20,
+                        color: MBETheme.brandBlack,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                ],
+              ),
+
+              // 2. Contenido Principal
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      // Tarjeta de Identidad
+                      _buildIdentityCard(context, userData),
+
+                      const SizedBox(height: 32),
+
+                      // Sección Estadísticas Rápidas (Opcional, pero se ve muy PRO)
+                      _buildQuickStats(context),
+
+                      const SizedBox(height: 32),
+
+                      // Agrupación 1: Cuenta
+                      _buildSectionTitle('Configuración de Cuenta'),
+                      _buildSettingsGroup([
+                        _SettingsTile(
+                          icon: Iconsax.user_edit,
+                          title: 'Editar Información',
+                          subtitle: 'Datos personales',
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled:
+                                  true, // Importante para que suba con el teclado
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => EditInfoSheet(
+                                currentName: userData.name,
+                                currentPhone:
+                                    null, // El teléfono se obtiene del perfil si está disponible
+                              ),
+                            );
+                          },
+                        ),
+                        _SettingsTile(
+                          icon: Iconsax.lock,
+                          title: 'Seguridad',
+                          subtitle: 'Contraseña y accesos',
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => const ChangePasswordSheet(),
+                            );
+                          },
+                        ),
+                        _SettingsTile(
+                          icon: Iconsax.location,
+                          title: 'Mis Direcciones',
+                          subtitle: 'Gestionar entregas',
+                          onTap: () => context.push('/profile/addresses'),
+                          showDivider: false, // El último no lleva divisor
+                        ),
+                      ]),
+
+                      const SizedBox(height: 24),
+
+                      // Agrupación 2: General
+                      _buildSectionTitle('General'),
+                      _buildSettingsGroup([
+                        _SettingsTile(
+                          icon: Iconsax.global,
+                          title: 'Idioma',
+                          subtitle: 'Español (ES)',
+                          onTap: () {},
+                        ),
+                        _SettingsTile(
+                          icon: Iconsax.support,
+                          title: 'Ayuda y Soporte',
+                          subtitle: 'Centro de ayuda',
+                          onTap: () {},
+                          showDivider: false,
+                        ),
+                      ]),
+
+                      const SizedBox(height: 40),
+
+                      // Botón Cerrar Sesión
+                      _buildLogoutButton(context, ref),
+
+                      const SizedBox(height: 40),
+
+                      // Versión de la app
+                      Text(
+                        "Versión 1.0.2",
+                        style: TextStyle(
+                          color: MBETheme.neutralGray.withOpacity(0.5),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, s) => Center(child: Text("Error: $e")),
+      ),
+    );
+  }
+
+  // --- WIDGETS COMPONENTES ---
+
+  Widget _buildIdentityCard(BuildContext context, User user) {
+    final initials = _getInitials(user.name);
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 30),
+          // Avatar con borde y sombra
+          Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              Container(
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  color: MBETheme.brandBlack,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: MBETheme.brandBlack.withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              // Badge de edición rápida
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: MBETheme.brandRed,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                ),
+                child: const Icon(
+                  Iconsax.edit_2,
+                  size: 14,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Textos
+          Text(
+            user.name,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: MBETheme.brandBlack,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            user.email,
+            style: TextStyle(
+              fontSize: 14,
+              color: MBETheme.neutralGray.withOpacity(0.8),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Chip de Rol
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: user.isAdmin
+                  ? const Color(0xFFFFF0F2) // Rojo muy suave
+                  : const Color(0xFFF0F2F5), // Gris suave
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  user.isAdmin ? Iconsax.verify5 : Iconsax.user,
+                  size: 16,
+                  color: user.isAdmin
+                      ? MBETheme.brandRed
+                      : MBETheme.neutralGray,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  user.isAdmin ? 'ADMINISTRADOR' : 'CLIENTE MBE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: user.isAdmin
+                        ? MBETheme.brandRed
+                        : MBETheme.neutralGray,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickStats(BuildContext context) {
+    // Estos datos podrían venir del provider en el futuro
+    return Row(
+      children: [
+        _buildStatItem('Paquetes', '12', Iconsax.box),
+        Container(width: 1, height: 40, color: Colors.grey.withOpacity(0.2)),
+        _buildStatItem('Puntos', '450', Iconsax.star),
+        Container(width: 1, height: 40, color: Colors.grey.withOpacity(0.2)),
+        _buildStatItem('Direcciones', '2', Iconsax.map),
+      ],
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: MBETheme.brandBlack,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 14, color: MBETheme.neutralGray),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: MBETheme.neutralGray,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(bottom: 12, left: 4),
+      child: Text(
+        title.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF9EA3AE),
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsGroup(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context, WidgetRef ref) {
+    return GestureDetector(
+      onTap: () => _showLogoutDialog(context, ref),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF0F2), // Rojo muy claro
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: MBETheme.brandRed.withOpacity(0.1)),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Iconsax.logout, color: MBETheme.brandRed, size: 20),
+            SizedBox(width: 10),
+            Text(
+              'Cerrar Sesión',
+              style: TextStyle(
+                color: MBETheme.brandRed,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.isEmpty) return 'U';
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+    // Tu lógica de diálogo existente, pero quizás con diseño actualizado
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text(
+          '¿Cerrar sesión?',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Tendrás que ingresar tus credenciales nuevamente.',
+        ),
+        actionsPadding: const EdgeInsets.all(20),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) context.go('/auth/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: MBETheme.brandRed,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: const Text('Cerrar Sesión'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Widget interno para cada fila de opción
+class _SettingsTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool showDivider;
+
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.showDivider = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF6F8FA),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: MBETheme.brandBlack, size: 22),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: MBETheme.brandBlack,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: MBETheme.neutralGray.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Iconsax.arrow_right_3,
+                size: 18,
+                color: MBETheme.neutralGray.withOpacity(0.5),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

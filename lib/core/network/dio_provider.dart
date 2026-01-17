@@ -51,6 +51,9 @@ class AuthInterceptor extends Interceptor {
     // Si existe token, agregarlo al header
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
+      print('🔑 Token agregado a petición ${options.method} ${options.path}');
+    } else {
+      print('⚠️ NO hay token en storage para petición ${options.method} ${options.path}');
     }
 
     handler.next(options);
@@ -60,10 +63,12 @@ class AuthInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     // Si el error es 401, el token expiró
     if (err.response?.statusCode == 401) {
+      print('❌ Error 401 en ${err.requestOptions.method} ${err.requestOptions.path} - Borrando token');
       // Aquí podrías intentar refrescar el token
       // O limpiar la sesión y redirigir al login
       final storage = ref.read(secureStorageProvider);
       await storage.delete(key: 'auth_token');
+      print('🗑️ Token eliminado del storage debido a error 401');
       
       // Opcional: Intentar refrescar el token
       // final refreshed = await _refreshToken();

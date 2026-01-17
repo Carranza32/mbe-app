@@ -41,7 +41,7 @@ final class RegisterProvider
   }
 }
 
-String _$registerHash() => r'90ac3f77b7f71215311488bc69ef0860fcc6ecd9';
+String _$registerHash() => r'16aeec89e50e15a08873cd3901a5e6d6cf27ab23';
 
 abstract class _$Register extends $Notifier<RegisterState> {
   RegisterState build();
@@ -55,58 +55,6 @@ abstract class _$Register extends $Notifier<RegisterState> {
             as $ClassProviderElement<
               AnyNotifier<RegisterState, RegisterState>,
               RegisterState,
-              Object?,
-              Object?
-            >;
-    element.handleValue(ref, created);
-  }
-}
-
-@ProviderFor(RegisterStep)
-const registerStepProvider = RegisterStepProvider._();
-
-final class RegisterStepProvider extends $NotifierProvider<RegisterStep, int> {
-  const RegisterStepProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'registerStepProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$registerStepHash();
-
-  @$internal
-  @override
-  RegisterStep create() => RegisterStep();
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(int value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<int>(value),
-    );
-  }
-}
-
-String _$registerStepHash() => r'f67d6064b19766307c2f8496d67a693d0b422bf2';
-
-abstract class _$RegisterStep extends $Notifier<int> {
-  int build();
-  @$mustCallSuper
-  @override
-  void runBuild() {
-    final created = build();
-    final ref = this.ref as $Ref<int, int>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<int, int>,
-              int,
               Object?,
               Object?
             >;

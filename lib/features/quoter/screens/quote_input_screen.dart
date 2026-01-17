@@ -86,170 +86,188 @@ class QuoteInputScreen extends HookConsumerWidget {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- SECCIÓN INPUTS ---
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 20,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Detalles del Paquete",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.opaque,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // --- SECCIÓN INPUTS ---
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildCompactInput(
-                          controller: weightController,
-                          label: "Peso",
-                          suffix: "lb",
-                          icon: Iconsax.weight,
-                        ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Detalles del Paquete",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
                       ),
-                      const SizedBox(width: 16),
+                    ),
+                    const SizedBox(height: 20),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildCompactInput(
+                            controller: weightController,
+                            label: "Peso",
+                            suffix: "lb",
+                            icon: Iconsax.weight,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildCompactInput(
+                            controller: valueController,
+                            label: "Valor",
+                            suffix: "\$",
+                            icon: Iconsax.dollar_circle,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    const Text(
+                      "Tipo de Producto",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundLight,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: DropdownSearch<ProductCategory>(
+                        selectedItem: selectedCategory.value,
+                        popupProps: PopupProps.menu(
+                          showSearchBox: true,
+                          searchFieldProps: TextFieldProps(
+                            decoration: InputDecoration(
+                              hintText: 'Buscar categoría...',
+                              prefixIcon: const Icon(Iconsax.search_normal),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                          menuProps: MenuProps(
+                            backgroundColor: Colors.white,
+                            elevation: 8,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        asyncItems: (String? search) async {
+                          // Usar el provider que carga todas las categorías de una vez
+                          // Usar ref.read para evitar re-evaluaciones en el callback
+                          try {
+                            final allCategories = await ref.read(
+                              allProductCategoriesProvider.future,
+                            );
+
+                            // Si hay búsqueda, filtrar localmente
+                            if (search != null && search.isNotEmpty) {
+                              final searchLower = search.toLowerCase();
+                              return allCategories
+                                  .where(
+                                    (category) => category.name
+                                        .toLowerCase()
+                                        .contains(searchLower),
+                                  )
+                                  .toList();
+                            }
+                            // Sin búsqueda, retornar todas
+                            return allCategories;
+                          } catch (e) {
+                            // Si hay error, retornar lista vacía
+                            return <ProductCategory>[];
+                          }
+                        },
+                        itemAsString: (item) => item.name,
+                        dropdownDecoratorProps: DropDownDecoratorProps(
+                          dropdownSearchDecoration: InputDecoration(
+                            hintText: 'Selecciona o busca una categoría...',
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                          ),
+                        ),
+                        onChanged: (ProductCategory? category) {
+                          selectedCategory.value = category;
+                          attemptCalculation(); // Recalcular al cambiar categoría
+                        },
+                      ),
+                    ),
+                    // Nota: Eliminamos el botón "Calcular"
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // --- SECCIÓN RESULTADOS (Condicional) ---
+              calculationState.when(
+                data: (result) {
+                  if (result == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return _buildQuoteReceipt(context, result);
+                },
+                loading: () => _buildShimmerLoading(),
+                error: (error, stack) => Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Iconsax.danger, color: Colors.red.shade700),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: _buildCompactInput(
-                          controller: valueController,
-                          label: "Valor",
-                          suffix: "\$",
-                          icon: Iconsax.dollar_circle,
+                        child: Text(
+                          'Error al calcular: ${error.toString()}',
+                          style: TextStyle(color: Colors.red.shade700),
                         ),
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 20),
-
-                  const Text(
-                    "Tipo de Producto",
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.backgroundLight,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: DropdownSearch<ProductCategory>(
-                      selectedItem: selectedCategory.value,
-                      popupProps: PopupProps.menu(
-                        showSearchBox: true,
-                        searchFieldProps: TextFieldProps(
-                          decoration: InputDecoration(
-                            hintText: 'Buscar categoría...',
-                            prefixIcon: const Icon(Iconsax.search_normal),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                        ),
-                        menuProps: MenuProps(
-                          backgroundColor: Colors.white,
-                          elevation: 8,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      asyncItems: (String? search) async {
-                        final provider = productCategoriesProvider(
-                          search: search?.isEmpty == true ? null : search,
-                          perPage: 50,
-                        );
-                        final categoriesAsync = ref.read(provider);
-                        return await categoriesAsync.when(
-                          data: (categories) => categories,
-                          loading: () => <ProductCategory>[],
-                          error: (_, __) => <ProductCategory>[],
-                        );
-                      },
-                      itemAsString: (item) => item.name,
-                      dropdownDecoratorProps: DropDownDecoratorProps(
-                        dropdownSearchDecoration: InputDecoration(
-                          hintText: 'Selecciona o busca una categoría...',
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                        ),
-                      ),
-                      onChanged: (ProductCategory? category) {
-                        selectedCategory.value = category;
-                        attemptCalculation(); // Recalcular al cambiar categoría
-                      },
-                    ),
-                  ),
-                  // Nota: Eliminamos el botón "Calcular"
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // --- SECCIÓN RESULTADOS (Condicional) ---
-            calculationState.when(
-              data: (result) {
-                if (result == null) {
-                  return const SizedBox.shrink();
-                }
-                return _buildQuoteReceipt(context, result);
-              },
-              loading: () => _buildShimmerLoading(),
-              error: (error, stack) => Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Iconsax.danger, color: Colors.red.shade700),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Error al calcular: ${error.toString()}',
-                        style: TextStyle(color: Colors.red.shade700),
-                      ),
-                    ),
-                  ],
                 ),
               ),
-            ),
 
-            const SizedBox(height: 100), // Espacio extra para scroll
-          ],
+              const SizedBox(height: 100), // Espacio extra para scroll
+            ],
+          ),
         ),
       ),
     );

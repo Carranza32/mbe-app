@@ -35,34 +35,54 @@ class CreatePreAlertState {
   }
 
   // Validación de campos
-  bool get isTrackingNumberValid =>
-      request?.trackingNumber.isNotEmpty ?? false;
+  bool get isTrackingNumberValid {
+    final tracking = request?.trackingNumber ?? '';
+    return tracking.trim().isNotEmpty;
+  }
 
-  bool get isMailboxNumberValid =>
-      request?.mailboxNumber.isNotEmpty ?? false;
+  bool get isStoreSelected {
+    final storeId = request?.storeId ?? '';
+    return storeId.trim().isNotEmpty;
+  }
 
-  bool get isStoreSelected => request?.storeId.isNotEmpty ?? false;
+  bool get hasProducts {
+    final products = request?.products ?? [];
+    return products.isNotEmpty;
+  }
 
-  bool get isTotalValueValid => (request?.totalValue ?? 0) > 0;
+  // Validar que todos los productos tengan categoría, cantidad y precio válidos
+  bool get areProductsValid {
+    final products = request?.products ?? [];
+    if (products.isEmpty) return false;
 
-  bool get hasProducts => (request?.products.length ?? 0) > 0;
+    return products.every((product) {
+      // Validar que tenga categoría (productId y productName)
+      final hasCategory =
+          product.productId.trim().isNotEmpty &&
+          product.productName.trim().isNotEmpty;
+      // Validar que tenga cantidad > 0
+      final hasQuantity = product.quantity > 0;
+      // Validar que tenga precio > 0
+      final hasPrice = product.price > 0;
 
-  bool get productsMatchTotal {
-    if (request == null) return false;
-    final productsTotal = request!.products.fold<double>(
+      return hasCategory && hasQuantity && hasPrice;
+    });
+  }
+
+  // Calcular el total automáticamente desde los productos
+  double get calculatedTotal {
+    if (request == null || request!.products.isEmpty) return 0;
+    return request!.products.fold<double>(
       0,
       (sum, product) => sum + product.subtotal,
     );
-    return (productsTotal - request!.totalValue).abs() < 0.01;
   }
 
   bool get isValid =>
       isTrackingNumberValid &&
-      isMailboxNumberValid &&
       isStoreSelected &&
-      isTotalValueValid &&
       hasProducts &&
-      productsMatchTotal;
+      areProductsValid;
 }
 
 @riverpod
@@ -111,12 +131,7 @@ class CreatePreAlert extends _$CreatePreAlert {
   void addProduct() {
     final currentProducts = List<PreAlertProduct>.from(state.request!.products);
     currentProducts.add(
-      PreAlertProduct(
-        productId: '',
-        productName: '',
-        quantity: 1,
-        price: 0,
-      ),
+      PreAlertProduct(productId: '', productName: '', quantity: 1, price: 0),
     );
     final updatedRequest = state.request!.copyWith(products: currentProducts);
     state = state.copyWith(request: updatedRequest);
@@ -148,7 +163,9 @@ class CreatePreAlert extends _$CreatePreAlert {
 
   void setProductQuantity(int index, int quantity) {
     final currentProducts = List<PreAlertProduct>.from(state.request!.products);
-    currentProducts[index] = currentProducts[index].copyWith(quantity: quantity);
+    currentProducts[index] = currentProducts[index].copyWith(
+      quantity: quantity,
+    );
     final updatedRequest = state.request!.copyWith(products: currentProducts);
     state = state.copyWith(request: updatedRequest);
   }
@@ -164,7 +181,9 @@ class CreatePreAlert extends _$CreatePreAlert {
 
   Future<bool> submit() async {
     if (!state.isValid) {
-      state = state.copyWith(error: 'Por favor complete todos los campos requeridos');
+      state = state.copyWith(
+        error: 'Por favor complete todos los campos requeridos',
+      );
       return false;
     }
 
@@ -172,9 +191,24 @@ class CreatePreAlert extends _$CreatePreAlert {
 
     try {
       final repository = ref.read(preAlertsRepositoryProvider);
-      
+
+      // Calcular el total automáticamente desde los productos
+      final calculatedTotal = state.request!.products.fold<double>(
+        0,
+        (sum, product) => sum + product.subtotal,
+      );
+
+      // Crear el request final con el total calculado
+      final finalRequest = state.request!.copyWith(
+        totalValue: calculatedTotal,
+        // mailboxNumber puede estar vacío, usar un valor por defecto si es necesario
+        mailboxNumber: state.request!.mailboxNumber.isEmpty
+            ? 'N/A'
+            : state.request!.mailboxNumber,
+      );
+
       await repository.createPreAlert(
-        request: state.request!,
+        request: finalRequest,
         invoiceFile: state.invoiceFile,
       );
 

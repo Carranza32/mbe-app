@@ -62,18 +62,105 @@ Future<List<ProductCategory>> productCategories(
   }
 }
 
-List<ProductCategory> _getStaticCategories() {
-  return [
-    ProductCategory(id: 1, name: 'Articulos Tecnologicos y Mecanicos'),
-    ProductCategory(id: 2, name: 'Sombreros'),
-    ProductCategory(id: 3, name: 'CD'),
-    ProductCategory(id: 4, name: 'Consolas de Juego'),
-    ProductCategory(id: 5, name: 'Ropa'),
-    ProductCategory(id: 6, name: 'Electrónicos'),
-    ProductCategory(id: 7, name: 'Hogar y Jardín'),
-    ProductCategory(id: 8, name: 'Deportes'),
-    ProductCategory(id: 9, name: 'Juguetes'),
-    ProductCategory(id: 10, name: 'Libros'),
-  ];
+// Provider que carga TODOS los productos de una vez y los mantiene en memoria
+// Se usa para optimizar el dropdown, cargando todo al inicio y filtrando localmente
+// keepAlive: true mantiene los datos en memoria incluso cuando no hay listeners
+@Riverpod(keepAlive: true)
+class AllProductCategories extends _$AllProductCategories {
+  @override
+  Future<List<ProductCategory>> build() async {
+    final apiService = ref.read(apiServiceProvider);
+    
+    try {
+      final allCategories = <ProductCategory>[];
+      int currentPage = 1;
+      int lastPage = 1;
+      bool hasMore = true;
+
+      // Cargar todas las páginas
+      while (hasMore) {
+        final queryParams = <String, dynamic>{
+          'page': currentPage,
+          'per_page': 100, // Cargar 100 por página
+        };
+
+        final response = await apiService.get<dynamic>(
+          endpoint: ApiEndpoints.productCategories,
+          queryParameters: queryParams,
+          fromJson: (json) => json, // Devolver el JSON tal cual para procesarlo manualmente
+        );
+
+        // Procesar la respuesta que puede venir en diferentes formatos
+        List<ProductCategory> pageCategories = [];
+        Map<String, dynamic>? paginationInfo;
+
+        if (response is Map<String, dynamic>) {
+          // Formato paginado: { "data": [...], "current_page": 1, "last_page": 1, ... }
+          if (response.containsKey('data') && response['data'] is List) {
+            final items = response['data'] as List;
+            pageCategories = items
+                .map((item) {
+                  try {
+                    return ProductCategory.fromJson(item as Map<String, dynamic>);
+                  } catch (e) {
+                    print('Error parseando categoría: $e');
+                    return null;
+                  }
+                })
+                .whereType<ProductCategory>()
+                .toList();
+            paginationInfo = response;
+          } else {
+            // Puede ser que data sea un objeto con data anidado
+            paginationInfo = response;
+          }
+        } else if (response is List) {
+          // Formato directo: lista de categorías sin paginación
+          pageCategories = response
+              .map((item) {
+                try {
+                  return ProductCategory.fromJson(item as Map<String, dynamic>);
+                } catch (e) {
+                  print('Error parseando categoría: $e');
+                  return null;
+                }
+              })
+              .whereType<ProductCategory>()
+              .toList();
+          // Si es lista directa, no hay más páginas
+          hasMore = false;
+        }
+
+        allCategories.addAll(pageCategories);
+
+        // Verificar si hay más páginas
+        if (paginationInfo != null) {
+          currentPage = paginationInfo['current_page'] as int? ?? 1;
+          lastPage = paginationInfo['last_page'] as int? ?? 1;
+          hasMore = currentPage < lastPage;
+        } else {
+          hasMore = false;
+        }
+        
+        if (hasMore) {
+          currentPage++;
+        }
+      }
+
+      print('✅ Cargadas ${allCategories.length} categorías de productos');
+      return allCategories;
+    } catch (e, stackTrace) {
+      // Si la API falla, retornar lista vacía
+      print('❌ Error cargando todas las categorías: $e');
+      print('Stack trace: $stackTrace');
+      return [];
+    }
+  }
+
+  // Método para refrescar los datos
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => build());
+  }
 }
 

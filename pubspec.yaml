@@ -63,6 +63,7 @@ dependencies:
   mobile_scanner: ^5.2.3
   signature: ^6.3.0
   dropdown_search: ^5.0.6
+  pinput: ^6.0.1
 
 dev_dependencies:
   flutter_test:

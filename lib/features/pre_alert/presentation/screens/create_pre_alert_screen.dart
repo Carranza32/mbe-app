@@ -9,8 +9,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../config/theme/mbe_theme.dart';
 import '../../../../core/design_system/ds_inputs.dart';
+import '../../../../core/design_system/ds_dropdown_search.dart';
 import '../../providers/create_pre_alert_provider.dart';
 import '../../providers/stores_provider.dart';
+import '../../data/models/create_pre_alert_request.dart';
 import '../../providers/pre_alerts_provider.dart';
 import '../widgets/product_form_item.dart';
 
@@ -22,7 +24,6 @@ class CreatePreAlertScreen extends HookConsumerWidget {
     final theme = Theme.of(context);
     final state = ref.watch(createPreAlertProvider);
     final notifier = ref.read(createPreAlertProvider.notifier);
-    final storesAsync = ref.watch(storesProvider);
 
     return Scaffold(
       backgroundColor: MBETheme.lightGray,
@@ -123,15 +124,10 @@ class CreatePreAlertScreen extends HookConsumerWidget {
 
                       const SizedBox(height: MBESpacing.lg),
 
-                      // Tienda (Dropdown)
-                      storesAsync.when(
-                        data: (stores) => _StoreDropdown(
-                          stores: stores,
-                          selectedStoreId: state.request?.storeId,
-                          onChanged: notifier.setStore,
-                        ),
-                        loading: () => const CircularProgressIndicator(),
-                        error: (_, __) => const Text('Error al cargar tiendas'),
+                      // Tienda (Dropdown con búsqueda)
+                      _StoreDropdown(
+                        selectedStoreId: state.request?.storeId,
+                        onChanged: notifier.setStore,
                       ),
 
                       const SizedBox(height: MBESpacing.lg),
@@ -244,17 +240,17 @@ class CreatePreAlertScreen extends HookConsumerWidget {
               const SizedBox(height: MBESpacing.xl),
 
               // Suma de Productos (Warning si no coincide)
-              if (state.hasProducts) ...[
-                _ProductsSummary(
-                  productsTotal: state.request!.products.fold<double>(
-                    0,
-                    (sum, p) => sum + p.subtotal,
-                  ),
-                  formTotal: state.request!.totalValue,
-                  isValid: state.productsMatchTotal,
-                ),
-                const SizedBox(height: MBESpacing.xl),
-              ],
+              // if (state.hasProducts) ...[
+              //   _ProductsSummary(
+              //     productsTotal: state.request!.products.fold<double>(
+              //       0,
+              //       (sum, p) => sum + p.subtotal,
+              //     ),
+              //     formTotal: state.request!.totalValue,
+              //     isValid: state.productsMatchTotal,
+              //   ),
+              //   const SizedBox(height: MBESpacing.xl),
+              // ],
 
               // Nota
               FadeInUp(
@@ -280,7 +276,7 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                       const SizedBox(width: MBESpacing.sm),
                       Expanded(
                         child: Text(
-                          '* Asegúrate de ingresar la descripción correcta de tu paquete, ya que pueden causar retrasos al procesarlo.',
+                          '* Asegúrate de ingresar la categoría correcta de tu paquete, ya que pueden causar retrasos al procesarlo.',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: const Color(0xFF92400E),
                           ),
@@ -455,72 +451,54 @@ class CreatePreAlertScreen extends HookConsumerWidget {
 // ===== WIDGETS AUXILIARES =====
 
 class _StoreDropdown extends ConsumerWidget {
-  final List stores;
   final String? selectedStoreId;
   final Function(String) onChanged;
 
   const _StoreDropdown({
-    required this.stores,
     required this.selectedStoreId,
     required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              'Tienda donde compraste el producto',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '*',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: MBETheme.brandRed,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: MBESpacing.sm),
-        Container(
-          decoration: BoxDecoration(
-            color: MBETheme.lightGray,
-            borderRadius: BorderRadius.circular(MBERadius.medium),
-            border: Border.all(color: MBETheme.neutralGray.withOpacity(0.2)),
-          ),
-          child: DropdownButtonFormField<String>(
-            value: selectedStoreId?.isEmpty == true ? null : selectedStoreId,
-            decoration: InputDecoration(
-              hintText: 'ADORAMA',
-              prefixIcon: const Icon(Iconsax.shop),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: MBESpacing.md,
-                vertical: MBESpacing.md,
-              ),
-            ),
-            items: stores.map((store) {
-              return DropdownMenuItem<String>(
-                value: store.id,
-                child: Text(store.name),
-              );
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) onChanged(value);
-            },
-          ),
-        ),
-      ],
+    return Consumer(
+      builder: (context, ref, child) {
+        final storesAsync = ref.watch(allStoresProvider);
+        return storesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Text('Error: $error'),
+          data: (stores) {
+            return DSDropdownSearch<Store>(
+              label: 'Tienda donde compraste el producto',
+              selectedItem: _getSelectedStore(stores),
+              provider: allStoresProvider,
+              itemAsString: (store) => store.name,
+              onChanged: (store) {
+                if (store != null) {
+                  onChanged(store.id);
+                }
+              },
+              required: true,
+              hint: 'Selecciona una tienda',
+              searchHint: 'Buscar tienda...',
+              prefixIcon: Iconsax.shop,
+              enableSearch: true,
+            );
+          },
+        );
+      },
     );
+  }
+
+  Store? _getSelectedStore(List<Store> stores) {
+    if (selectedStoreId != null && stores.isNotEmpty) {
+      try {
+        return stores.firstWhere((store) => store.id == selectedStoreId);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 }
 

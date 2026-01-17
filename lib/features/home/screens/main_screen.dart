@@ -42,40 +42,46 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           route: '/admin/search',
         ),
         NavigationItem(
-          icon: Iconsax.setting_2,
-          activeIcon: Iconsax.setting_5,
-          label: 'Más',
-          route: '/', // Por ahora apunta a home, puedes cambiarlo después
+          icon: Iconsax.profile_circle,
+          activeIcon: Iconsax.profile_circle5,
+          label: 'Perfil',
+          route: '/profile',
         ),
       ];
     } else {
-      // Navegación para Customer
-    return [
-      NavigationItem(
-        icon: Iconsax.home,
+      // Navegación para Customer - 5 opciones
+      return [
+        NavigationItem(
+          icon: Iconsax.home,
           activeIcon: Iconsax.home_15,
-        label: 'Inicio',
-        route: '/',
-      ),
-      NavigationItem(
-        icon: Iconsax.printer,
+          label: 'Inicio',
+          route: '/',
+        ),
+        NavigationItem(
+          icon: Iconsax.printer,
           activeIcon: Iconsax.printer5,
-        label: 'Impresiones',
-        route: '/print-orders/my-orders',
-      ),
-      NavigationItem(
-        icon: Iconsax.note_add,
+          label: 'Impresiones',
+          route: '/print-orders/my-orders',
+        ),
+        NavigationItem(
+          icon: Iconsax.note_add,
           activeIcon: Iconsax.note_add5,
-        label: 'Pre-alertar',
+          label: 'Pre-alertar',
           route: '/pre-alert',
-      ),
-      NavigationItem(
-        icon: Iconsax.calculator,
+        ),
+        NavigationItem(
+          icon: Iconsax.calculator,
           activeIcon: Iconsax.calculator5,
-        label: 'Cotizar',
-        route: '/quoter',
-      ),
-    ];
+          label: 'Cotizar',
+          route: '/quoter',
+        ),
+        NavigationItem(
+          icon: Iconsax.profile_circle,
+          activeIcon: Iconsax.profile_circle5,
+          label: 'Perfil',
+          route: '/profile',
+        ),
+      ];
     }
   }
 
@@ -140,10 +146,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     final isAdmin = ref.watch(isAdminProvider);
     final items = _getNavigationItems(isAdmin);
     
-    // Verificar si hay acciones pendientes (solo para usuarios no admin)
+    // Verificar si hay acciones pendientes y el número (solo para usuarios no admin)
     final hasPendingActions = !isAdmin 
         ? ref.watch(hasPendingActionsProvider)
         : false;
+    final pendingCount = !isAdmin 
+        ? ref.watch(pendingActionsCountProvider)
+        : 0;
     
     // Encontrar el índice del ítem "Pre-alertar" para agregar el badge
     final preAlertIndex = items.indexWhere((item) => item.route == '/pre-alert');
@@ -198,21 +207,39 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 clipBehavior: Clip.none,
                 children: [
                   Icon(item.icon), // Icono normal (outline)
-                  if (isPreAlertItem)
+                  if (isPreAlertItem && pendingCount > 0)
                     Positioned(
                       right: -4,
                       top: -4,
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: pendingCount > 9 
+                            ? const EdgeInsets.symmetric(horizontal: 4, vertical: 2)
+                            : const EdgeInsets.all(4),
                         decoration: const BoxDecoration(
                           color: Colors.orange,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Iconsax.danger,
-                          size: 12,
-                          color: Colors.white,
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
                         ),
+                        child: pendingCount > 9
+                            ? const Text(
+                                '9+',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : Text(
+                                '$pendingCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                 ],
@@ -221,21 +248,39 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                 clipBehavior: Clip.none,
                 children: [
                   Icon(item.activeIcon), // Icono seleccionado (filled)
-                  if (isPreAlertItem)
+                  if (isPreAlertItem && pendingCount > 0)
                     Positioned(
                       right: -4,
                       top: -4,
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: pendingCount > 9 
+                            ? const EdgeInsets.symmetric(horizontal: 4, vertical: 2)
+                            : const EdgeInsets.all(4),
                         decoration: const BoxDecoration(
                           color: Colors.orange,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Iconsax.danger,
-                          size: 12,
-                          color: Colors.white,
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
                         ),
+                        child: pendingCount > 9
+                            ? const Text(
+                                '9+',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : Text(
+                                '$pendingCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                 ],

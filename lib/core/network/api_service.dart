@@ -329,6 +329,14 @@ class ApiService {
             dataToConvert = map['result'];
             print('📦 ApiService: Extraído campo "result" de la respuesta');
           }
+          // Si no tiene 'data' ni 'result' pero tiene 'user', usar ese
+          // PERO solo si no tiene 'token' (para evitar extraer user en login/register)
+          else if (map.containsKey('user') && 
+                   map['user'] != null && 
+                   !map.containsKey('token')) {
+            dataToConvert = map['user'];
+            print('📦 ApiService: Extraído campo "user" de la respuesta');
+          }
           // Si no, usar todo el map
           else {
             print('📦 ApiService: Usando toda la respuesta como data');

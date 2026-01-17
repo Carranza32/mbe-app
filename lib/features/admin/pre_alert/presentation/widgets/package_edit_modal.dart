@@ -791,15 +791,15 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
   ) {
     return Consumer(
       builder: (context, ref, child) {
-        // Cargar categorías iniciales
-        final categoriesState = ref.watch(productCategoriesProvider());
+        // Cargar todas las categorías desde memoria
+        final allCategoriesState = ref.watch(allProductCategoriesProvider);
 
-        return categoriesState.when(
-          data: (initialCategories) {
+        return allCategoriesState.when(
+          data: (allCategories) {
             ProductCategory? selectedCategory;
-            if (selectedCategoryId != null && initialCategories.isNotEmpty) {
+            if (selectedCategoryId != null && allCategories.isNotEmpty) {
               try {
-                selectedCategory = initialCategories.firstWhere(
+                selectedCategory = allCategories.firstWhere(
                   (cat) => cat.id == selectedCategoryId,
                 );
               } catch (e) {
@@ -832,15 +832,16 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
                   ),
                 ),
                 asyncItems: (String? search) async {
-                  // Búsqueda del servidor
-                  final provider = productCategoriesProvider(
-                    search: search?.isEmpty == true ? null : search,
-                    perPage: 50,
-                  );
-                  final result = await ref.read(provider.future);
-                  return result;
+                  // Filtrar localmente desde la lista en memoria
+                  if (search != null && search.isNotEmpty) {
+                    final searchLower = search.toLowerCase();
+                    return allCategories.where((category) {
+                      return category.name.toLowerCase().contains(searchLower);
+                    }).toList();
+                  }
+                  return allCategories;
                 },
-                items: initialCategories,
+                items: allCategories,
                 selectedItem: selectedCategory,
                 itemAsString: (category) => category.name,
                 dropdownDecoratorProps: DropDownDecoratorProps(

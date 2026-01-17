@@ -99,3 +99,17 @@ bool hasPendingActions(Ref ref) {
     error: (_, __) => false,
   );
 }
+
+// Provider para obtener el número de pre-alertas que requieren acción
+@riverpod
+int pendingActionsCount(Ref ref) {
+  final preAlertsState = ref.watch(preAlertsProvider);
+  
+  return preAlertsState.when(
+    data: (preAlerts) {
+      return preAlerts.where((preAlert) => preAlert.requiresAction).length;
+    },
+    loading: () => 0,
+    error: (_, __) => 0,
+  );
+}
