@@ -1,20 +1,63 @@
 // lib/features/pre_alert/presentation/screens/create_pre_alert_screen.dart
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart' hide Store;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../config/theme/mbe_theme.dart';
 import '../../../../core/design_system/ds_inputs.dart';
 import '../../../../core/design_system/ds_dropdown_search.dart';
+import '../../../auth/presentation/widgets/verification_pending_modal.dart';
+import '../../../auth/providers/auth_provider.dart';
 import '../../providers/create_pre_alert_provider.dart';
 import '../../providers/stores_provider.dart';
 import '../../data/models/create_pre_alert_request.dart';
 import '../../providers/pre_alerts_provider.dart';
 import '../widgets/product_form_item.dart';
+import '../widgets/autocomplete_ai_section.dart';
+
+/// Permite adjuntar la factura manualmente (sin usar IA). Mismo archivo se envía con la pre-alerta.
+Future<void> _pickInvoiceFileManually(
+  BuildContext context,
+  WidgetRef ref,
+  CreatePreAlert notifier,
+) async {
+  try {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+    );
+    if (result == null || result.files.single.path == null) return;
+    final file = File(result.files.single.path!);
+    final sizeInMB = file.lengthSync() / (1024 * 1024);
+    if (sizeInMB > 10) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.preAlertFileTooLarge),
+            backgroundColor: MBETheme.brandRed,
+          ),
+        );
+      }
+      return;
+    }
+    notifier.setInvoiceFile(file);
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.preAlertErrorSelecting(e.toString())),
+          backgroundColor: MBETheme.brandRed,
+        ),
+      );
+    }
+  }
+}
 
 class CreatePreAlertScreen extends HookConsumerWidget {
   const CreatePreAlertScreen({Key? key}) : super(key: key);
@@ -22,8 +65,35 @@ class CreatePreAlertScreen extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(createPreAlertProvider);
     final notifier = ref.read(createPreAlertProvider.notifier);
+    final authState = ref.watch(authProvider);
+    final user = authState.value;
+    final hasShownModal = useState(false);
+
+    // Verificar si el customer está verificado después del primer frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Evitar mostrar el modal múltiples veces
+      if (hasShownModal.value) return;
+
+      if (user != null &&
+          !user.isAdmin &&
+          user.customer != null &&
+          user.customer!.verifiedAt == null) {
+        hasShownModal.value = true;
+        // Mostrar modal de verificación pendiente y volver atrás
+        Future.microtask(() {
+          if (context.mounted) {
+            context.pop();
+            showDialog(
+              context: context,
+              builder: (context) => const VerificationPendingModal(),
+            );
+          }
+        });
+      }
+    });
 
     return Scaffold(
       backgroundColor: MBETheme.lightGray,
@@ -34,9 +104,9 @@ class CreatePreAlertScreen extends HookConsumerWidget {
           icon: const Icon(Iconsax.arrow_left_2),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Nueva Prealerta',
-          style: TextStyle(fontWeight: FontWeight.w600),
+        title: Text(
+          l10n.preAlertNewTitle,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
       body: GestureDetector(
@@ -76,14 +146,14 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Nueva Prealerta',
+                              l10n.preAlertNewTitle,
                               style: theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             const SizedBox(height: MBESpacing.xs),
                             Text(
-                              'Completa la información para registrar tu paquete',
+                              l10n.preAlertNewSubtitle,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -98,7 +168,18 @@ class CreatePreAlertScreen extends HookConsumerWidget {
 
               const SizedBox(height: MBESpacing.xl),
 
-              // Formulario Principal
+              // Autocompletar con IA (mismo archivo se usa al enviar)
+              AutocompleteAiSection(
+                selectedFile: state.invoiceFile,
+                isAnalyzing: state.isAnalyzingInvoice,
+                error: state.invoiceAnalysisError,
+                onFilePicked: (file) => notifier.analyzeInvoiceAndApply(file),
+                onDismissError: notifier.clearInvoiceAnalysisError,
+              ),
+
+              const SizedBox(height: MBESpacing.xl),
+
+              // Formulario Principal (con animación fade al rellenar por IA)
               FadeInUp(
                 duration: const Duration(milliseconds: 400),
                 delay: const Duration(milliseconds: 100),
@@ -112,52 +193,66 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Número de Rastreo
-                      DSInput.text(
-                        label: 'Número de Rastreo',
-                        hint: 'Ej: 1Z999AA10123456784',
-                        value: state.request?.trackingNumber ?? '',
-                        onChanged: notifier.setTrackingNumber,
-                        required: true,
-                        prefixIcon: Iconsax.truck_fast,
+                      // Número de Factura (manual o rellenado por IA; key estable para no cerrar teclado al escribir)
+                      FadeIn(
+                        key: const ValueKey('invoice_field'),
+                        duration: const Duration(milliseconds: 500),
+                        child: DSInput.text(
+                          label: l10n.preAlertInvoiceNumber,
+                          hint: l10n.preAlertInvoiceHint,
+                          value: state.request?.invoiceNumber ?? '',
+                          onChanged: notifier.setInvoiceNumber,
+                          required: true,
+                          prefixIcon: Iconsax.document_text,
+                        ),
                       ),
 
                       const SizedBox(height: MBESpacing.lg),
 
-                      // Tienda (Dropdown con búsqueda)
-                      _StoreDropdown(
-                        selectedStoreId: state.request?.storeId,
-                        onChanged: notifier.setStore,
+                      // Tienda (manual o rellenado por IA; key estable)
+                      FadeIn(
+                        key: const ValueKey('store_field'),
+                        duration: const Duration(milliseconds: 500),
+                        child: _StoreDropdown(
+                          selectedStoreId: state.request?.storeId,
+                          onChanged: notifier.setStore,
+                        ),
                       ),
 
                       const SizedBox(height: MBESpacing.lg),
 
-                      // Subir Factura
-                      _FileUploadSection(
+                      // Factura: desde "Autocompletar con IA" o adjuntar manualmente aquí
+                      _InvoiceSummary(
                         file: state.invoiceFile,
-                        onFilePicked: notifier.setInvoiceFile,
+                        onPickFile: () => _pickInvoiceFileManually(context, ref, notifier),
                       ),
 
                       const SizedBox(height: MBESpacing.lg),
 
-                      //Productos dentro del paquete
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Iconsax.box,
-                                size: 20,
-                                color: MBETheme.brandBlack,
-                              ),
-                              const SizedBox(width: MBESpacing.sm),
-                              Text(
-                                'Productos dentro del paquete',
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
+                      // Productos (fade cuando la IA rellena la lista)
+                      FadeIn(
+                        key: ValueKey(
+                          'products_${state.request?.products.length ?? 0}_'
+                          '${state.request?.products.map((p) => p.productId).join(",") ?? ""}',
+                        ),
+                        duration: const Duration(milliseconds: 500),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Iconsax.box,
+                                  size: 20,
+                                  color: MBETheme.brandBlack,
                                 ),
-                              ),
+                                const SizedBox(width: MBESpacing.sm),
+                                Text(
+                                  l10n.preAlertProductsInPackage,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               const SizedBox(width: MBESpacing.sm),
                               // Text(
                               //   '${state.request?.products.length ?? 0} productos',
@@ -200,21 +295,22 @@ class CreatePreAlertScreen extends HookConsumerWidget {
 
                           const SizedBox(height: MBESpacing.md),
 
-                          // Botón Agregar Producto
-                          OutlinedButton.icon(
-                            onPressed: notifier.addProduct,
-                            icon: const Icon(Iconsax.add),
-                            label: const Text('Agregar Producto'),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(double.infinity, 48),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  MBERadius.medium,
+                            // Botón Agregar Producto
+                            OutlinedButton.icon(
+                              onPressed: notifier.addProduct,
+                              icon: const Icon(Iconsax.add),
+                              label: Text(l10n.preAlertAddProduct),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    MBERadius.medium,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -276,7 +372,7 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                       const SizedBox(width: MBESpacing.sm),
                       Expanded(
                         child: Text(
-                          '* Asegúrate de ingresar la categoría correcta de tu paquete, ya que pueden causar retrasos al procesarlo.',
+                          l10n.preAlertCategoryNote,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: const Color(0xFF92400E),
                           ),
@@ -322,7 +418,7 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                             const Icon(Iconsax.document_upload),
                             const SizedBox(width: MBESpacing.sm),
                             Text(
-                              'Crear Prealerta',
+                              l10n.preAlertCreate,
                               style: theme.textTheme.titleSmall?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
@@ -355,7 +451,9 @@ class CreatePreAlertScreen extends HookConsumerWidget {
         context: context,
         barrierDismissible: false,
         barrierColor: Colors.black54,
-        builder: (context) => Dialog(
+        builder: (ctx) {
+          final l10nDialog = AppLocalizations.of(ctx)!;
+          return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(MBERadius.large),
           ),
@@ -388,7 +486,7 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                   duration: const Duration(milliseconds: 500),
                   delay: const Duration(milliseconds: 100),
                   child: Text(
-                    '¡Prealerta creada!',
+                    l10nDialog.preAlertCreatedSuccess,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: MBETheme.brandBlack,
@@ -402,7 +500,7 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                   duration: const Duration(milliseconds: 500),
                   delay: const Duration(milliseconds: 200),
                   child: Text(
-                    'Tu prealerta ha sido registrada exitosamente',
+                    l10nDialog.preAlertCreatedMessage,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: MBETheme.neutralGray,
@@ -428,19 +526,21 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                         borderRadius: BorderRadius.circular(MBERadius.medium),
                       ),
                     ),
-                    child: const Text('Aceptar'),
+                    child: Text(l10nDialog.preAlertAccept),
                   ),
                 ),
               ],
             ),
           ),
-        ),
+        );
+        },
       );
     } else {
       final state = ref.read(createPreAlertProvider);
+      final l10nErr = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(state.error ?? 'Error al crear la prealerta'),
+        content: Text(state.error ?? l10nErr.preAlertCreateError),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -461,15 +561,16 @@ class _StoreDropdown extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     return Consumer(
       builder: (context, ref, child) {
         final storesAsync = ref.watch(allStoresProvider);
         return storesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Text('Error: $error'),
+          error: (error, stack) => Text(l10n.preAlertErrorGeneric(error.toString())),
           data: (stores) {
             return DSDropdownSearch<Store>(
-              label: 'Tienda donde compraste el producto',
+              label: l10n.preAlertStoreWhereBought,
               selectedItem: _getSelectedStore(stores),
               provider: allStoresProvider,
               itemAsString: (store) => store.name,
@@ -479,8 +580,8 @@ class _StoreDropdown extends ConsumerWidget {
                 }
               },
               required: true,
-              hint: 'Selecciona una tienda',
-              searchHint: 'Buscar tienda...',
+              hint: l10n.preAlertSelectStore,
+              searchHint: l10n.preAlertSearchStore,
               prefixIcon: Iconsax.shop,
               enableSearch: true,
             );
@@ -502,119 +603,100 @@ class _StoreDropdown extends ConsumerWidget {
   }
 }
 
-class _FileUploadSection extends StatelessWidget {
+/// Muestra la factura seleccionada. Se puede subir desde "Autocompletar con IA" o adjuntar aquí manualmente.
+class _InvoiceSummary extends StatelessWidget {
   final File? file;
-  final Function(File) onFilePicked;
+  final VoidCallback? onPickFile;
 
-  const _FileUploadSection({required this.file, required this.onFilePicked});
+  const _InvoiceSummary({required this.file, this.onPickFile});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Subir factura relacionada a esta compra',
+          l10n.preAlertInvoiceForPurchase,
           style: theme.textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: MBESpacing.sm),
-        GestureDetector(
-          onTap: () => _pickFile(context),
-          child: Container(
-            padding: const EdgeInsets.all(MBESpacing.xl),
-            decoration: BoxDecoration(
-              color: MBETheme.lightGray,
-              borderRadius: BorderRadius.circular(MBERadius.medium),
-              border: Border.all(
-                color: MBETheme.neutralGray.withOpacity(0.3),
-                style: BorderStyle.solid,
-                width: 2,
-              ),
-            ),
-            child: Column(
-              children: [
-                Icon(
-                  file != null
-                      ? Iconsax.document_upload
-                      : Iconsax.document_upload,
-                  size: 48,
-                  color: file != null
-                      ? MBETheme.brandBlack
-                      : MBETheme.neutralGray,
-                ),
-                const SizedBox(height: MBESpacing.md),
-                Text(
-                  file != null ? 'Archivo seleccionado' : 'Seleccionar archivo',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: file != null
-                        ? MBETheme.brandBlack
-                        : MBETheme.neutralGray,
-                  ),
-                ),
-                const SizedBox(height: MBESpacing.xs),
-                if (file != null)
-                  Text(
-                    file!.path.split('/').last,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  )
-                else
-                  Text(
-                    'PDF, JPG, PNG o GIF. Máx. 4MB',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
+        Container(
+          padding: const EdgeInsets.all(MBESpacing.md),
+          decoration: BoxDecoration(
+            color: MBETheme.lightGray,
+            borderRadius: BorderRadius.circular(MBERadius.medium),
+            border: Border.all(
+              color: MBETheme.neutralGray.withOpacity(0.3),
             ),
           ),
+          child: file != null
+              ? Row(
+                  children: [
+                    const Icon(
+                      Iconsax.document_text,
+                      size: 24,
+                      color: MBETheme.brandBlack,
+                    ),
+                    const SizedBox(width: MBESpacing.sm),
+                    Expanded(
+                      child: Text(
+                        file!.path.split(RegExp(r'[/\\]')).last,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (onPickFile != null)
+                      TextButton(
+                        onPressed: onPickFile,
+                        child: Text(
+                          l10n.preAlertChange,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Icon(
+                      Iconsax.info_circle,
+                      size: 20,
+                      color: MBETheme.neutralGray,
+                    ),
+                    const SizedBox(width: MBESpacing.sm),
+                    Expanded(
+                      child: Text(
+                        l10n.preAlertInvoiceUploadHint,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    if (onPickFile != null)
+                      TextButton.icon(
+                        onPressed: onPickFile,
+                        icon: const Icon(Iconsax.document_upload, size: 18),
+                        label: Text(
+                          l10n.preAlertSelectImageOrPdf,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
         ),
       ],
     );
-  }
-
-  Future<void> _pickFile(BuildContext context) async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'gif'],
-      );
-
-      if (result != null) {
-        final file = File(result.files.single.path!);
-        final sizeInMB = file.lengthSync() / (1024 * 1024);
-
-        if (sizeInMB > 4) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('El archivo no puede superar los 4MB'),
-                backgroundColor: MBETheme.brandRed,
-              ),
-            );
-          }
-          return;
-        }
-
-        onFilePicked(file);
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al seleccionar archivo: $e'),
-            backgroundColor: MBETheme.brandRed,
-          ),
-        );
-      }
-    }
   }
 }
 

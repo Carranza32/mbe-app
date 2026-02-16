@@ -5,10 +5,13 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../../../core/design_system/ds_buttons.dart';
 import '../../../../../config/theme/mbe_theme.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../data/models/admin_pre_alert_model.dart';
 import '../../data/models/package_status.dart';
 import '../../data/models/reception_result.dart';
 import '../../providers/reception_manager.dart';
+import '../../providers/admin_pre_alerts_provider.dart';
+import '../../providers/context_counts_provider.dart';
 
 class ReceptionScanScreen extends ConsumerStatefulWidget {
   const ReceptionScanScreen({super.key});
@@ -143,7 +146,7 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
                 child: TextField(
                   controller: _manualInputController,
                   decoration: InputDecoration(
-                    hintText: 'Ingresar código ebox manualmente',
+                    hintText: AppLocalizations.of(context)!.adminEnterEboxManually,
                     prefixIcon: const Icon(Iconsax.barcode, color: MBETheme.brandBlack),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
@@ -175,7 +178,7 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Escanea el código ebox de un paquete',
+                          AppLocalizations.of(context)!.adminScanEboxHint,
                           style: TextStyle(
                             color: MBETheme.neutralGray.withOpacity(0.8),
                             fontSize: 16,
@@ -183,7 +186,7 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'El paquete será validado y agregado a la lista',
+                          AppLocalizations.of(context)!.adminScanEboxDesc,
                           style: TextStyle(
                             color: MBETheme.neutralGray.withOpacity(0.6),
                             fontSize: 14,
@@ -228,8 +231,11 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
               child: SafeArea(
                 top: false,
                 child: DSButton.primary(
-                  label: 'Finalizar Recepción (${_scannedPackages.length})',
+                  label: _isProcessing
+                      ? AppLocalizations.of(context)!.adminProcessing
+                      : '${AppLocalizations.of(context)!.adminFinishReception} (${_scannedPackages.length})',
                   fullWidth: true,
+                  isLoading: _isProcessing,
                   onPressed: _isProcessing ? null : _finalizeReception,
                 ),
               ),
@@ -250,7 +256,7 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Paquetes Escaneados',
+                  AppLocalizations.of(context)!.adminPackagesScanned,
                   style: TextStyle(
                     fontSize: 14,
                     color: MBETheme.neutralGray,
@@ -283,7 +289,7 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Listo para recibir',
+                  AppLocalizations.of(context)!.adminReadyToReceive,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: MBETheme.brandBlack,
@@ -328,6 +334,16 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
       return;
     }
 
+    // Si ya fue recepcionado, avisar de inmediato (no agregar a la lista)
+    if (package.status.isAlreadyReceived) {
+      HapticFeedback.vibrate();
+      _showSnackBar(
+        AppLocalizations.of(context)!.adminPackageAlreadyReceived,
+        isError: true,
+      );
+      return;
+    }
+
     // Verificar que el paquete esté en un estado válido para recepción
     if (package.status != PackageStatus.listaParaRecibir) {
       HapticFeedback.vibrate();
@@ -354,18 +370,17 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Finalizar Recepción'),
+        title: Text(AppLocalizations.of(context)!.adminFinishReception),
         content: Text(
-          '¿Deseas procesar la recepción de ${_scannedPackages.length} paquete(s)?\n\n'
-          'Los paquetes cambiarán a estado "En Tienda" y se les asignará un rack automáticamente.',
+          '¿Deseas procesar la recepción de ${_scannedPackages.length} paquete(s)?\n\n${AppLocalizations.of(context)!.adminFinishReceptionMessage}',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
+            child: Text(AppLocalizations.of(context)!.authCancel),
           ),
           DSButton.primary(
-            label: 'Confirmar',
+            label: AppLocalizations.of(context)!.adminConfirm,
             onPressed: () => Navigator.of(context).pop(true),
           ),
         ],
@@ -388,7 +403,7 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
         _showSuccessDialog(result);
       } else {
         if (mounted) {
-          _showSnackBar('Error al procesar la recepción', isError: true);
+          _showSnackBar(AppLocalizations.of(context)!.adminReceptionProcessError, isError: true);
         }
       }
     } catch (e) {
@@ -462,10 +477,15 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
         ),
         actions: [
           DSButton.primary(
-            label: 'Aceptar',
+            label: AppLocalizations.of(context)!.preAlertAccept,
             fullWidth: true,
             onPressed: () {
               Navigator.of(context).pop(); // Cerrar diálogo
+              
+              // Invalidar providers para recargar la lista y los contadores
+              ref.invalidate(adminPreAlertsProvider);
+              ref.invalidate(contextCountsProvider);
+              
               Navigator.of(context).pop(); // Volver a la lista
             },
           ),

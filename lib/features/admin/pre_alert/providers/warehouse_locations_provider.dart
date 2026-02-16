@@ -11,12 +11,14 @@ class WarehouseLocations extends _$WarehouseLocations {
     required int storeId,
     bool availableOnly = false,
     String? rackNumber,
+    int? warehouseId,
   }) async {
     final repository = ref.read(adminPreAlertsRepositoryProvider);
     return await repository.getStoreWarehouseLocations(
       storeId: storeId,
       availableOnly: availableOnly,
       rackNumber: rackNumber,
+      warehouseId: warehouseId,
     );
   }
 
@@ -24,6 +26,7 @@ class WarehouseLocations extends _$WarehouseLocations {
     required int storeId,
     bool availableOnly = false,
     String? rackNumber,
+    int? warehouseId,
   }) async {
     state = const AsyncLoading();
     try {
@@ -32,6 +35,7 @@ class WarehouseLocations extends _$WarehouseLocations {
         storeId: storeId,
         availableOnly: availableOnly,
         rackNumber: rackNumber,
+        warehouseId: warehouseId,
       );
       state = AsyncData(locations);
     } catch (e, stackTrace) {

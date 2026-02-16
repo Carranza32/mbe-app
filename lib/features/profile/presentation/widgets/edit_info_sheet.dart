@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../../../config/theme/mbe_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../core/design_system/ds_buttons.dart';
 import '../../../../core/design_system/ds_inputs.dart';
 import '../../../../features/auth/data/repositories/auth_repository.dart';
@@ -10,11 +11,14 @@ import '../../../../features/auth/providers/auth_provider.dart';
 class EditInfoSheet extends ConsumerStatefulWidget {
   final String currentName;
   final String? currentPhone;
+  /// Si true (admin), los campos van deshabilitados y no se puede guardar.
+  final bool isAdmin;
 
   const EditInfoSheet({
     super.key,
     required this.currentName,
     this.currentPhone,
+    this.isAdmin = false,
   });
 
   @override
@@ -54,7 +58,7 @@ class _EditInfoSheetState extends ConsumerState<EditInfoSheet> {
     });
 
     if (_nameCtrl.text.trim().isEmpty) {
-      setState(() => _nameError = 'El nombre es requerido');
+      setState(() => _nameError = AppLocalizations.of(context)!.profileNameRequired);
       return;
     }
 
@@ -62,7 +66,7 @@ class _EditInfoSheetState extends ConsumerState<EditInfoSheet> {
     if (_phoneCtrl.text.trim().isNotEmpty) {
       final phoneRegex = RegExp(r'^(\d{4}-\d{4}|\d{8}|\+\d{1,3}\d{4,14})$');
       if (!phoneRegex.hasMatch(_phoneCtrl.text.trim())) {
-        setState(() => _phoneError = 'Formato de teléfono inválido');
+        setState(() => _phoneError = AppLocalizations.of(context)!.profilePhoneInvalid);
         return;
       }
     }
@@ -82,8 +86,8 @@ class _EditInfoSheetState extends ConsumerState<EditInfoSheet> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Perfil actualizado exitosamente"),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.profileUpdateSuccess),
             backgroundColor: MBETheme.brandBlack,
             behavior: SnackBarBehavior.floating,
           ),
@@ -94,7 +98,7 @@ class _EditInfoSheetState extends ConsumerState<EditInfoSheet> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Error al actualizar perfil: ${e.toString()}"),
+            content: Text(AppLocalizations.of(context)!.profileUpdateError(e.toString())),
             backgroundColor: MBETheme.brandRed,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),
@@ -132,8 +136,8 @@ class _EditInfoSheetState extends ConsumerState<EditInfoSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: Row(
               children: [
-                const Text(
-                  "Editar Información",
+                Text(
+                  AppLocalizations.of(context)!.profileEditInfo,
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -170,11 +174,12 @@ class _EditInfoSheetState extends ConsumerState<EditInfoSheet> {
                 child: Column(
                   children: [
                     DSInput.text(
-                      label: "Nombre Completo",
+                      label: AppLocalizations.of(context)!.fullName,
                       controller: _nameCtrl,
                       prefixIcon: Iconsax.user,
                       required: true,
                       errorText: _nameError,
+                      enabled: !widget.isAdmin,
                       onChanged: (String p1) {
                         if (_nameError != null) {
                           setState(() => _nameError = null);
@@ -183,10 +188,11 @@ class _EditInfoSheetState extends ConsumerState<EditInfoSheet> {
                     ),
                     const SizedBox(height: 16),
                     DSInput.phone(
-                      label: "Teléfono (Opcional)",
+                      label: AppLocalizations.of(context)!.homePhoneOptional,
                       controller: _phoneCtrl,
                       hint: '2222-2222 o 7777-7777',
                       errorText: _phoneError,
+                      enabled: !widget.isAdmin,
                       onChanged: (String p1) {
                         if (_phoneError != null) {
                           setState(() => _phoneError = null);
@@ -209,9 +215,9 @@ class _EditInfoSheetState extends ConsumerState<EditInfoSheet> {
                             size: 20,
                           ),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              "El correo electrónico no se puede cambiar desde la app.",
+                              AppLocalizations.of(context)!.profileEmailCannotChange,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.blueGrey,
@@ -245,12 +251,14 @@ class _EditInfoSheetState extends ConsumerState<EditInfoSheet> {
                 ),
               ],
             ),
-            child: DSButton.primary(
-              label: "Guardar Cambios",
-              isLoading: _isLoading,
-              fullWidth: true,
-              onPressed: (_isLoading || !_isFormValid()) ? null : _handleSave,
-            ),
+            child: widget.isAdmin
+                ? const SizedBox.shrink()
+                : DSButton.primary(
+                    label: AppLocalizations.of(context)!.profileSaveChanges,
+                    isLoading: _isLoading,
+                    fullWidth: true,
+                    onPressed: (_isLoading || !_isFormValid()) ? null : _handleSave,
+                  ),
           ),
         ],
       ),

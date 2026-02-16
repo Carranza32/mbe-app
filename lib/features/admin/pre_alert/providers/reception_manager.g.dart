@@ -33,7 +33,7 @@ final class ReceptionManagerProvider
   ReceptionManager create() => ReceptionManager();
 }
 
-String _$receptionManagerHash() => r'4bec5bdeec4f5ab39676b63b9449713ce9834f5a';
+String _$receptionManagerHash() => r'8f9f7292b19f7b775e368753cc465374e95f6319';
 
 abstract class _$ReceptionManager extends $AsyncNotifier<void> {
   FutureOr<void> build();

@@ -3,8 +3,11 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../../core/design_system/ds_buttons.dart';
 import '../../../../../config/theme/mbe_theme.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../data/models/admin_pre_alert_model.dart';
 import '../../providers/delivery_manager.dart';
+import '../../providers/admin_pre_alerts_provider.dart';
+import '../../providers/context_counts_provider.dart';
 import 'signature_capture_widget.dart';
 import 'recipient_selector.dart';
 
@@ -60,8 +63,8 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
           icon: const Icon(Iconsax.arrow_left_2, color: MBETheme.brandBlack),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          'Procesar Entrega',
+        title: Text(
+          AppLocalizations.of(context)!.adminProcessDelivery,
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -170,9 +173,10 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
                       flex: 2,
                       child: DSButton.primary(
                         label: _isLoading
-                            ? 'Procesando...'
-                            : 'Confirmar Entrega',
+                            ? AppLocalizations.of(context)!.adminProcessing
+                            : AppLocalizations.of(context)!.adminConfirmDelivery,
                         fullWidth: true,
+                        isLoading: _isLoading,
                         onPressed: _isLoading ? null : _processDelivery,
                       ),
                     ),
@@ -207,8 +211,8 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Resumen General',
+          Text(
+            AppLocalizations.of(context)!.adminGeneralSummary,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -221,14 +225,14 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
               Expanded(
                 child: _buildSummaryItem(
                   Iconsax.box_1,
-                  'Paquetes',
+                  AppLocalizations.of(context)!.adminPackages,
                   '${widget.packages.length}',
                 ),
               ),
               Expanded(
                 child: _buildSummaryItem(
                   Iconsax.box,
-                  'Productos',
+                  AppLocalizations.of(context)!.adminProducts,
                   '$totalProducts',
                 ),
               ),
@@ -241,7 +245,7 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
                 Expanded(
                   child: _buildSummaryItem(
                     Iconsax.weight,
-                    'Peso Total',
+                    AppLocalizations.of(context)!.adminTotalWeight,
                     '${totalWeight.toStringAsFixed(2)} LB',
                   ),
                 ),
@@ -380,8 +384,8 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
                       children: [
                         Text(
                           isPickup
-                              ? 'Entrega en Tienda'
-                              : 'Entrega a Domicilio',
+                              ? AppLocalizations.of(context)!.adminStoreDelivery
+                              : AppLocalizations.of(context)!.adminHomeDelivery,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -434,13 +438,13 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
                   // Información básica
                   _buildDetailRow(Iconsax.user, 'Cliente', package.clientName),
                   const SizedBox(height: 12),
-                  _buildDetailRow(Iconsax.box_1, 'Ebox Code', package.eboxCode),
+                  _buildDetailRow(Iconsax.box_1, AppLocalizations.of(context)!.adminEboxCode, package.eboxCode),
                   if (package.rackNumber != null &&
                       package.segmentNumber != null) ...[
                     const SizedBox(height: 12),
                     _buildDetailRow(
                       Iconsax.location,
-                      'Ubicación',
+                      AppLocalizations.of(context)!.printOrderLocation,
                       '${package.rackNumber}-${package.segmentNumber}',
                     ),
                   ],
@@ -449,7 +453,7 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
                     const SizedBox(height: 12),
                     _buildDetailRow(
                       Iconsax.shop,
-                      'Proveedor',
+                      AppLocalizations.of(context)!.adminProvider,
                       package.providerName ?? package.provider,
                     ),
                   ],
@@ -472,8 +476,8 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
                       children: [
                         Icon(Iconsax.box, size: 18, color: MBETheme.brandBlack),
                         const SizedBox(width: 8),
-                        const Text(
-                          'Productos',
+                        Text(
+                          AppLocalizations.of(context)!.adminProducts,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -524,7 +528,7 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
                                 Expanded(
                                   child: Text(
                                     product.productCategoryName ??
-                                        'Sin categoría',
+                                        AppLocalizations.of(context)!.adminNoCategory,
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -584,7 +588,7 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Productos: ${package.productCount}',
+                            '${AppLocalizations.of(context)!.adminProducts}: ${package.productCount}',
                             style: TextStyle(
                               fontSize: 13,
                               color: MBETheme.neutralGray,
@@ -624,8 +628,8 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Total del Paquete',
+                        Text(
+                          AppLocalizations.of(context)!.adminPackageTotal,
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -718,8 +722,8 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
     // Validar receptor
     if (_recipientType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debes seleccionar quién recibe el paquete'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.adminSelectRecipient),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -729,8 +733,8 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
     if (_recipientType == RecipientType.encargado &&
         (_recipientName == null || _recipientName!.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debes ingresar el nombre del encargado'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.adminEnterManagerName),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -762,6 +766,8 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
 
       if (mounted) {
         if (success) {
+          ref.invalidate(adminPreAlertsProvider);
+          ref.invalidate(contextCountsProvider);
           Navigator.of(context).pop(true);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -773,8 +779,8 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error al procesar la entrega'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.adminDeliveryError),
               backgroundColor: MBETheme.brandRed,
             ),
           );

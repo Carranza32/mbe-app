@@ -1,9 +1,8 @@
-// lib/features/profile/presentation/widgets/addresses_section.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../config/theme/mbe_theme.dart';
-import '../../../../core/design_system/ds_buttons.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../data/models/address_model.dart';
 import '../../data/repositories/address_repository.dart';
 import 'address_form_modal.dart';
@@ -40,10 +39,8 @@ class _AddressesSectionState extends ConsumerState<AddressesSection> {
     }
   }
 
-  // --- LÓGICA DE NEGOCIO (Sin cambios, solo UI nueva) ---
   void _handleAddNew() {
     showModalBottomSheet(
-      // Usamos BottomSheet moderno en vez de Dialog
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -71,7 +68,6 @@ class _AddressesSectionState extends ConsumerState<AddressesSection> {
       }
       await _loadAddresses();
 
-      // Cerrar el modal solo después de guardar exitosamente
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -83,11 +79,10 @@ class _AddressesSectionState extends ConsumerState<AddressesSection> {
         );
       }
     } catch (e) {
-      // No cerrar el modal si hay error, solo mostrar mensaje
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al guardar dirección: ${e.toString()}'),
+            content: Text(AppLocalizations.of(context)!.profileErrorSavingAddress(e.toString())),
             backgroundColor: MBETheme.brandRed,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),
@@ -98,22 +93,28 @@ class _AddressesSectionState extends ConsumerState<AddressesSection> {
   }
 
   Future<void> _handleDelete(AddressModel address) async {
-    // Validaciones rápidas
     if (_addresses.length == 1) return;
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("¿Eliminar dirección?"),
-        content: Text("Se eliminará '${address.name}' permanentemente."),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          AppLocalizations.of(context)!.profileDeleteAddressTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(AppLocalizations.of(context)!.profileDeleteAddressConfirm(address.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+            child: Text(AppLocalizations.of(context)!.authCancel, style: const TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text("Eliminar", style: TextStyle(color: Colors.red)),
+            child: Text(
+              AppLocalizations.of(context)!.profileDelete,
+              style: TextStyle(color: Color(0xFFED1C24)),
+            ),
           ),
         ],
       ),
@@ -137,51 +138,69 @@ class _AddressesSectionState extends ConsumerState<AddressesSection> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8FA),
+      backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F8FA),
+        backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: false,
-        title: Text(
+        title: const Text(
           'Mis Direcciones',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          style: TextStyle(
+            color: Color(0xFF1A1C24),
             fontWeight: FontWeight.w800,
-            color: MBETheme.brandBlack,
+            fontSize: 20,
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _handleAddNew,
-        backgroundColor: MBETheme.brandBlack,
-        icon: const Icon(Iconsax.add, color: Colors.white),
-        label: const Text(
-          "Nueva Dirección",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _addresses.isEmpty
           ? _EmptyState(onAdd: _handleAddNew)
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                10,
-                20,
-                100,
-              ), // Espacio para FAB
+          : ListView.builder(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
               itemCount: _addresses.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
               itemBuilder: (context, index) {
                 final address = _addresses[index];
-                return _ModernAddressCard(
-                  address: address,
-                  onEdit: () => _handleEdit(address),
-                  onDelete: () => _handleDelete(address),
-                  onSetDefault: () => _handleSetDefault(address),
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _ModernAddressCard(
+                    address: address,
+                    onEdit: () => _handleEdit(address),
+                    onDelete: () => _handleDelete(address),
+                    onSetDefault: () => _handleSetDefault(address),
+                  ),
                 );
               },
             ),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFED1C24), Color(0xFFB91419)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFED1C24).withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _handleAddNew,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          icon: const Icon(Iconsax.add, color: Colors.white),
+          label: Text(
+            AppLocalizations.of(context)!.profileNewAddress,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -204,139 +223,167 @@ class _ModernAddressCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         border: address.isDefault
-            ? Border.all(
-                color: MBETheme.brandBlack,
-                width: 2,
-              ) // Borde negro si es default
-            : Border.all(color: Colors.transparent),
+            ? Border.all(color: const Color(0xFFED1C24), width: 2)
+            : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         children: [
-          // Header de la Tarjeta
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: Row(
+            padding: const EdgeInsets.all(20),
+            child: Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: address.isDefault
-                        ? MBETheme.brandBlack
-                        : const Color(0xFFF5F5F7),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    address.isDefault
-                        ? Iconsax.home_25
-                        : Iconsax.location, // Icono relleno si es default
-                    color: address.isDefault ? Colors.white : Colors.grey,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        address.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: MBETheme.brandBlack,
-                        ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: address.isDefault
+                            ? const LinearGradient(
+                                colors: [Color(0xFFED1C24), Color(0xFFB91419)],
+                              )
+                            : null,
+                        color: address.isDefault
+                            ? null
+                            : const Color(0xFFF5F7FA),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      if (address.isDefault)
-                        const Text(
-                          "Dirección Principal",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: MBETheme.brandBlack,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                // Botón de menú (3 puntos) para acciones secundarias
-                PopupMenuButton(
-                  icon: const Icon(Iconsax.more, color: Colors.grey),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  onSelected: (value) {
-                    if (value == 'edit') onEdit();
-                    if (value == 'delete') onDelete();
-                    if (value == 'default') onSetDefault();
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
+                      child: Icon(
+                        address.isDefault ? Iconsax.home_15 : Iconsax.location,
+                        color: address.isDefault
+                            ? Colors.white
+                            : const Color(0xFF6B7280),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Iconsax.edit, size: 18),
-                          SizedBox(width: 8),
-                          Text("Editar"),
+                          Text(
+                            address.name,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1A1C24),
+                            ),
+                          ),
+                          if (address.isDefault)
+                            Container(
+                              margin: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFED1C24).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                AppLocalizations.of(context)!.profilePrimary,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFFED1C24),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                    if (!address.isDefault)
-                      const PopupMenuItem(
-                        value: 'default',
-                        child: Row(
-                          children: [
-                            Icon(Iconsax.tick_circle, size: 18),
-                            SizedBox(width: 8),
-                            Text("Hacer Principal"),
-                          ],
-                        ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F7FA),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Iconsax.trash, size: 18, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text("Eliminar", style: TextStyle(color: Colors.red)),
+                      child: PopupMenuButton(
+                        icon: const Icon(
+                          Iconsax.more,
+                          color: Color(0xFF6B7280),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        onSelected: (value) {
+                          if (value == 'edit') onEdit();
+                          if (value == 'delete') onDelete();
+                          if (value == 'default') onSetDefault();
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                const Icon(Iconsax.edit, size: 18),
+                                const SizedBox(width: 12),
+                                Text(AppLocalizations.of(context)!.profileEdit),
+                              ],
+                            ),
+                          ),
+                          if (!address.isDefault)
+                            PopupMenuItem(
+                              value: 'default',
+                              child: Row(
+                                children: [
+                                  const Icon(Iconsax.tick_circle, size: 18),
+                                  const SizedBox(width: 12),
+                                  Text(AppLocalizations.of(context)!.profileMakeDefault),
+                                ],
+                              ),
+                            ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Iconsax.trash,
+                                  size: 18,
+                                  color: Color(0xFFED1C24),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  AppLocalizations.of(context)!.profileDelete,
+                                  style: const TextStyle(color: Color(0xFFED1C24)),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            child: Divider(height: 1),
-          ),
-
-          // Contenido de la Dirección
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _InfoRow(Iconsax.map_1, address.address),
-                const SizedBox(height: 8),
-                _InfoRow(Iconsax.global, address.fullLocation), // Ciudad, Depto
-                const SizedBox(height: 8),
-                _InfoRow(Iconsax.call, address.phone),
-                if (address.references != null &&
-                    address.references!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _InfoRow(Iconsax.note_text, address.references!),
-                ],
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F7FA),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      _InfoRow(Iconsax.map_1, address.address),
+                      const SizedBox(height: 12),
+                      _InfoRow(Iconsax.global, address.fullLocation),
+                      const SizedBox(height: 12),
+                      _InfoRow(Iconsax.call, address.phone),
+                      if (address.references != null &&
+                          address.references!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _InfoRow(Iconsax.note_text, address.references!),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -356,15 +403,15 @@ class _InfoRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: Colors.grey[400]),
-        const SizedBox(width: 10),
+        Icon(icon, size: 18, color: const Color(0xFF6B7280)),
+        const SizedBox(width: 12),
         Expanded(
           child: Text(
             text,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
-              color: Colors.grey[800],
-              height: 1.3,
+              color: Color(0xFF1A1C24),
+              height: 1.4,
             ),
           ),
         ),
@@ -380,33 +427,88 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              shape: BoxShape.circle,
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFFED1C24).withOpacity(0.1),
+                    const Color(0xFFED1C24).withOpacity(0.05),
+                  ],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Iconsax.location,
+                size: 64,
+                color: Color(0xFFED1C24),
+              ),
             ),
-            child: Icon(Iconsax.map, size: 48, color: Colors.grey[400]),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            "No tienes direcciones",
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text("Agrega una para tus envíos a domicilio"),
-          const SizedBox(height: 24),
-          DSButton.primary(
-            label: "Agregar Dirección",
-            onPressed: onAdd,
-            icon: Iconsax.add,
-          ),
-        ],
+            const SizedBox(height: 32),
+            Text(
+              AppLocalizations.of(context)!.profileNoAddressesRegistered,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1A1C24),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              AppLocalizations.of(context)!.profileAddAddressHint,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFED1C24), Color(0xFFB91419)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFED1C24).withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Iconsax.add, color: Colors.white),
+                label: Text(
+                  AppLocalizations.of(context)!.profileAddFirstAddress,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

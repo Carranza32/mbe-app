@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../../../core/design_system/ds_buttons.dart';
 import '../../../../../config/theme/mbe_theme.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../data/models/admin_pre_alert_model.dart';
 import '../../data/models/warehouse_location_model.dart';
 import '../../data/repositories/admin_pre_alerts_repository.dart';
@@ -190,8 +191,8 @@ class _PackageLocationEditModalState
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Editar Ubicación',
+                    Text(
+                      AppLocalizations.of(context)!.adminEditLocation,
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
@@ -282,7 +283,7 @@ class _PackageLocationEditModalState
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'Selecciona un rack para ver los segmentos disponibles',
+                                AppLocalizations.of(context)!.adminSelectRackSegment,
                                 style: TextStyle(
                                   color: MBETheme.neutralGray,
                                   fontSize: 12,
@@ -311,7 +312,7 @@ class _PackageLocationEditModalState
                         controller: _segmentScannerController,
                         onDetect: _handleSegmentScan,
                         onClose: () => setState(() => _showSegmentScanner = false),
-                        label: 'Escaneando Segmento',
+                        label: AppLocalizations.of(context)!.adminScanningSegment,
                       ),
                     ],
                     
@@ -332,7 +333,7 @@ class _PackageLocationEditModalState
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'La ubicación se actualizará inmediatamente después de guardar',
+                              AppLocalizations.of(context)!.adminLocationUpdateMessage,
                               style: TextStyle(
                                 color: MBETheme.neutralGray,
                                 fontSize: 12,
@@ -365,6 +366,7 @@ class _PackageLocationEditModalState
               label: _isLoading ? 'Guardando...' : 'Guardar Ubicación',
               fullWidth: true,
               icon: Iconsax.tick_circle,
+              isLoading: _isLoading,
               onPressed: (_isLoading) ? null : _saveLocation,
             ),
           ),
@@ -425,7 +427,7 @@ class _PackageLocationEditModalState
                 child: DropdownButtonFormField<String>(
                   value: validRack,
                   decoration: InputDecoration(
-                    labelText: 'Seleccionar Rack',
+                    labelText: AppLocalizations.of(context)!.adminSelectRack,
                     labelStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
                     icon: const Icon(Iconsax.location, color: Colors.black87, size: 20),
                     border: InputBorder.none,
@@ -480,7 +482,7 @@ class _PackageLocationEditModalState
                     }
                   });
                 },
-                tooltip: 'Escanear Rack',
+                tooltip: AppLocalizations.of(context)!.adminScanRack,
               ),
             ),
           ],
@@ -565,7 +567,7 @@ class _PackageLocationEditModalState
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                'Ocupado',
+                                AppLocalizations.of(context)!.adminOccupied,
                                 style: TextStyle(
                                   fontSize: 10,
                                   color: Colors.orange[800],
@@ -737,8 +739,8 @@ class _PackageLocationEditModalState
 
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ubicación actualizada correctamente'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.adminLocationUpdated),
           backgroundColor: Colors.green,
         ),
       );

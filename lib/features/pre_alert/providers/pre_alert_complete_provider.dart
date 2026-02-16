@@ -18,9 +18,11 @@ class PreAlertCompleteState {
   final String? receiverName;
   final String? receiverEmail;
   final String? receiverPhone;
-  final String? paymentMethod; // 'card' o 'cash'
-  final Map<String, dynamic>? paymentData;
+  final String? paymentMethod; // 'transfer' | 'cash' (card reservado para Cybersource)
+  final Map<String, dynamic>? paymentData; // transfer: filePath, transferReference?, transferNotes?
   final PromotionModel? promotion; // Promoción aplicada
+  /// Mejor promoción para delivery, cargada al abrir la pantalla (para mostrar en la tarjeta antes de elegir).
+  final PromotionModel? bestPromotionForDelivery;
 
   PreAlertCompleteState({
     required this.preAlert,
@@ -38,6 +40,7 @@ class PreAlertCompleteState {
     this.paymentMethod,
     this.paymentData,
     this.promotion,
+    this.bestPromotionForDelivery,
   });
 
   PreAlertCompleteState copyWith({
@@ -56,6 +59,7 @@ class PreAlertCompleteState {
     String? paymentMethod,
     Map<String, dynamic>? paymentData,
     PromotionModel? promotion,
+    PromotionModel? bestPromotionForDelivery,
   }) {
     return PreAlertCompleteState(
       preAlert: preAlert ?? this.preAlert,
@@ -73,6 +77,8 @@ class PreAlertCompleteState {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       paymentData: paymentData ?? this.paymentData,
       promotion: promotion ?? this.promotion,
+      bestPromotionForDelivery:
+          bestPromotionForDelivery ?? this.bestPromotionForDelivery,
     );
   }
 
@@ -104,14 +110,11 @@ class PreAlertCompleteState {
   bool get isStep3Valid {
     if (paymentMethod == null) return false;
     if (paymentMethod == 'cash') return true;
-    if (paymentMethod == 'card') {
-      // Validar datos de tarjeta
-      return paymentData != null &&
-          paymentData!['cardNumber'] != null &&
-          paymentData!['cardHolder'] != null &&
-          paymentData!['expiryDate'] != null &&
-          paymentData!['cvv'] != null;
+    if (paymentMethod == 'transfer') {
+      final path = paymentData?['filePath'] as String?;
+      return path != null && path.isNotEmpty;
     }
+    if (paymentMethod == 'card') return true;
     return false;
   }
 }
@@ -129,8 +132,14 @@ class PreAlertComplete extends _$PreAlertComplete {
       deliveryMethod: method,
       selectedStoreId: method == 'pickup' ? state.selectedStoreId : null,
       selectedAddressId: method == 'delivery' ? state.selectedAddressId : null,
-      promotion: null, // Limpiar promoción al cambiar método
+      promotion: method == 'delivery'
+          ? state.bestPromotionForDelivery
+          : null, // Al elegir delivery aplicar la promo cargada; al elegir pickup limpiar
     );
+  }
+
+  void setBestPromotionForDelivery(PromotionModel? promotion) {
+    state = state.copyWith(bestPromotionForDelivery: promotion);
   }
 
   void setPromotion(PromotionModel? promotion) {

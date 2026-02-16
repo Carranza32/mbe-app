@@ -90,28 +90,27 @@ class OrderProcessor extends _$OrderProcessor {
         return false;
       }
 
-      // Validar método de pago con tarjeta
+      // Validar método de pago: solo efectivo y transferencia; en transferencia exige comprobante
       final paymentInfo = orderState.paymentInfo;
-      if (paymentInfo.method == PaymentMethod.card) {
-        if (cardNumber == null ||
-            cardNumber.isEmpty ||
-            cardHolder == null ||
-            cardHolder.isEmpty ||
-            expiryDate == null ||
-            expiryDate.isEmpty ||
-            cvv == null ||
-            cvv.isEmpty) {
+      if (paymentInfo.method == PaymentMethod.transfer) {
+        if (paymentInfo.transferProofPath == null ||
+            paymentInfo.transferProofPath!.isEmpty) {
           state = OrderProcessingState(
             status: OrderProcessingStatus.error,
-            errorMessage: 'Completa la información de la tarjeta',
+            errorMessage: 'Sube el comprobante de transferencia',
           );
           return false;
         }
       }
 
-      // Enviar al backend
+      // Enviar al backend (incluye comprobante si es transferencia)
       final repository = ref.read(printOrderRepositoryProvider);
-      final response = await repository.createOrder(request);
+      final response = await repository.createOrder(
+        request,
+        transferProofPath: paymentInfo.method == PaymentMethod.transfer
+            ? paymentInfo.transferProofPath
+            : null,
+      );
 
       // Actualizar estado con éxito
       state = OrderProcessingState(

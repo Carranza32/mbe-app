@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../config/theme/mbe_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../core/design_system/ds_inputs.dart';
 import '../../../../core/design_system/ds_buttons.dart';
 
@@ -44,6 +45,7 @@ class ContactInformationForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       padding: const EdgeInsets.all(MBESpacing.lg),
@@ -77,7 +79,7 @@ class ContactInformationForm extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Información de Contacto',
+                      l10n.profileContactInfo,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: MBETheme.brandBlack,
@@ -100,7 +102,7 @@ class ContactInformationForm extends StatelessWidget {
 
           // Campo Teléfono
           _PhoneField(
-            label: 'Teléfono',
+            label: l10n.phone,
             value: phone,
             onChanged: onPhoneChanged,
             required: true,
@@ -112,7 +114,7 @@ class ContactInformationForm extends StatelessWidget {
 
           // Campo Teléfono de Casa (Opcional)
           _PhoneField(
-            label: 'Teléfono de Casa (Opcional)',
+            label: l10n.homePhoneOptional,
             value: homePhone ?? '',
             onChanged: onHomePhoneChanged,
             required: false,
@@ -134,7 +136,7 @@ class ContactInformationForm extends StatelessWidget {
                   ),
                   const SizedBox(width: MBESpacing.sm),
                   Text(
-                    'Tipo de Documento',
+                    l10n.documentType,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -153,6 +155,7 @@ class ContactInformationForm extends StatelessWidget {
               _DocumentTypeDropdown(
                 value: documentType,
                 onChanged: onDocumentTypeChanged,
+                l10n: l10n,
               ),
             ],
           ),
@@ -183,7 +186,7 @@ class ContactInformationForm extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Formato: 12345678-9',
+                    l10n.profileFormatDui,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: MBETheme.neutralGray,
                     ),
@@ -199,7 +202,7 @@ class ContactInformationForm extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: DSButton.primary(
-                label: 'Guardar',
+                label: l10n.saveProfile,
                 onPressed: isLoading ? null : onSave,
                 isLoading: isLoading,
               ),
@@ -246,15 +249,15 @@ class _PhoneField extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Row(
-              children: const [
-                Icon(
+              children: [
+                const Icon(
                   Iconsax.tick_circle,
                   size: 14,
                   color: Color(0xFF10B981),
                 ),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text(
-                  'Válido',
+                  AppLocalizations.of(context)!.valid,
                   style: TextStyle(
                     fontSize: 12,
                     color: Color(0xFF10B981),
@@ -271,10 +274,12 @@ class _PhoneField extends StatelessWidget {
 class _DocumentTypeDropdown extends StatelessWidget {
   final String value;
   final Function(String) onChanged;
+  final AppLocalizations l10n;
 
   const _DocumentTypeDropdown({
     required this.value,
     required this.onChanged,
+    required this.l10n,
   });
 
   @override
@@ -294,24 +299,24 @@ class _DocumentTypeDropdown extends StatelessWidget {
       ),
       child: DropdownButtonFormField<String>(
         value: value.isEmpty ? null : value,
-        items: const [
+        items: [
           DropdownMenuItem(
             value: 'DUI',
-            child: Text('Documento Único de Identidad'),
+            child: Text(l10n.profileDocumentDui),
           ),
           DropdownMenuItem(
             value: 'Pasaporte',
-            child: Text('Pasaporte'),
+            child: Text(l10n.profileDocumentPassport),
           ),
           DropdownMenuItem(
             value: 'Licencia',
-            child: Text('Licencia de Conducir'),
+            child: Text(l10n.profileDocumentLicense),
           ),
         ],
         onChanged: (value) {
           if (value != null) onChanged(value);
         },
-        hint: const Text('Selecciona un tipo'),
+        hint: Text(l10n.profileSelectType),
         decoration: const InputDecoration(
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(

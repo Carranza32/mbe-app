@@ -1,10 +1,14 @@
 // lib/features/pre_alert/presentation/screens/pre_alerts_list_screen.dart
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../config/theme/mbe_theme.dart';
+import '../../../home/providers/main_scaffold_provider.dart';
+import '../../../auth/presentation/widgets/verification_pending_modal.dart';
+import '../../../auth/providers/auth_provider.dart';
 import '../../data/models/pre_alert_model.dart';
 import '../../providers/pre_alerts_provider.dart';
 
@@ -18,11 +22,42 @@ class PreAlertsListScreen extends ConsumerStatefulWidget {
 
 class _PreAlertsListScreenState extends ConsumerState<PreAlertsListScreen> {
   final ScrollController _scrollController = ScrollController();
+  bool _hasShownModal = false;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    
+    // Verificar si el customer está verificado después del primer frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkVerificationStatus();
+    });
+  }
+
+  void _checkVerificationStatus() {
+    // Evitar mostrar el modal múltiples veces
+    if (_hasShownModal || !mounted) return;
+    
+    final authState = ref.read(authProvider);
+    final user = authState.value;
+    
+    if (user != null && 
+        !user.isAdmin && 
+        user.customer != null && 
+        user.customer!.verifiedAt == null) {
+      _hasShownModal = true;
+      // Mostrar modal de verificación pendiente
+      Future.microtask(() {
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const VerificationPendingModal(),
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -55,16 +90,72 @@ class _PreAlertsListScreenState extends ConsumerState<PreAlertsListScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
-        title: const Text(
-          'Mis Prealertas',
+        leading: Builder(
+          builder: (context) {
+            // Usar watch para obtener el GlobalKey reactivamente
+            final scaffoldKey = ref.watch(mainScaffoldKeyProvider);
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                // Intentar abrir el drawer usando el GlobalKey
+                if (scaffoldKey?.currentState != null) {
+                  scaffoldKey!.currentState!.openDrawer();
+                } else {
+                  debugPrint('⚠️ GlobalKey del Scaffold no está disponible');
+                }
+              },
+            );
+          },
+        ),
+        title: Text(
+          AppLocalizations.of(context)!.preAlertMyPreAlerts,
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Iconsax.add_circle),
-            onPressed: () => context.push('/pre-alert/create'),
+      ),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFED1C24), Color(0xFFB91419)],
           ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFED1C24).withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            final authState = ref.read(authProvider);
+            final user = authState.value;
+            
+            // Verificar si el customer está verificado antes de crear pre-alerta
+            if (user != null && 
+                !user.isAdmin && 
+                user.customer != null && 
+                user.customer!.verifiedAt == null) {
+              showDialog(
+                context: context,
+                builder: (context) => const VerificationPendingModal(),
+              );
+            } else {
+              context.push('/pre-alert/create');
+            }
+          },
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          icon: const Icon(Iconsax.add_circle, color: Colors.white, size: 24),
+          label: Text(
+            AppLocalizations.of(context)!.preAlertNewPreAlert,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
+        ),
       ),
       body: RefreshIndicator.adaptive(
         onRefresh: () async {
@@ -141,7 +232,7 @@ class _PreAlertsListScreenState extends ConsumerState<PreAlertsListScreen> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () => ref.invalidate(preAlertsProvider),
-                      child: const Text('Reintentar'),
+                      child: Text(AppLocalizations.of(context)!.preAlertRetry),
                     ),
                   ],
                 ),
@@ -170,15 +261,18 @@ class _PreAlertCard extends StatelessWidget {
     final formattedDate = DateFormat('dd MMM yyyy').format(preAlert.createdAt);
 
     return InkWell(
-      onTap: preAlert.requiresAction
-          ? () {
-              // Navegar a la pantalla de completar información
-              context.push(
-                '/pre-alert/complete/${preAlert.id}',
-                extra: preAlert,
-              );
-            }
-          : null,
+      onTap: () {
+        if (preAlert.requiresAction) {
+          // Icono amarillo: completar pre-alerta (entrega, contacto, pago)
+          context.push(
+            '/pre-alert/complete/${preAlert.id}',
+            extra: preAlert,
+          );
+        } else {
+          // Ver detalle (solo lectura)
+          context.push('/pre-alert/detail/${preAlert.id}');
+        }
+      },
       borderRadius: BorderRadius.circular(12),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -215,7 +309,7 @@ class _PreAlertCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'TRACKING',
+                            AppLocalizations.of(context)!.preAlertTracking,
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.w500,
@@ -287,14 +381,14 @@ class _PreAlertCard extends StatelessWidget {
                 Expanded(
                   child: _InfoItem(
                     icon: Iconsax.shop,
-                    label: 'TIENDA',
+                    label: AppLocalizations.of(context)!.preAlertStore,
                     value: preAlert.store,
                   ),
                 ),
                 Expanded(
                   child: _InfoItem(
                     icon: Iconsax.calendar,
-                    label: 'FECHA',
+                    label: AppLocalizations.of(context)!.preAlertDate,
                     value: formattedDate,
                   ),
                 ),
@@ -309,14 +403,14 @@ class _PreAlertCard extends StatelessWidget {
                 Expanded(
                   child: _InfoItem(
                     icon: Iconsax.box,
-                    label: 'PRODUCTOS',
+                    label: AppLocalizations.of(context)!.preAlertProducts,
                     value: '${preAlert.productCount}',
                   ),
                 ),
                 Expanded(
                   child: _InfoItem(
                     icon: Iconsax.dollar_circle,
-                    label: 'TOTAL',
+                    label: AppLocalizations.of(context)!.preAlertTotal,
                     value: '\$${preAlert.totalValue.toStringAsFixed(2)}',
                     valueColor: MBETheme.brandBlack,
                     isBold: true,
@@ -339,7 +433,7 @@ class _PreAlertCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'Sin dirección',
+                  AppLocalizations.of(context)!.preAlertNoAddress,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -440,7 +534,7 @@ class _ActionRequiredBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Acción Requerida',
+                  AppLocalizations.of(context)!.preAlertActionRequired,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -449,7 +543,7 @@ class _ActionRequiredBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Tienes paquetes en tienda que requieren seleccionar método de entrega',
+                  AppLocalizations.of(context)!.preAlertActionRequiredMessage,
                   style: TextStyle(fontSize: 13, color: Colors.orange.shade700),
                 ),
               ],
@@ -474,13 +568,13 @@ class _EmptyState extends StatelessWidget {
             color: MBETheme.neutralGray.withOpacity(0.3),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'No tienes pre-alertas',
+          Text(
+            AppLocalizations.of(context)!.preAlertNoPreAlerts,
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
-            'Crea tu primera pre-alerta de paquete',
+            AppLocalizations.of(context)!.preAlertCreateFirst,
             style: TextStyle(color: MBETheme.neutralGray),
           ),
         ],

@@ -14,6 +14,8 @@ class PackageListItem extends ConsumerWidget {
   final VoidCallback? onTap;
   final PackageContext? context;
   final bool showLocation; // Forzar mostrar ubicación
+  /// Si false, no se muestra checkbox ni estado de selección (p. ej. en listas Por Recibir / Para Entregar).
+  final bool showSelectionCheckbox;
 
   const PackageListItem({
     super.key,
@@ -21,13 +23,15 @@ class PackageListItem extends ConsumerWidget {
     this.onTap,
     this.context,
     this.showLocation = false,
+    this.showSelectionCheckbox = false,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final hasContext = this.context != null;
-    final isSelected = hasContext
+    final showCheckbox = hasContext && showSelectionCheckbox;
+    final isSelected = showCheckbox
         ? ref.watch(
             packageSelectionProvider.select(
               (state) => state.contains(package.id),
@@ -43,28 +47,22 @@ class PackageListItem extends ConsumerWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? MBETheme.brandBlack : Colors.transparent,
-            width: isSelected ? 2 : 1,
+            color: (showCheckbox && isSelected) ? MBETheme.brandBlack : Colors.transparent,
+            width: (showCheckbox && isSelected) ? 2 : 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: MBETheme.shadowMd,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. CHECKBOX (solo mostrar si hay contexto, no en búsqueda)
-            if (hasContext)
+            // 1. CHECKBOX (solo si showSelectionCheckbox está activo; no en listas Por Recibir / Para Entregar)
+            if (showCheckbox)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: SizedBox(
@@ -85,7 +83,7 @@ class PackageListItem extends ConsumerWidget {
                   ),
                 ),
               ),
-            if (hasContext) const SizedBox(width: 12),
+            if (showCheckbox) const SizedBox(width: 12),
 
             // 2. INFORMACIÓN DEL PAQUETE
             Expanded(
@@ -117,7 +115,7 @@ class PackageListItem extends ConsumerWidget {
 
                   const SizedBox(height: 8),
 
-                  // --- BLOQUE CENTRAL: TRACKING ---
+                  // --- BLOQUE CENTRAL: TRACKING (sombreado, icono escanear) → track_number ---
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -138,12 +136,12 @@ class PackageListItem extends ConsumerWidget {
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            package
-                                .eboxCode, // "#" ya suele venir en el tracking o se agrega
+                            package.trackingNumber,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontFamily: 'RobotoMono',
-                              fontWeight: FontWeight.w600,
-                              color: MBETheme.brandBlack.withOpacity(0.8),
+                              fontWeight: FontWeight.bold,
+                              color: MBETheme.brandBlack,
+                              fontSize: 14,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -155,10 +153,9 @@ class PackageListItem extends ConsumerWidget {
 
                   const SizedBox(height: 8),
 
-                  // --- BLOQUE DETALLE: CLIENTE Y EBOX ---
+                  // --- BLOQUE DETALLE: PACKAGE_CODE (icono box) y CLIENTE ---
                   Row(
                     children: [
-                      // Ebox (Negrita suave)
                       Icon(
                         Iconsax.box_1,
                         size: 14,
@@ -166,14 +163,12 @@ class PackageListItem extends ConsumerWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        package.trackingNumber,
+                        package.eboxCode,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                           color: MBETheme.brandBlack,
                         ),
                       ),
-
-                      // Separador
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Text(
@@ -181,8 +176,6 @@ class PackageListItem extends ConsumerWidget {
                           style: TextStyle(color: MBETheme.neutralGray),
                         ),
                       ),
-
-                      // Cliente
                       const Icon(
                         Iconsax.user,
                         size: 14,
@@ -206,101 +199,24 @@ class PackageListItem extends ConsumerWidget {
                   const Divider(height: 1, color: Color(0xFFEEEEEE)),
                   const SizedBox(height: 10),
 
-                  // --- BLOQUE INFERIOR: Depende del contexto o si se fuerza mostrar ubicación ---
-                  (context == PackageContext.enBodega || showLocation)
-                      ? _buildLocationInfo(theme)
-                      : _buildPriceAndDate(theme, dateStr),
+                  // --- BLOQUE INFERIOR: Precio y fecha, y si está en bodega, mostrar rack y segmento ---
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPriceAndDate(theme, dateStr),
+                      // Si está en bodega, mostrar rack y segmento debajo de la fecha
+                      if (this.context == PackageContext.enBodega || showLocation) ...[
+                        const SizedBox(height: 8),
+                        _buildRackSegmentInfo(theme),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildLocationInfo(ThemeData theme) {
-    final rack = package.rackNumber ?? 'N/A';
-    final segment = package.segmentNumber ?? 'N/A';
-    final fullLocation =
-        package.rackNumber != null && package.segmentNumber != null
-        ? '${package.rackNumber}-${package.segmentNumber}'
-        : 'Sin ubicación';
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // Ubicación (Izquierda)
-        Row(
-          children: [
-            const Icon(Iconsax.location, size: 14, color: MBETheme.neutralGray),
-            const SizedBox(width: 4),
-            Text(
-              fullLocation,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: MBETheme.neutralGray,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-
-        // Rack y Segmento (Derecha)
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: MBETheme.brandBlack.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Rack: $rack',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: MBETheme.brandBlack,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text('•', style: TextStyle(color: MBETheme.neutralGray)),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Seg: $segment',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: MBETheme.brandBlack,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Botón Editar
-            GestureDetector(
-              onTap: () {
-                if (onTap != null) onTap!();
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: MBETheme.lightGray,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Iconsax.edit,
-                  size: 18,
-                  color: MBETheme.brandBlack,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 
@@ -327,38 +243,71 @@ class PackageListItem extends ConsumerWidget {
           ],
         ),
 
-        // Precio y Botón Editar (Derecha)
-        Row(
-          children: [
-            // Precio (Destacado)
-            Text(
-              '\$${NumberFormat('#,##0.00').format(package.total)}',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w900,
-                color: MBETheme.brandBlack,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Botón Editar
-            GestureDetector(
-              onTap: () {
-                if (onTap != null) onTap!();
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: MBETheme.lightGray,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Iconsax.edit,
-                  size: 18,
-                  color: MBETheme.brandBlack,
-                ),
-              ),
-            ),
-          ],
+        // Precio (Negrita y alineado a la derecha)
+        Text(
+          '\$${NumberFormat('#,##0.00').format(package.total)}',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: MBETheme.brandBlack,
+            fontSize: 18,
+          ),
+          textAlign: TextAlign.right,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRackSegmentInfo(ThemeData theme) {
+    final rack = package.rackNumber ?? 'N/A';
+    final segment = package.segmentNumber ?? 'N/A';
+    final hasLocation = package.rackNumber != null && 
+                        package.rackNumber!.isNotEmpty &&
+                        package.segmentNumber != null && 
+                        package.segmentNumber!.isNotEmpty;
+
+    return Row(
+      children: [
+        Icon(
+          Iconsax.location,
+          size: 14,
+          color: hasLocation ? MBETheme.brandRed : MBETheme.neutralGray,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          'Rack: ',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: MBETheme.neutralGray,
+            fontSize: 12,
+          ),
+        ),
+        Text(
+          rack,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: hasLocation ? MBETheme.brandBlack : MBETheme.neutralGray,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          '•',
+          style: TextStyle(color: MBETheme.neutralGray),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          'Segmento: ',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: MBETheme.neutralGray,
+            fontSize: 12,
+          ),
+        ),
+        Text(
+          segment,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: hasLocation ? MBETheme.brandBlack : MBETheme.neutralGray,
+            fontSize: 12,
+          ),
         ),
       ],
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../../../config/theme/mbe_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../core/design_system/ds_buttons.dart';
 import '../../../../core/design_system/ds_inputs.dart';
 import '../../../../features/auth/data/repositories/auth_repository.dart';
@@ -53,33 +54,32 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
     });
 
     // Validaciones
+    final l10n = AppLocalizations.of(context)!;
     if (_currentPassCtrl.text.isEmpty) {
-      setState(() => _currentPassError = 'La contraseña actual es requerida');
+      setState(() => _currentPassError = l10n.profileCurrentPasswordRequired);
       return;
     }
 
     if (_newPassCtrl.text.isEmpty) {
-      setState(() => _newPassError = 'La nueva contraseña es requerida');
+      setState(() => _newPassError = l10n.profileNewPasswordRequired);
       return;
     }
 
     if (!_isPasswordValid(_newPassCtrl.text)) {
       setState(
-        () => _newPassError =
-            'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número',
+        () => _newPassError = l10n.profilePasswordRequirements,
       );
       return;
     }
 
     if (_newPassCtrl.text != _confirmPassCtrl.text) {
-      setState(() => _confirmPassError = 'Las contraseñas no coinciden');
+      setState(() => _confirmPassError = l10n.passwordsDoNotMatch);
       return;
     }
 
     if (_currentPassCtrl.text == _newPassCtrl.text) {
       setState(
-        () => _newPassError =
-            'La nueva contraseña debe ser diferente a la actual',
+        () => _newPassError = l10n.profilePasswordDifferent,
       );
       return;
     }
@@ -96,8 +96,8 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Contraseña actualizada exitosamente"),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.profilePasswordUpdatedSuccess),
             backgroundColor: MBETheme.brandBlack,
             behavior: SnackBarBehavior.floating,
           ),
@@ -106,10 +106,11 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        String errorMessage = 'Error al cambiar contraseña';
+        final l10n = AppLocalizations.of(context)!;
+        String errorMessage = l10n.profilePasswordChangeError;
         if (e.toString().contains('current_password') ||
             e.toString().contains('actual')) {
-          errorMessage = 'La contraseña actual es incorrecta';
+          errorMessage = l10n.profileCurrentPasswordIncorrect;
           setState(() => _currentPassError = errorMessage);
         } else {
           errorMessage = e.toString();
@@ -154,8 +155,8 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: Row(
               children: [
-                const Text(
-                  "Seguridad",
+                Text(
+                  AppLocalizations.of(context)!.profileSecurity,
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -191,15 +192,15 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Para proteger tu cuenta, ingresa tu contraseña actual.",
+                    Text(
+                      AppLocalizations.of(context)!.profileProtectAccount,
                       style: TextStyle(color: Colors.grey),
                     ),
                     const SizedBox(height: 24),
 
                     // Contraseña Actual
                     DSInput.password(
-                      label: "Contraseña Actual",
+                      label: AppLocalizations.of(context)!.profileCurrentPassword,
                       controller: _currentPassCtrl,
                       required: true,
                       errorText: _currentPassError,
@@ -237,7 +238,7 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                'Debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número',
+                                AppLocalizations.of(context)!.profilePasswordRequirements,
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(color: MBETheme.neutralGray),
                               ),
@@ -249,7 +250,7 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
 
                     // Confirmar Nueva Contraseña
                     DSInput.password(
-                      label: "Confirmar Nueva Contraseña",
+                      label: AppLocalizations.of(context)!.confirmNewPassword,
                       controller: _confirmPassCtrl,
                       required: true,
                       errorText: _confirmPassError,
@@ -265,15 +266,15 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Row(
-                          children: const [
-                            Icon(
+                          children: [
+                            const Icon(
                               Iconsax.tick_circle,
                               size: 14,
                               color: Color(0xFF10B981),
                             ),
-                            SizedBox(width: 6),
+                            const SizedBox(width: 6),
                             Text(
-                              'Las contraseñas coinciden',
+                              AppLocalizations.of(context)!.passwordsMatch,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Color(0xFF10B981),
@@ -301,7 +302,7 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
               ],
             ),
             child: DSButton.primary(
-              label: "Actualizar Contraseña",
+              label: AppLocalizations.of(context)!.profileUpdatePassword,
               isLoading: _isLoading,
               fullWidth: true,
               icon: Iconsax.lock,

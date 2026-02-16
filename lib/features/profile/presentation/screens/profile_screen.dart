@@ -4,10 +4,14 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../config/theme/mbe_theme.dart';
+import '../../../../config/router/app_router.dart';
+import '../../../../core/providers/locale_provider.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../../../../features/auth/data/models/user_model.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../widgets/change_password_sheet.dart';
 import '../widgets/edit_info_sheet.dart';
+import '../widgets/language_selector_sheet.dart';
 
 class ProfileScreen extends HookConsumerWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -15,12 +19,17 @@ class ProfileScreen extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
+    final l10n = AppLocalizations.of(context)!;
+    final currentLocale = ref.watch(localeProvider);
+    final languageSubtitle = currentLocale?.languageCode == 'en'
+        ? l10n.settingsLanguageSubtitleEn
+        : l10n.settingsLanguageSubtitle;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8FA), // Fondo gris muy suave moderno
       body: authState.when(
         data: (userData) {
-          if (userData == null) return const Center(child: Text('Sin sesión'));
+          if (userData == null) return Center(child: Text(l10n.profileNoSession));
           return CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
@@ -34,7 +43,7 @@ class ProfileScreen extends HookConsumerWidget {
                 title: Padding(
                   padding: const EdgeInsets.only(left: 8.0),
                   child: Text(
-                    'Mi Perfil',
+                    l10n.profileMyProfile,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                       color: MBETheme.brandBlack,
@@ -81,69 +90,38 @@ class ProfileScreen extends HookConsumerWidget {
 
                       const SizedBox(height: 32),
 
-                      // Sección Estadísticas Rápidas (Opcional, pero se ve muy PRO)
-                      _buildQuickStats(context),
-
-                      const SizedBox(height: 32),
+                      // Sección Estadísticas Rápidas (solo para clientes, no admin)
+                      if (!userData.isAdmin) _buildQuickStats(context),
+                      if (!userData.isAdmin) const SizedBox(height: 32),
 
                       // Agrupación 1: Cuenta
-                      _buildSectionTitle('Configuración de Cuenta'),
+                      _buildSectionTitle(l10n.settingsAccount),
+                      _buildSettingsGroup(
+                        _buildAccountTiles(context, userData),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Agrupación 2: General
+                      _buildSectionTitle(l10n.settingsGeneral),
                       _buildSettingsGroup([
                         _SettingsTile(
-                          icon: Iconsax.user_edit,
-                          title: 'Editar Información',
-                          subtitle: 'Datos personales',
-                          onTap: () {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled:
-                                  true, // Importante para que suba con el teclado
-                              backgroundColor: Colors.transparent,
-                              builder: (context) => EditInfoSheet(
-                                currentName: userData.name,
-                                currentPhone:
-                                    null, // El teléfono se obtiene del perfil si está disponible
-                              ),
-                            );
-                          },
-                        ),
-                        _SettingsTile(
-                          icon: Iconsax.lock,
-                          title: 'Seguridad',
-                          subtitle: 'Contraseña y accesos',
+                          icon: Iconsax.global,
+                          title: l10n.settingsLanguage,
+                          subtitle: languageSubtitle,
                           onTap: () {
                             showModalBottomSheet(
                               context: context,
                               isScrollControlled: true,
                               backgroundColor: Colors.transparent,
-                              builder: (context) => const ChangePasswordSheet(),
+                              builder: (ctx) => const LanguageSelectorSheet(),
                             );
                           },
                         ),
                         _SettingsTile(
-                          icon: Iconsax.location,
-                          title: 'Mis Direcciones',
-                          subtitle: 'Gestionar entregas',
-                          onTap: () => context.push('/profile/addresses'),
-                          showDivider: false, // El último no lleva divisor
-                        ),
-                      ]),
-
-                      const SizedBox(height: 24),
-
-                      // Agrupación 2: General
-                      _buildSectionTitle('General'),
-                      _buildSettingsGroup([
-                        _SettingsTile(
-                          icon: Iconsax.global,
-                          title: 'Idioma',
-                          subtitle: 'Español (ES)',
-                          onTap: () {},
-                        ),
-                        _SettingsTile(
                           icon: Iconsax.support,
-                          title: 'Ayuda y Soporte',
-                          subtitle: 'Centro de ayuda',
+                          title: l10n.profileHelpSupport,
+                          subtitle: l10n.profileHelpCenter,
                           onTap: () {},
                           showDivider: false,
                         ),
@@ -158,7 +136,7 @@ class ProfileScreen extends HookConsumerWidget {
 
                       // Versión de la app
                       Text(
-                        "Versión 1.0.2",
+                        l10n.drawerVersion('1.0.2'),
                         style: TextStyle(
                           color: MBETheme.neutralGray.withOpacity(0.5),
                           fontSize: 12,
@@ -173,14 +151,64 @@ class ProfileScreen extends HookConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, s) => Center(child: Text("Error: $e")),
+        error: (e, s) => Center(child: Text(l10n.profileError(e.toString()))),
       ),
     );
   }
 
   // --- WIDGETS COMPONENTES ---
 
+  List<Widget> _buildAccountTiles(BuildContext context, User user) {
+    final l10n = AppLocalizations.of(context)!;
+    final tiles = <Widget>[
+      _SettingsTile(
+        icon: Iconsax.user_edit,
+        title: l10n.profileEditInfo,
+        subtitle: l10n.profilePersonalData,
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => EditInfoSheet(
+              currentName: user.name,
+              currentPhone: null,
+              isAdmin: user.isAdmin,
+            ),
+          );
+        },
+      ),
+      _SettingsTile(
+        icon: Iconsax.lock,
+        title: l10n.profileSecurity,
+        subtitle: l10n.profilePasswordAccess,
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const ChangePasswordSheet(),
+          );
+        },
+        showDivider: user.isAdmin, // sin divisor si es el último (admin)
+      ),
+    ];
+    if (!user.isAdmin) {
+      tiles.add(
+        _SettingsTile(
+          icon: Iconsax.location,
+          title: l10n.profileMyAddresses,
+          subtitle: l10n.profileManageDeliveries,
+          onTap: () => context.push('/profile/addresses'),
+          showDivider: false,
+        ),
+      );
+    }
+    return tiles;
+  }
+
   Widget _buildIdentityCard(BuildContext context, User user) {
+    final l10n = AppLocalizations.of(context)!;
     final initials = _getInitials(user.name);
     return Container(
       width: double.infinity,
@@ -286,7 +314,7 @@ class ProfileScreen extends HookConsumerWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  user.isAdmin ? 'ADMINISTRADOR' : 'CLIENTE MBE',
+                  user.isAdmin ? l10n.profileAdministrator : l10n.profileClientMbe,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -306,14 +334,14 @@ class ProfileScreen extends HookConsumerWidget {
   }
 
   Widget _buildQuickStats(BuildContext context) {
-    // Estos datos podrían venir del provider en el futuro
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       children: [
-        _buildStatItem('Paquetes', '12', Iconsax.box),
+        _buildStatItem(l10n.profilePackages, '12', Iconsax.box),
         Container(width: 1, height: 40, color: Colors.grey.withOpacity(0.2)),
-        _buildStatItem('Puntos', '450', Iconsax.star),
+        _buildStatItem(l10n.profilePoints, '450', Iconsax.star),
         Container(width: 1, height: 40, color: Colors.grey.withOpacity(0.2)),
-        _buildStatItem('Direcciones', '2', Iconsax.map),
+        _buildStatItem(l10n.addresses, '2', Iconsax.map),
       ],
     );
   }
@@ -385,6 +413,7 @@ class ProfileScreen extends HookConsumerWidget {
   }
 
   Widget _buildLogoutButton(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     return GestureDetector(
       onTap: () => _showLogoutDialog(context, ref),
       child: Container(
@@ -394,13 +423,13 @@ class ProfileScreen extends HookConsumerWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: MBETheme.brandRed.withOpacity(0.1)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Iconsax.logout, color: MBETheme.brandRed, size: 20),
-            SizedBox(width: 10),
+            const Icon(Iconsax.logout, color: MBETheme.brandRed, size: 20),
+            const SizedBox(width: 10),
             Text(
-              'Cerrar Sesión',
+              l10n.authLogout,
               style: TextStyle(
                 color: MBETheme.brandRed,
                 fontWeight: FontWeight.bold,
@@ -420,30 +449,40 @@ class ProfileScreen extends HookConsumerWidget {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    // Tu lógica de diálogo existente, pero quizás con diseño actualizado
+  void _showLogoutDialog(BuildContext profileContext, WidgetRef ref) {
+    final l10n = AppLocalizations.of(profileContext)!;
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: profileContext,
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          '¿Cerrar sesión?',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          l10n.drawerLogoutConfirm,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        content: const Text(
-          'Tendrás que ingresar tus credenciales nuevamente.',
+        content: Text(
+          l10n.drawerLogoutMessage,
         ),
         actionsPadding: const EdgeInsets.all(20),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l10n.authCancel, style: const TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
+
               await ref.read(authProvider.notifier).logout();
-              if (context.mounted) context.go('/auth/login');
+
+              // Usar contexto de la pantalla de perfil (no el del diálogo, que ya está cerrado)
+              if (!profileContext.mounted) return;
+              ref.invalidate(appRouterProvider);
+
+              await Future.delayed(const Duration(milliseconds: 200));
+
+              if (!profileContext.mounted) return;
+              final router = ref.read(appRouterProvider);
+              router.go('/auth/login');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: MBETheme.brandRed,
@@ -452,7 +491,7 @@ class ProfileScreen extends HookConsumerWidget {
               ),
               elevation: 0,
             ),
-            child: const Text('Cerrar Sesión'),
+            child: Text(l10n.authLogout),
           ),
         ],
       ),

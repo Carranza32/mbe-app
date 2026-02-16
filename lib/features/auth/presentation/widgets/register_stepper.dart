@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../config/theme/mbe_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 
 class RegisterStepper extends StatelessWidget {
   final int currentStep;
@@ -10,15 +11,16 @@ class RegisterStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       children: [
-        _StepCircle(number: 1, icon: Iconsax.user, label: 'Información', isActive: currentStep == 1, isCompleted: currentStep > 1),
+        _StepCircle(number: 1, icon: Iconsax.user, label: l10n.registerStepInfo, isActive: currentStep == 1, isCompleted: currentStep > 1),
         _Connector(isCompleted: currentStep > 1),
-        _StepCircle(number: 2, icon: Iconsax.location, label: 'Ubicación', isActive: currentStep == 2, isCompleted: currentStep > 2),
+        _StepCircle(number: 2, icon: Iconsax.location, label: l10n.registerStepLocation, isActive: currentStep == 2, isCompleted: currentStep > 2),
         _Connector(isCompleted: currentStep > 2),
-        _StepCircle(number: 3, icon: Iconsax.call, label: 'Contacto', isActive: currentStep == 3, isCompleted: currentStep > 3),
+        _StepCircle(number: 3, icon: Iconsax.call, label: l10n.registerStepContact, isActive: currentStep == 3, isCompleted: currentStep > 3),
         _Connector(isCompleted: currentStep > 3),
-        _StepCircle(number: 4, icon: Iconsax.lock, label: 'Seguridad', isActive: currentStep == 4, isCompleted: false),
+        _StepCircle(number: 4, icon: Iconsax.lock, label: l10n.registerStepSecurity, isActive: currentStep == 4, isCompleted: false),
       ],
     );
   }

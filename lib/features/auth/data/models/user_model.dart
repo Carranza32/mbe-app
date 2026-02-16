@@ -29,7 +29,7 @@ class User {
           ? DateTime.parse(json['email_verified_at'] as String)
           : null,
       verificationCode: json['verification_code'] as String?,
-      customer: json['customer'] != null
+      customer: json['customer'] != null && json['customer'] is Map<String, dynamic>
           ? Customer.fromJson(json['customer'] as Map<String, dynamic>)
           : null,
     );

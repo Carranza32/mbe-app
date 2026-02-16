@@ -1,5 +1,6 @@
 // lib/features/print_orders/presentation/widgets/steps/step1_upload_files.dart
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:animate_do/animate_do.dart';
@@ -60,7 +61,7 @@ class Step1UploadFiles extends HookConsumerWidget {
             const CircularProgressIndicator(),
             const SizedBox(height: MBESpacing.lg),
             Text(
-              'Cargando configuración...',
+              AppLocalizations.of(context)!.printOrderLoadingConfig,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -79,7 +80,7 @@ class Step1UploadFiles extends HookConsumerWidget {
             ),
             const SizedBox(height: MBESpacing.lg),
             Text(
-              'Error al cargar configuración',
+              AppLocalizations.of(context)!.printOrderErrorLoadingConfig,
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: MBESpacing.sm),
@@ -97,7 +98,7 @@ class Step1UploadFiles extends HookConsumerWidget {
                 ref.read(printConfigProvider.notifier).refresh();
               },
               icon: const Icon(Iconsax.refresh),
-              label: const Text('Reintentar'),
+              label: Text(AppLocalizations.of(context)!.preAlertRetry),
               style: FilledButton.styleFrom(
                 backgroundColor: MBETheme.brandBlack,
               ),
@@ -140,14 +141,14 @@ class Step1UploadFiles extends HookConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Subir archivos',
+                            AppLocalizations.of(context)!.printOrderUploadFiles,
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(height: MBESpacing.xs),
                           Text(
-                            'Arrastra o selecciona tus documentos',
+                            AppLocalizations.of(context)!.printOrderUploadFilesDesc,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
@@ -255,7 +256,7 @@ class Step1UploadFiles extends HookConsumerWidget {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    '${files.length} de ${orderState.config.maxFilesPerOrder} archivos',
+                                    AppLocalizations.of(context)!.printOrderFilesCount(files.length, orderState.config.maxFilesPerOrder),
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: colorScheme.onSurfaceVariant,
                                     ),
@@ -268,7 +269,7 @@ class Step1UploadFiles extends HookConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                'Tamaño total',
+                                AppLocalizations.of(context)!.printOrderTotalSize,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                 ),
@@ -376,7 +377,7 @@ class Step1UploadFiles extends HookConsumerWidget {
                       ),
                       const SizedBox(height: MBESpacing.xs),
                       Text(
-                        'Hasta ${orderState.config.maxFilesPerOrder} archivos • ${orderState.config.maxFileSizeMB}MB por archivo',
+                        AppLocalizations.of(context)!.printOrderFilesLimit(orderState.config.maxFilesPerOrder, orderState.config.maxFileSizeMB),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -416,12 +417,11 @@ class Step1UploadFiles extends HookConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: MBESpacing.md),
-                _buildTip(context, '• Usa archivos PDF para mejor calidad'),
+                _buildTip(context, AppLocalizations.of(context)!.printOrderTipPdf),
                 const SizedBox(height: MBESpacing.xs),
-                _buildTip(context, '• Verifica que el texto sea legible'),
+                _buildTip(context, AppLocalizations.of(context)!.printOrderTipReadable),
                 const SizedBox(height: MBESpacing.xs),
-                _buildTip(
-                    context, '• Las imágenes deben tener buena resolución'),
+                _buildTip(context, AppLocalizations.of(context)!.printOrderTipResolution),
               ],
             ),
           ),

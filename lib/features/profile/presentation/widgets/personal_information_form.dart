@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../config/theme/mbe_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../core/design_system/ds_inputs.dart';
 import '../../../../core/design_system/ds_buttons.dart';
 
@@ -32,6 +33,7 @@ class PersonalInformationForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       padding: const EdgeInsets.all(MBESpacing.lg),
@@ -65,7 +67,7 @@ class PersonalInformationForm extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Información Personal',
+                      l10n.profilePersonalInfo,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: MBETheme.brandBlack,
@@ -88,7 +90,7 @@ class PersonalInformationForm extends StatelessWidget {
 
           // Campo Nombre Completo
           DSInput.text(
-            label: 'Nombre Completo',
+            label: l10n.fullName,
             value: fullName,
             onChanged: onFullNameChanged,
             required: true,
@@ -100,7 +102,7 @@ class PersonalInformationForm extends StatelessWidget {
 
           // Campo Correo Electrónico
           DSInput.email(
-            label: 'Correo Electrónico',
+            label: l10n.authEmail,
             value: email,
             onChanged: onEmailChanged,
             required: true,
@@ -114,7 +116,7 @@ class PersonalInformationForm extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: DSButton.primary(
-                label: 'Guardar',
+                label: l10n.saveProfile,
                 onPressed: isLoading ? null : onSave,
                 isLoading: isLoading,
               ),

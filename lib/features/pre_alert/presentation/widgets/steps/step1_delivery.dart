@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
@@ -9,7 +9,6 @@ import 'package:mbe_orders_app/core/design_system/ds_location_card.dart';
 import 'package:mbe_orders_app/core/design_system/ds_badges.dart';
 import '../../../data/models/pre_alert_model.dart';
 import '../../../data/models/promotion_model.dart';
-import '../../../data/repositories/pre_alerts_repository.dart';
 import '../../../providers/pre_alert_complete_provider.dart';
 import '../../../providers/stores_provider.dart';
 import '../../../providers/user_addresses_provider.dart';
@@ -17,68 +16,59 @@ import '../../../providers/user_addresses_provider.dart';
 class Step1Delivery extends HookConsumerWidget {
   final PreAlert preAlert;
 
-  const Step1Delivery({
-    Key? key,
-    required this.preAlert,
-  }) : super(key: key);
-
-  Future<void> _loadPromotionForDelivery(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    try {
-      final completeState = ref.read(preAlertCompleteProvider(preAlert));
-      final repository = ref.read(preAlertsRepositoryProvider);
-
-      // Obtener store_id desde la tienda seleccionada o usar 1 por defecto
-      final storeId = completeState.selectedStoreId ?? 1;
-
-      final request = BestPromotionRequest(
-        storeId: storeId,
-        serviceType: 'pre_alert',
-        subtotal: preAlert.totalValue,
-        deliveryCost: 2.0,
-        appliesTo: 'delivery',
-      );
-
-      final response = await repository.getBestPromotion(request: request);
-
-      if (response != null && response.data != null) {
-        ref.read(preAlertCompleteProvider(preAlert).notifier).setPromotion(
-              response.data!,
-            );
-      } else {
-        // No hay promoción, limpiar si existía una previa
-        ref.read(preAlertCompleteProvider(preAlert).notifier).setPromotion(null);
-      }
-    } catch (e) {
-      // Si hay algún error (que no sea 404), loguearlo pero no mostrar al usuario
-      print('Error al cargar promoción: $e');
-      // Limpiar promoción en caso de error
-      ref.read(preAlertCompleteProvider(preAlert).notifier).setPromotion(null);
-    }
-  }
+  const Step1Delivery({Key? key, required this.preAlert}) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
-    // Usar el provider para manejar el estado
+    final l10n = AppLocalizations.of(context)!;
+
     final completeState = ref.watch(preAlertCompleteProvider(preAlert));
-    final completeNotifier = ref.read(preAlertCompleteProvider(preAlert).notifier);
-    
+    final completeNotifier = ref.read(
+      preAlertCompleteProvider(preAlert).notifier,
+    );
+
     final isPickup = completeState.isPickup;
     final isDelivery = completeState.isDelivery;
+    final bestPromo = completeState.bestPromotionForDelivery;
+    final appliesToDelivery =
+        bestPromo != null &&
+            bestPromo.appliesTo.toLowerCase() == 'delivery';
+    final isFreeDelivery =
+        appliesToDelivery &&
+            bestPromo.discountType.toLowerCase() == 'free_delivery';
 
-    // Cargar promoción solo cuando se selecciona delivery
-    useEffect(() {
-      if (isDelivery && completeState.promotion == null) {
-        // Solo cargar si es delivery y no hay promoción ya cargada
-        Future.microtask(() => _loadPromotionForDelivery(context, ref));
-      }
-      return null;
-    }, [isDelivery]);
+    Widget deliveryBadge;
+    if (appliesToDelivery) {
+      deliveryBadge = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Badge azul: descuento aplicable (ej. $2)
+          DSBadge.info(
+            label: '\$${bestPromo.estimatedDiscount.toStringAsFixed(0)}',
+          ),
+          if (isFreeDelivery) ...[
+            const SizedBox(height: MBESpacing.xs),
+            // Precio delivery tachado
+            Text(
+              '${l10n.preAlertFrom} \$2.00',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                decoration: TextDecoration.lineThrough,
+                decorationColor: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: MBESpacing.xs),
+            // Badge verde con el texto de la promo (ej. Envío Gratis)
+            DSBadge.success(label: bestPromo.discountLabel),
+          ],
+        ],
+      );
+    } else {
+      deliveryBadge = DSBadge.info(label: '${l10n.preAlertFrom} \$2.00');
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,14 +100,14 @@ class Step1Delivery extends HookConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Método de Entrega',
+                        l10n.preAlertDeliveryMethod,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: MBESpacing.xs),
                       Text(
-                        'Elige cómo quieres recibir tu paquete',
+                        l10n.preAlertChooseDeliverySubtitle,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -140,29 +130,28 @@ class Step1Delivery extends HookConsumerWidget {
             children: [
               // Recoger en Tienda
               DSOptionCard(
-                title: 'Recoger en Tienda',
-                description: 'Recoge tu paquete en cualquiera de nuestras ubicaciones',
+                title: l10n.preAlertPickupInStore,
+                description: l10n.preAlertPickupDescription,
                 icon: Iconsax.box,
                 isSelected: isPickup,
                 onTap: () {
                   completeNotifier.setDeliveryMethod('pickup');
                 },
-                badge: DSBadge.success(label: 'Sin costo adicional'),
+                badge: DSBadge.success(label: l10n.preAlertNoAdditionalCost),
               ),
 
               const SizedBox(height: MBESpacing.md),
 
               // Entrega a Domicilio
               DSOptionCard(
-                title: 'Envío a Domicilio',
-                description: 'Recibe tu pedido en la puerta de tu casa u oficina',
+                title: l10n.preAlertHomeDelivery,
+                description: l10n.preAlertDeliveryDescription,
                 icon: Iconsax.truck_fast,
                 isSelected: isDelivery,
                 onTap: () {
                   completeNotifier.setDeliveryMethod('delivery');
-                  // El useEffect cargará la promoción automáticamente
                 },
-                badge: DSBadge.info(label: 'Desde \$2.00'),
+                badge: deliveryBadge,
               ),
             ],
           ),
@@ -200,15 +189,15 @@ class Step1Delivery extends HookConsumerWidget {
                   },
                 )
               : isDelivery
-                  ? _DeliveryContent(
-                      key: const ValueKey('delivery-content'),
-                      selectedAddressId: completeState.selectedAddressId,
-                      preAlert: preAlert,
-                      onAddressSelected: (addressId) {
-                        completeNotifier.setSelectedAddress(addressId);
-                      },
-                    )
-                  : const SizedBox.shrink(key: ValueKey('empty')),
+              ? _DeliveryContent(
+                  key: const ValueKey('delivery-content'),
+                  selectedAddressId: completeState.selectedAddressId,
+                  preAlert: preAlert,
+                  onAddressSelected: (addressId) {
+                    completeNotifier.setSelectedAddress(addressId);
+                  },
+                )
+              : const SizedBox.shrink(key: ValueKey('empty')),
         ),
       ],
     );
@@ -230,7 +219,8 @@ class _PickupContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final storesAsync = ref.watch(customerStoresProvider);
+    final l10n = AppLocalizations.of(context)!;
+    final storesAsync = ref.watch(mbeStoresProvider);
 
     return storesAsync.when(
       loading: () => const Center(
@@ -244,10 +234,10 @@ class _PickupContent extends ConsumerWidget {
           children: [
             const Icon(Iconsax.warning_2, size: 48, color: MBETheme.brandRed),
             const SizedBox(height: MBESpacing.lg),
-            const Text('Error al cargar tiendas'),
+            Text(l10n.preAlertErrorLoadingStores),
             TextButton(
-              onPressed: () => ref.invalidate(customerStoresProvider),
-              child: const Text('Reintentar'),
+              onPressed: () => ref.invalidate(mbeStoresProvider),
+              child: Text(l10n.preAlertRetry),
             ),
           ],
         ),
@@ -260,7 +250,7 @@ class _PickupContent extends ConsumerWidget {
                 const Icon(Iconsax.location, size: 48),
                 const SizedBox(height: MBESpacing.lg),
                 Text(
-                  'No hay tiendas disponibles',
+                  l10n.preAlertNoStores,
                   style: theme.textTheme.titleMedium,
                 ),
               ],
@@ -283,7 +273,7 @@ class _PickupContent extends ConsumerWidget {
                   ),
                   const SizedBox(width: MBESpacing.sm),
                   Text(
-                    'Selecciona una tienda',
+                    l10n.preAlertSelectStoreTitle,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -301,7 +291,7 @@ class _PickupContent extends ConsumerWidget {
               final dsLocation = DSLocation(
                 id: store.id.toString(),
                 name: store.name,
-                address: store.address ?? 'Sin dirección',
+                address: store.address ?? l10n.preAlertNoAddressFallback,
                 zone: store.zone ?? '',
                 hours: null,
                 phone: store.phone ?? '',
@@ -344,6 +334,7 @@ class _DeliveryContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     // Obtener direcciones del usuario usando provider estable
     final addressesAsync = ref.watch(userAddressesProvider);
@@ -360,10 +351,10 @@ class _DeliveryContent extends ConsumerWidget {
           children: [
             const Icon(Iconsax.warning_2, size: 48, color: MBETheme.brandRed),
             const SizedBox(height: MBESpacing.lg),
-            const Text('Error al cargar direcciones'),
+            Text(l10n.preAlertErrorLoadingAddresses),
             TextButton(
               onPressed: () => ref.invalidate(userAddressesProvider),
-              child: const Text('Reintentar'),
+              child: Text(l10n.preAlertRetry),
             ),
           ],
         ),
@@ -376,7 +367,7 @@ class _DeliveryContent extends ConsumerWidget {
                 const Icon(Iconsax.location, size: 48),
                 const SizedBox(height: MBESpacing.lg),
                 Text(
-                  'No tienes direcciones guardadas',
+                  l10n.preAlertNoAddresses,
                   style: theme.textTheme.titleMedium,
                 ),
                 const SizedBox(height: MBESpacing.md),
@@ -385,7 +376,7 @@ class _DeliveryContent extends ConsumerWidget {
                     // TODO: Navegar a agregar dirección
                   },
                   icon: const Icon(Iconsax.add),
-                  label: const Text('Agregar dirección'),
+                  label: Text(l10n.preAlertAddAddress),
                 ),
               ],
             ),
@@ -410,7 +401,7 @@ class _DeliveryContent extends ConsumerWidget {
                       ),
                       const SizedBox(width: MBESpacing.sm),
                       Text(
-                        'Selecciona una dirección',
+                        l10n.preAlertSelectAddress,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -422,7 +413,7 @@ class _DeliveryContent extends ConsumerWidget {
                     onPressed: () {
                       // TODO: Navegar a agregar dirección
                     },
-                    tooltip: 'Nueva dirección',
+                    tooltip: l10n.preAlertNewAddress,
                   ),
                 ],
               ),
@@ -466,15 +457,15 @@ class _DeliveryContent extends ConsumerWidget {
                   children: [
                     _InfoRow(
                       icon: Iconsax.dollar_circle,
-                      label: 'Costo base',
+                      label: l10n.preAlertBaseCost,
                       value: '\$2.00',
                       iconColor: const Color(0xFF10B981),
                     ),
                     const SizedBox(height: MBESpacing.sm),
                     _InfoRow(
                       icon: Iconsax.clock,
-                      label: 'Tiempo estimado',
-                      value: '1-2 días hábiles',
+                      label: l10n.preAlertEstimatedTime,
+                      value: l10n.preAlertEstimatedTimeValue,
                       iconColor: const Color(0xFFF59E0B),
                     ),
                   ],
@@ -504,6 +495,7 @@ class _AddressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return GestureDetector(
       onTap: onTap,
@@ -513,7 +505,7 @@ class _AddressCard extends StatelessWidget {
         padding: const EdgeInsets.all(MBESpacing.lg),
         margin: const EdgeInsets.only(bottom: MBESpacing.md),
         decoration: BoxDecoration(
-          color: isSelected 
+          color: isSelected
               ? MBETheme.brandBlack.withValues(alpha: 0.03)
               : colorScheme.surface,
           borderRadius: BorderRadius.circular(MBERadius.large),
@@ -534,20 +526,17 @@ class _AddressCard extends StatelessWidget {
               curve: MBECurve.standard,
               padding: const EdgeInsets.all(MBESpacing.md),
               decoration: BoxDecoration(
-                color: isSelected 
-                    ? MBETheme.brandBlack
-                    : MBETheme.lightGray,
+                color: isSelected ? MBETheme.brandBlack : MBETheme.lightGray,
                 borderRadius: BorderRadius.circular(MBERadius.medium),
                 boxShadow: isSelected ? MBETheme.shadowSm : [],
               ),
               child: Icon(
-                address.name.toLowerCase().contains('casa') || address.name.toLowerCase().contains('home')
+                address.name.toLowerCase().contains('casa') ||
+                        address.name.toLowerCase().contains('home')
                     ? Iconsax.home
                     : Iconsax.building,
                 size: 24,
-                color: isSelected 
-                    ? Colors.white 
-                    : colorScheme.onSurfaceVariant,
+                color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
               ),
             ),
 
@@ -575,11 +564,15 @@ class _AddressCard extends StatelessWidget {
                             vertical: MBESpacing.xs,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(MBERadius.small),
+                            color: const Color(
+                              0xFF10B981,
+                            ).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(
+                              MBERadius.small,
+                            ),
                           ),
                           child: Text(
-                            'Predeterminada',
+                            l10n.preAlertDefault,
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: const Color(0xFF10B981),
                               fontWeight: FontWeight.w600,
@@ -611,11 +604,9 @@ class _AddressCard extends StatelessWidget {
                         label: address.fullLocation,
                       ),
                       if (address.phone.isNotEmpty)
-                        _InfoBadge(
-                          icon: Iconsax.call,
-                          label: address.phone,
-                        ),
-                      if (address.references != null && address.references!.isNotEmpty)
+                        _InfoBadge(icon: Iconsax.call, label: address.phone),
+                      if (address.references != null &&
+                          address.references!.isNotEmpty)
                         _InfoBadge(
                           icon: Iconsax.info_circle,
                           label: address.references!,
@@ -665,10 +656,7 @@ class _InfoBadge extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _InfoBadge({
-    required this.icon,
-    required this.label,
-  });
+  const _InfoBadge({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -677,24 +665,18 @@ class _InfoBadge extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: MBESpacing.sm, 
+        horizontal: MBESpacing.sm,
         vertical: MBESpacing.xs,
       ),
       decoration: BoxDecoration(
         color: MBETheme.lightGray,
         borderRadius: BorderRadius.circular(MBERadius.small),
-        border: Border.all(
-          color: MBETheme.neutralGray.withValues(alpha: 0.15),
-        ),
+        border: Border.all(color: MBETheme.neutralGray.withValues(alpha: 0.15)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 12,
-            color: colorScheme.onSurfaceVariant,
-          ),
+          Icon(icon, size: 12, color: colorScheme.onSurfaceVariant),
           const SizedBox(width: MBESpacing.xs),
           Flexible(
             child: Text(
@@ -738,11 +720,7 @@ class _InfoRow extends StatelessWidget {
             color: iconColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(MBERadius.small),
           ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: iconColor,
-          ),
+          child: Icon(icon, size: 18, color: iconColor),
         ),
         const SizedBox(width: MBESpacing.md),
         Expanded(
@@ -773,13 +751,12 @@ class _InfoRow extends StatelessWidget {
 class _PromotionBanner extends StatelessWidget {
   final PromotionModel promotion;
 
-  const _PromotionBanner({
-    required this.promotion,
-  });
+  const _PromotionBanner({required this.promotion});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return FadeInDown(
       duration: const Duration(milliseconds: 400),
@@ -837,7 +814,7 @@ class _PromotionBanner extends StatelessWidget {
                       ),
                       const SizedBox(width: MBESpacing.xs),
                       Text(
-                        'Ahorras \$${promotion.estimatedDiscount.toStringAsFixed(2)}',
+                        l10n.preAlertSaveAmount('\$${promotion.estimatedDiscount.toStringAsFixed(2)}'),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: const Color(0xFF10B981),
                           fontWeight: FontWeight.w600,

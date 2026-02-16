@@ -1,8 +1,10 @@
 // lib/features/auth/providers/auth_provider.dart
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/network/dio_provider.dart';
+import '../../../../core/services/app_preferences.dart';
 import '../data/models/user_model.dart';
 import '../data/repositories/auth_repository.dart';
 
@@ -82,6 +84,9 @@ class Auth extends _$Auth {
           value: jsonEncode(authResponse.user.customer!.toJson()),
         );
       }
+
+      // Marcar que ya usó la app en este dispositivo (para no mostrar portero tras logout)
+      await setHasUsedAppOnThisDevice(true);
       
       // Verificar nuevamente antes de retornar
       if (!ref.mounted) {
@@ -92,23 +97,28 @@ class Auth extends _$Auth {
     });
   }
 
-  /// Establecer datos de autenticación (para registro)
-  Future<void> setAuthData(String token, User user) async {
-    if (!ref.mounted) return;
-    
-    final storage = ref.read(secureStorageProvider);
-    await storage.write(key: 'auth_token', value: token);
-    await storage.write(key: 'user', value: jsonEncode(user.toJson()));
-    
-    // Guardar customer si existe
+  /// Guardar auth tras login o registro/activación (misma lógica que login).
+  /// [storage] opcional: pasar si se llama desde widget con await previo (ref puede estar disposed).
+  Future<void> setAuthData(String token, User user, {FlutterSecureStorage? storage}) async {
+    final FlutterSecureStorage s = storage ?? ref.read(secureStorageProvider);
+
+    // Misma lógica que login: guardar token y usuario
+    await s.write(key: 'auth_token', value: token);
+    await s.write(key: 'user', value: jsonEncode(user.toJson()));
+
+    // Guardar customer si existe (igual que login)
     if (user.customer != null) {
-      await storage.write(
+      await s.write(
         key: 'customer',
         value: jsonEncode(user.customer!.toJson()),
       );
     }
-    
-    if (ref.mounted) {
+
+    await setHasUsedAppOnThisDevice(true);
+
+    // Si storage fue pasado, ref puede estar disposed: no actualizar state.
+    // El caller debe invalidar authProvider para que reconstruya leyendo del storage.
+    if (storage == null) {
       state = AsyncData(user);
     }
   }
@@ -144,18 +154,17 @@ class Auth extends _$Auth {
       await ref.read(authRepositoryProvider).logout();
     } catch (e) {
       // Si falla el logout en el backend, continuar con limpieza local
-      // Esto es importante para que el logout siempre funcione incluso sin conexión
+      print('⚠️ Error al hacer logout en backend: $e');
     }
     
-    // 2. SIEMPRE limpiar datos locales (crítico)
+    // 2. SIEMPRE limpiar datos locales (crítico) — sin usar ref tras await
     await storage.delete(key: 'auth_token');
     await storage.delete(key: 'user');
     await storage.delete(key: 'customer');
     
-    // 3. SIEMPRE actualizar estado a null para forzar rebuild
+    // 3. Solo usar ref tras awaits si el provider sigue montado (evita UnmountedRefException)
+    if (!ref.mounted) return;
     state = const AsyncData(null);
-    
-    // 4. Invalidar el provider para forzar reconstrucción en el próximo acceso
     ref.invalidateSelf();
   }
 }

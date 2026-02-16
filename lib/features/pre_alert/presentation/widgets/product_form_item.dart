@@ -1,5 +1,6 @@
 // lib/features/pre_alert/presentation/widgets/product_form_item.dart
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
@@ -31,6 +32,7 @@ class ProductFormItem extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return FadeInUp(
       duration: const Duration(milliseconds: 300),
@@ -98,7 +100,7 @@ class ProductFormItem extends HookConsumerWidget {
                 Row(
                   children: [
                     Text(
-                      'Categoría del Producto',
+                      l10n.preAlertProductCategory,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
@@ -153,7 +155,7 @@ class ProductFormItem extends HookConsumerWidget {
                       Row(
                         children: [
                           Text(
-                            'Cantidad',
+                            l10n.preAlertQuantity,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w500,
                             ),
@@ -211,7 +213,7 @@ class ProductFormItem extends HookConsumerWidget {
                       Row(
                         children: [
                           Text(
-                            'Precio',
+                            l10n.preAlertPrice,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w500,
                             ),
@@ -281,7 +283,7 @@ class ProductFormItem extends HookConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Subtotal',
+                    l10n.preAlertSubtotal,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                     ),

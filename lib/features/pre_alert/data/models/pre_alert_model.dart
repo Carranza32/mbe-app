@@ -23,6 +23,14 @@ class PreAlert {
     this.deliveryMethod,
   });
 
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PreAlert && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+
   factory PreAlert.fromJson(Map<String, dynamic> json) {
     // Obtener el tracking number (puede venir como track_number o tracking_number)
     final trackNumber =

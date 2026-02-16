@@ -2,7 +2,7 @@ name: mbe_orders_app
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -29,6 +29,8 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
 
   # The following adds the Cupertino Icons font to your application.
@@ -61,9 +63,16 @@ dependencies:
   awesome_card: ^1.1.7
   credit_card_type_detector: ^3.0.0
   mobile_scanner: ^5.2.3
+  permission_handler: ^11.3.1
   signature: ^6.3.0
   dropdown_search: ^5.0.6
   pinput: ^6.0.1
+  local_auth: ^3.0.0
+  mask_text_input_formatter: ^2.9.0
+  webview_flutter: ^4.4.2
+  flutter_custom_clippers: ^2.1.0
+  app_links: ^6.3.3
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
@@ -75,16 +84,27 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
-  build_runner: ^2.4.8      
+  build_runner: ^2.4.8
   riverpod_generator: ^3.0.3
   freezed: ^3.1.0
   json_serializable: ^6.9.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
+# Configuración para generar el icono de la app (flutter_launcher_icons)
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo-mbe_horizontal_2.png"
+  # Requerido para App Store: sin canal alfa. Fondo negro igual que el logo.
+  remove_alpha_ios: true
+  background_color_ios: "#000000"
+
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

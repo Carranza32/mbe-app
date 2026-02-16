@@ -5,6 +5,14 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mbe_orders_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:mbe_orders_app/features/auth/presentation/screens/register_screen.dart';
 import 'package:mbe_orders_app/features/auth/presentation/screens/verify_email_screen.dart';
+import 'package:mbe_orders_app/features/auth/presentation/screens/email_entry_screen.dart';
+import 'package:mbe_orders_app/features/auth/presentation/screens/email_verification_screen.dart';
+import 'package:mbe_orders_app/features/auth/presentation/screens/otp_verification_screen.dart';
+import 'package:mbe_orders_app/features/auth/presentation/screens/create_password_screen.dart';
+import 'package:mbe_orders_app/features/auth/presentation/screens/forgot_password_screen.dart';
+import 'package:mbe_orders_app/features/auth/presentation/screens/reset_password_screen.dart';
+import 'package:mbe_orders_app/features/auth/presentation/screens/welcome_back_screen.dart';
+import 'package:mbe_orders_app/features/auth/presentation/screens/complete_profile_screen.dart';
 import 'package:mbe_orders_app/core/network/dio_provider.dart';
 import 'package:mbe_orders_app/features/home/screens/home_router_widget.dart';
 import 'package:mbe_orders_app/features/home/screens/main_screen.dart';
@@ -14,53 +22,98 @@ import 'package:mbe_orders_app/features/packages/screens/packages_screen.dart';
 import 'package:mbe_orders_app/features/pre_alert/presentation/screens/create_pre_alert_screen.dart';
 import 'package:mbe_orders_app/features/pre_alert/presentation/screens/pre_alerts_list_screen.dart';
 import 'package:mbe_orders_app/features/pre_alert/presentation/screens/pre_alert_complete_information.dart';
+import 'package:mbe_orders_app/features/pre_alert/presentation/screens/pre_alert_detail_screen.dart';
 import 'package:mbe_orders_app/features/pre_alert/data/models/pre_alert_model.dart';
 import 'package:mbe_orders_app/features/print_orders/presentation/screens/my_orders_screen.dart';
 import 'package:mbe_orders_app/features/print_orders/presentation/screens/print_order_screen.dart';
 import 'package:mbe_orders_app/features/quoter/screens/quote_input_screen.dart';
+import 'package:mbe_orders_app/features/trends/presentation/screens/trends_screen.dart';
 import 'package:mbe_orders_app/features/tracking/screens/tracking_screen.dart';
 import 'package:mbe_orders_app/features/admin/pre_alert/presentation/screens/admin_pre_alerts_list_screen.dart';
 import 'package:mbe_orders_app/features/admin/pre_alert/presentation/screens/reception_scan_screen.dart';
 import 'package:mbe_orders_app/features/admin/pre_alert/presentation/screens/rack_assignment_screen.dart';
 import 'package:mbe_orders_app/features/admin/pre_alert/presentation/screens/pickup_delivery_screen.dart';
 import 'package:mbe_orders_app/features/admin/pre_alert/presentation/screens/search_pre_alerts_screen.dart';
+import 'package:mbe_orders_app/features/admin/locker_retrieval/presentation/screens/locker_retrieval_screen.dart';
 import 'package:mbe_orders_app/features/profile/presentation/screens/profile_screen.dart';
 import 'package:mbe_orders_app/features/auth/providers/auth_provider.dart';
+import 'package:mbe_orders_app/core/services/deep_link_service.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  // No hacer ref.watch(authProvider) aquí: provocaría recrear GoRouter al cambiar auth,
+  // dejando obsoleto el router capturado en splash (router.go() no tendría efecto).
+  // El redirect lee authProvider al evaluar, eso basta.
+  // Si la app se abrió desde un deep link de reset-password, ir ahí de entrada
+  final initialUri = ref.watch(initialDeepLinkUriProvider);
+  final initialLocation =
+      (initialUri != null && isResetPasswordUri(initialUri))
+          ? buildResetPasswordRoute(initialUri)
+          : '/splash';
+
   return GoRouter(
-    initialLocation: '/splash',
+    initialLocation: initialLocation,
     redirect: (context, state) async {
-      // No redirigir desde la splash screen, ella maneja su propia lógica
-      if (state.matchedLocation == '/splash') {
+      // No redirigir desde splash, porter, OTP, create-password, welcome-back, forgot-password ni reset-password
+      if (state.matchedLocation == '/splash' ||
+          state.matchedLocation == '/auth/email-entry' ||
+          state.matchedLocation == '/auth/otp-verification' ||
+          state.matchedLocation == '/auth/create-password' ||
+          state.matchedLocation == '/auth/welcome-back' ||
+          state.matchedLocation == '/auth/forgot-password' ||
+          state.matchedLocation.startsWith('/auth/reset-password')) {
         return null;
       }
 
       final isLoginRoute =
           state.matchedLocation == '/auth/login' ||
-          state.matchedLocation == '/auth/register';
+          state.matchedLocation == '/auth/register' ||
+          state.matchedLocation == '/auth/email-entry' ||
+          state.matchedLocation == '/auth/otp-verification' ||
+          state.matchedLocation == '/auth/create-password';
       final isVerifyEmailRoute = state.matchedLocation == '/auth/verify-email';
+      final isCompleteProfileRoute = state.matchedLocation == '/auth/complete-profile';
+      final isForgotPasswordRoute = state.matchedLocation == '/auth/forgot-password';
+      final isResetPasswordRoute = state.matchedLocation.startsWith('/auth/reset-password');
 
       // Obtener el estado del authProvider
+      // Usar read para obtener el estado actual (el router se reconstruye cuando cambia)
       final authState = ref.read(authProvider);
+      
+      // Si el estado está cargando, no redirigir (dejar que la splash screen maneje)
+      if (authState.isLoading) {
+        return null;
+      }
+      
+      // Si hay error, solo redirigir si no estamos en rutas de autenticación/recuperación
+      if (authState.hasError) {
+        if (!isLoginRoute &&
+            !isVerifyEmailRoute &&
+            !isCompleteProfileRoute &&
+            !isForgotPasswordRoute &&
+            !isResetPasswordRoute) {
+          return '/auth/email-entry';
+        }
+        return null;
+      }
+      
       final user = authState.value;
       final isAuthenticated = user != null;
 
       final isAdminRoute = state.matchedLocation.startsWith('/admin');
       final isPreAlertRoute = state.matchedLocation == '/pre-alert';
 
-      // Si está en una ruta de admin, verificar autenticación y rol
+      // Si est? en una ruta de admin, verificar autenticaci?n y rol
       if (isAdminRoute) {
         if (!isAuthenticated) {
           return '/auth/login';
         }
         final isAdmin = user.isAdmin;
         if (!isAdmin) {
-          return '/print-orders/my-orders';
+          return '/';
         }
       }
 
-      // Si está en pre-alert y está autenticado, verificar si es admin
+      // Si est? en pre-alert y est? autenticado, verificar si es admin
       if (isPreAlertRoute && isAuthenticated) {
         final isAdmin = user.isAdmin;
         if (isAdmin) {
@@ -68,27 +121,40 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         }
       }
 
-      // Si está autenticado pero el email no está verificado, redirigir a verificación
-      // (excepto si ya está en la pantalla de verificación)
-      if (isAuthenticated && !user.isEmailVerified && !isVerifyEmailRoute) {
+      // Si est? autenticado pero el email no est? verificado, redirigir a verificaci?n
+      // (excepto si ya est? en la pantalla de verificaci?n o completar perfil)
+      if (isAuthenticated && !user.isEmailVerified && !isVerifyEmailRoute && !isCompleteProfileRoute) {
         return '/auth/verify-email';
       }
 
-      // Si está autenticado y está en login/register, redirigir según el rol
-      if (isAuthenticated && isLoginRoute) {
-        final isAdmin = user.isAdmin;
-        return isAdmin ? '/' : '/print-orders/my-orders';
-      }
-
-      // Si está en verify-email pero no está autenticado, redirigir a login
-      if (isVerifyEmailRoute && !isAuthenticated) {
+      // Si est? en complete-profile pero no est? autenticado, redirigir a login
+      if (isCompleteProfileRoute && !isAuthenticated) {
         return '/auth/login';
       }
 
-      // Si está en verify-email y el email ya está verificado, redirigir según el rol
+      // Si est? en complete-profile pero el customer ya est? verificado, redirigir al home
+      if (isCompleteProfileRoute && 
+          isAuthenticated && 
+          user.customer != null && 
+          user.customer!.verifiedAt != null) {
+        return '/';
+      }
+
+      // Si est? autenticado y est? en login/register, redirigir seg?n el rol
+      if (isAuthenticated && isLoginRoute) {
+        final isAdmin = user.isAdmin;
+        return isAdmin ? '/' : '/';
+      }
+
+      // Si está en verify-email pero no está autenticado, redirigir al portero
+      if (isVerifyEmailRoute && !isAuthenticated) {
+        return '/auth/email-entry';
+      }
+
+      // Si est? en verify-email y el email ya est? verificado, redirigir seg?n el rol
       if (isVerifyEmailRoute && isAuthenticated && user.isEmailVerified) {
         final isAdmin = user.isAdmin;
-        return isAdmin ? '/' : '/print-orders/my-orders';
+        return isAdmin ? '/' : '/';
       }
 
       return null;
@@ -136,6 +202,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 const NoTransitionPage(child: QuoteInputScreen()),
           ),
           GoRoute(
+            path: '/trends',
+            name: 'trends',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: TrendsScreen()),
+          ),
+          GoRoute(
             path: '/packages',
             name: 'packages',
             pageBuilder: (context, state) =>
@@ -178,20 +250,121 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: SearchPreAlertsScreen()),
           ),
+          GoRoute(
+            path: '/admin/locker-retrieval',
+            name: 'admin-locker-retrieval',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: LockerRetrievalScreen()),
+          ),
         ],
       ),
 
       //Authentication module
       GoRoute(
+        path: '/auth/email-entry',
+        name: 'email-entry',
+        builder: (context, state) => const EmailEntryScreen(),
+      ),
+
+      GoRoute(
         path: '/auth/login',
         name: 'login',
-        builder: (context, state) => const LoginScreen(),
+        builder: (context, state) {
+          String email = '';
+          bool hasWebLogin = false;
+          final extra = state.extra;
+          if (extra is String) {
+            email = extra;
+          } else if (extra is Map<String, dynamic>) {
+            email = extra['email'] as String? ?? '';
+            hasWebLogin = extra['hasWebLogin'] as bool? ?? false;
+          }
+          return LoginScreen(initialEmail: email, showHasAccountMessage: hasWebLogin);
+        },
+      ),
+
+      GoRoute(
+        path: '/auth/welcome-back',
+        name: 'welcome-back',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: WelcomeBackScreen()),
+      ),
+
+      GoRoute(
+        path: '/auth/email-verification',
+        name: 'email-verification',
+        builder: (context, state) => const EmailVerificationScreen(),
+      ),
+
+      GoRoute(
+        path: '/auth/otp-verification',
+        name: 'otp-verification',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final email = extra['email'] as String? ?? '';
+          final isLegacy = extra['isLegacy'] as bool? ?? false;
+          final welcomeMessage = extra['welcomeMessage'] as String?;
+          return OtpVerificationScreen(
+            email: email,
+            isLegacy: isLegacy,
+            welcomeMessage: welcomeMessage,
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/auth/create-password',
+        name: 'create-password',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final email = extra['email'] as String? ?? '';
+          final code = extra['code'] as String? ?? '';
+          if (email.isEmpty || code.isEmpty) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Error')),
+              body: const Center(
+                child: Text('Enlace inválido. Regresa e intenta de nuevo.'),
+              ),
+            );
+          }
+          return CreatePasswordScreen(email: email, code: code);
+        },
       ),
 
       GoRoute(
         path: '/auth/register',
         name: 'register',
-        builder: (context, state) => const RegisterScreen(),
+        builder: (context, state) {
+          // extra puede ser String (email) o Map con email, code, isActivationFlow, activationMessage, etc.
+          final extra = state.extra;
+          String email = '';
+          String code = '';
+          bool isActivationFlow = false;
+          String? activationMessage;
+          String? initialName;
+          if (extra is String) {
+            email = extra;
+          } else if (extra is Map<String, dynamic>) {
+            email = extra['email'] as String? ?? '';
+            code = extra['code'] as String? ?? '';
+            isActivationFlow = extra['isActivationFlow'] as bool? ?? false;
+            activationMessage = extra['activationMessage'] as String?;
+            initialName = extra['name'] as String?;
+          }
+          final initialPhone = extra is Map<String, dynamic> ? extra['phone'] as String? : null;
+          final fromOtpFlow = extra is Map<String, dynamic>
+              ? (extra['fromOtpFlow'] as bool? ?? false)
+              : false;
+          return RegisterScreen(
+            initialEmail: email,
+            initialCode: code,
+            isActivationFlow: isActivationFlow,
+            activationMessage: activationMessage,
+            initialName: initialName,
+            initialPhone: initialPhone,
+            fromOtpFlow: fromOtpFlow,
+          );
+        },
       ),
 
       GoRoute(
@@ -204,7 +377,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               state.uri.queryParameters['email'] ??
               '';
 
-          // Si no se proporcionó el email, intentar obtenerlo del authProvider
+          // Si no se proporcion? el email, intentar obtenerlo del authProvider
           if (email.isEmpty) {
             final ref = ProviderScope.containerOf(context);
             final authState = ref.read(authProvider);
@@ -214,15 +387,55 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             }
           }
 
-          // Si aún no hay email, intentar obtenerlo del secure storage de forma síncrona
-          // (aunque esto puede no funcionar si el usuario aún no está cargado)
+          // Si a?n no hay email, intentar obtenerlo del secure storage de forma s?ncrona
+          // (aunque esto puede no funcionar si el usuario a?n no est? cargado)
           if (email.isEmpty) {
-            // Mostrar un widget que obtenga el email de forma asíncrona
+            // Mostrar un widget que obtenga el email de forma as?ncrona
             return _VerifyEmailScreenBuilder(email: email);
           }
 
           return VerifyEmailScreen(email: email);
         },
+      ),
+
+      GoRoute(
+        path: '/auth/forgot-password',
+        name: 'forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+
+      GoRoute(
+        path: '/auth/reset-password',
+        name: 'reset-password',
+        builder: (context, state) {
+          // Obtener token y email de los query parameters
+          final token = state.uri.queryParameters['token'] ?? '';
+          final email = state.uri.queryParameters['email'] ?? '';
+
+          if (token.isEmpty || email.isEmpty) {
+            // Si no hay parámetros, mostrar error
+            return Scaffold(
+              appBar: AppBar(title: const Text('Error')),
+              body: const Center(
+                child: Text(
+                  'Enlace inválido. Por favor, solicita un nuevo enlace de recuperación.',
+                ),
+              ),
+            );
+          }
+
+          return ResetPasswordScreen(
+            email: email,
+            token: token,
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/auth/complete-profile',
+        name: 'complete-profile',
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: CompleteProfileScreen()),
       ),
 
       //Modulo de impresiones
@@ -253,6 +466,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       GoRoute(
+        path: '/pre-alert/detail/:id',
+        name: 'pre-alert-detail',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return PreAlertDetailScreen(preAlertId: id);
+        },
+      ),
+
+      GoRoute(
         path: '/profile/addresses',
         name: 'profile-addresses',
         builder: (context, state) => const AddressesSection(),
@@ -261,7 +483,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Widget builder que obtiene el email del usuario guardado de forma asíncrona
+/// Widget builder que obtiene el email del usuario guardado de forma as?ncrona
 class _VerifyEmailScreenBuilder extends ConsumerStatefulWidget {
   final String email;
 
@@ -304,7 +526,7 @@ class _VerifyEmailScreenBuilderState
       return;
     }
 
-    // Si no está en el provider, intentar obtener del secure storage
+    // Si no est? en el provider, intentar obtener del secure storage
     try {
       final storage = ref.read(secureStorageProvider);
       final userJson = await storage.read(key: 'user');
@@ -323,7 +545,7 @@ class _VerifyEmailScreenBuilderState
       print('Error al obtener email del storage: $e');
     }
 
-    // Si no se encontró, marcar como error
+    // Si no se encontr?, marcar como error
     setState(() {
       _isLoading = false;
     });

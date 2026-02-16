@@ -1,4 +1,6 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' hide Orientation;
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
@@ -6,42 +8,70 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import '../../../../../core/design_system/ds_badges.dart';
 import '../../../../../core/design_system/ds_inputs.dart';
+import '../../../../auth/providers/auth_provider.dart';
 
-// ✅ CAMBIO: Usa el provider centralizado
 import '../../../providers/create_order_provider.dart';
- // Solo para enums
+
+Future<void> _pickTransferProof(
+  BuildContext context,
+  WidgetRef ref,
+  CreateOrder orderNotifier,
+  PaymentInfo paymentInfo,
+) async {
+  final result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+    allowMultiple: false,
+  );
+  if (result == null || result.files.single.path == null) return;
+  final path = result.files.single.path!;
+  final name = result.files.single.name;
+  orderNotifier.setPaymentTransferProof(path, name);
+}
 
 class Step4Confirmation extends HookConsumerWidget {
   final String? userName;
   final String? userEmail;
-  
-  const Step4Confirmation({super.key, this.userName, this.userEmail});
+  final String? userPhone;
+
+  const Step4Confirmation({super.key, this.userName, this.userEmail, this.userPhone});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
-    // ✅ CAMBIO: Lee desde el provider centralizado
+
+    final authState = ref.watch(authProvider);
+    final user = authState.value;
     final orderState = ref.watch(createOrderProvider);
     final orderNotifier = ref.read(createOrderProvider.notifier);
-    
-    // Datos desde el request centralizado
+
     final customerInfo = orderState.request?.customerInfo;
     final printConfig = orderState.request?.printConfig;
     final deliveryInfo = orderState.request?.deliveryInfo;
     final paymentInfo = orderState.paymentInfo;
-    
-    // Pricing consolidado
+
     final pricing = orderNotifier.calculatePricing();
 
-    // if (userName != null && (customerInfo == null || customerInfo.name.isEmpty)) {
-    //   orderNotifier.setCustomerName(userName!);
-    // }
+    // Fuente única: usuario logueado (auth) o props del padre; así se llena siempre aunque el padre no haya pasado datos aún
+    final fromUser = user?.name ?? user?.customer?.name ?? '';
+    final fromUserEmail = user?.email ?? user?.customer?.email ?? '';
+    final fromUserPhone = user?.customer?.phone ?? user?.customer?.homePhone ?? user?.customer?.officePhone ?? '';
+    final effectiveName = (customerInfo?.name ?? '').isEmpty ? (userName ?? fromUser) : customerInfo!.name;
+    final effectiveEmail = (customerInfo?.email ?? '').isEmpty ? (userEmail ?? fromUserEmail) : customerInfo!.email;
+    final effectivePhone = (customerInfo?.phone ?? '').isEmpty ? (userPhone ?? fromUserPhone) : (customerInfo!.phone ?? '');
 
-    // if (userEmail != null && (customerInfo == null || customerInfo.email.isEmpty)) {
-    //   orderNotifier.setCustomerEmail(userEmail!);
-    // }
+    // Sincronizar al provider si tenemos datos del usuario y el estado está vacío (para que se llene siempre a la primera)
+    final needsSyncName = effectiveName.isNotEmpty && (customerInfo == null || customerInfo.name.isEmpty);
+    final needsSyncEmail = effectiveEmail.isNotEmpty && (customerInfo == null || customerInfo.email.isEmpty);
+    final needsSyncPhone = effectivePhone.isNotEmpty && (customerInfo == null || (customerInfo.phone ?? '').isEmpty);
+    if (needsSyncName || needsSyncEmail || needsSyncPhone) {
+      Future.microtask(() {
+        if (needsSyncName) orderNotifier.setCustomerName(effectiveName);
+        if (needsSyncEmail) orderNotifier.setCustomerEmail(effectiveEmail);
+        if (needsSyncPhone) orderNotifier.setCustomerPhone(effectivePhone);
+      });
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,14 +103,14 @@ class Step4Confirmation extends HookConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Confirmar Pedido',
+                        AppLocalizations.of(context)!.printOrderConfirmTitle,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: MBESpacing.xs),
                       Text(
-                        'Revisa y completa tu información',
+                        AppLocalizations.of(context)!.printOrderConfirmSubtitle,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -124,10 +154,10 @@ class Step4Confirmation extends HookConsumerWidget {
                 
                 const SizedBox(height: MBESpacing.xl),
 
-                // Nombre Completo
+                // Nombre Completo (prellenado con usuario logueado; fuente: auth o props)
                 DSInput.text(
-                  label: 'Nombre Completo',
-                  value: customerInfo?.name ?? '',
+                  label: AppLocalizations.of(context)!.preAlertFullName,
+                  value: effectiveName,
                   onChanged: (value) => orderNotifier.setCustomerName(value),
                   required: true,
                   prefixIcon: Iconsax.user,
@@ -137,8 +167,8 @@ class Step4Confirmation extends HookConsumerWidget {
 
                 // Correo Electrónico
                 DSInput.email(
-                  label: 'Correo Electrónico',
-                  value: customerInfo?.email ?? '',
+                  label: AppLocalizations.of(context)!.authEmail,
+                  value: effectiveEmail,
                   onChanged: (value) => orderNotifier.setCustomerEmail(value),
                   required: true,
                 ),
@@ -148,7 +178,7 @@ class Step4Confirmation extends HookConsumerWidget {
                 // Teléfono
                 DSInput.phone(
                   label: 'Teléfono (opcional)',
-                  value: customerInfo?.phone ?? '',
+                  value: effectivePhone,
                   onChanged: (value) => orderNotifier.setCustomerPhone(value),
                 ),
 
@@ -188,7 +218,7 @@ class Step4Confirmation extends HookConsumerWidget {
                     ),
                     const SizedBox(width: MBESpacing.md),
                     Text(
-                      'Método de Pago',
+                      AppLocalizations.of(context)!.preAlertPaymentMethod,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -198,37 +228,70 @@ class Step4Confirmation extends HookConsumerWidget {
                 
                 const SizedBox(height: MBESpacing.lg),
 
-                // Tarjeta
-                _PaymentOption(
-                  icon: Iconsax.card,
-                  title: 'Tarjeta',
-                  subtitle: 'Débito o crédito',
-                  isSelected: paymentInfo.method == PaymentMethod.card,
-                  onTap: () => orderNotifier.setPaymentMethod(PaymentMethod.card),
-                ),
-
-                const SizedBox(height: MBESpacing.md),
-
-                // Efectivo
+                // Solo Efectivo y Transferencia (igual que pre-alertas)
                 _PaymentOption(
                   icon: Iconsax.money,
-                  title: 'Efectivo',
-                  subtitle: 'Paga al recibir tu pedido',
+                  title: AppLocalizations.of(context)!.printOrderPaymentCash,
+                  subtitle: AppLocalizations.of(context)!.printOrderPaymentCashDesc,
                   isSelected: paymentInfo.method == PaymentMethod.cash,
                   onTap: () => orderNotifier.setPaymentMethod(PaymentMethod.cash),
-                  badge: DSBadge.success(label: 'Sin cargo extra'),
+                  badge: DSBadge.success(label: AppLocalizations.of(context)!.preAlertNoAdditionalCost),
                 ),
 
                 const SizedBox(height: MBESpacing.md),
 
-                // Transferencia
                 _PaymentOption(
                   icon: Iconsax.bank,
                   title: 'Transferencia',
-                  subtitle: 'Banco Agrícola, BAC, etc.',
+                  subtitle: 'Banco Agrícola, BAC, etc. Sube tu comprobante.',
                   isSelected: paymentInfo.method == PaymentMethod.transfer,
                   onTap: () => orderNotifier.setPaymentMethod(PaymentMethod.transfer),
                 ),
+
+                // Comprobante de transferencia (obligatorio)
+                if (paymentInfo.method == PaymentMethod.transfer) ...[
+                  const SizedBox(height: MBESpacing.lg),
+                  Text(
+                    AppLocalizations.of(context)!.preAlertTransferProof,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: MBESpacing.sm),
+                  OutlinedButton.icon(
+                    onPressed: () => _pickTransferProof(context, ref, orderNotifier, paymentInfo),
+                    icon: const Icon(Iconsax.document_upload, size: 20),
+                    label: Text(
+                      paymentInfo.transferProofFileName ?? 'Seleccionar imagen o PDF',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(MBERadius.medium),
+                      ),
+                    ),
+                  ),
+                  if (paymentInfo.transferProofFileName != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: MBESpacing.xs),
+                      child: Row(
+                        children: [
+                          Icon(Iconsax.tick_circle, size: 16, color: MBETheme.brandBlack),
+                          const SizedBox(width: MBESpacing.xs),
+                          Expanded(
+                            child: Text(
+                              paymentInfo.transferProofFileName!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
@@ -270,7 +333,7 @@ class Step4Confirmation extends HookConsumerWidget {
                     ),
                     const SizedBox(width: MBESpacing.md),
                     Text(
-                      'Resumen del Pedido',
+                      AppLocalizations.of(context)!.printOrderOrderSummary,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -303,37 +366,37 @@ class Step4Confirmation extends HookConsumerWidget {
                 // Configuración
                 _SummarySection(
                   icon: Iconsax.setting_2,
-                  title: 'Configuración',
+                  title: AppLocalizations.of(context)!.printOrderConfig,
                   items: [
                     _SummaryItem(
-                      'Tipo:',
+                      '${AppLocalizations.of(context)!.printOrderTypeLabel}:',
                       printConfig?.printType == 'bw' 
-                          ? 'Blanco y Negro' 
-                          : 'Color',
+                          ? AppLocalizations.of(context)!.printOrderBwLabel 
+                          : AppLocalizations.of(context)!.printOrderColorLabel,
                     ),
                     _SummaryItem(
-                      'Tamaño:',
-                      _getPaperSizeName(printConfig?.paperSize ?? 'letter'),
+                      '${AppLocalizations.of(context)!.printOrderSizeLabel}:',
+                      _getPaperSizeName(context, printConfig?.paperSize ?? 'letter'),
                     ),
                     _SummaryItem(
-                      'Orientación:',
+                      '${AppLocalizations.of(context)!.printOrderOrientationLabel}:',
                       printConfig?.orientation == 'portrait' 
-                          ? 'Vertical' 
-                          : 'Horizontal',
+                          ? AppLocalizations.of(context)!.printOrderOrientationPortrait 
+                          : AppLocalizations.of(context)!.printOrderOrientationLandscape,
                     ),
                     _SummaryItem(
-                      'Copias:',
+                      '${AppLocalizations.of(context)!.printOrderCopiesLabel}:',
                       '${printConfig?.copies ?? 1}',
                     ),
                     if (printConfig?.doubleSided == true)
                       _SummaryItem(
-                        'Doble cara:',
-                        'Sí',
+                        '${AppLocalizations.of(context)!.printOrderDoubleSided}:',
+                        AppLocalizations.of(context)!.printOrderYes,
                       ),
                     if (printConfig?.binding == true)
                       _SummaryItem(
-                        'Engargolado:',
-                        'Sí',
+                        '${AppLocalizations.of(context)!.printOrderBinding}:',
+                        AppLocalizations.of(context)!.printOrderYes,
                       ),
                   ],
                 ),
@@ -386,7 +449,7 @@ class Step4Confirmation extends HookConsumerWidget {
                           ),
                           const SizedBox(width: MBESpacing.sm),
                           Text(
-                            'Desglose de Costos',
+                            AppLocalizations.of(context)!.printOrderCostBreakdown,
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
@@ -397,7 +460,7 @@ class Step4Confirmation extends HookConsumerWidget {
                       
                       // Subtotal de impresión
                       _CostRow(
-                        'Subtotal impresión',
+                        AppLocalizations.of(context)!.printOrderPrintSubtotal,
                         '\$${pricing.printSubtotal.toStringAsFixed(2)}',
                       ),
                       
@@ -413,7 +476,7 @@ class Step4Confirmation extends HookConsumerWidget {
                       if (pricing.deliveryCost > 0) ...[
                         const SizedBox(height: MBESpacing.sm),
                         _CostRow(
-                          'Envío',
+                          AppLocalizations.of(context)!.printOrderShippingCost,
                           '\$${pricing.deliveryCost.toStringAsFixed(2)}',
                         ),
                       ],
@@ -425,7 +488,7 @@ class Step4Confirmation extends HookConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Envío',
+                              AppLocalizations.of(context)!.printOrderShippingCost,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
                               ),
@@ -460,7 +523,7 @@ class Step4Confirmation extends HookConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Total',
+                            AppLocalizations.of(context)!.printOrderTotal,
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
@@ -484,13 +547,13 @@ class Step4Confirmation extends HookConsumerWidget {
                           ),
                           const SizedBox(width: MBESpacing.xs),
                           Text(
-                            'Método de pago: ',
+                            '${AppLocalizations.of(context)!.printOrderPaymentMethodLabel} ',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                           Text(
-                            _getPaymentMethodName(paymentInfo.method),
+                            _getPaymentMethodName(context, paymentInfo.method),
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
@@ -531,7 +594,7 @@ class Step4Confirmation extends HookConsumerWidget {
                 const SizedBox(width: MBESpacing.md),
                 Expanded(
                   child: Text(
-                    'Recibirás un correo con los detalles de tu pedido',
+                    AppLocalizations.of(context)!.printOrderEmailConfirmation,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: const Color(0xFF1E40AF),
                       fontWeight: FontWeight.w500,
@@ -548,16 +611,17 @@ class Step4Confirmation extends HookConsumerWidget {
     );
   }
 
-  String _getPaperSizeName(String size) {
+  String _getPaperSizeName(BuildContext context, String size) {
+    final l10n = AppLocalizations.of(context)!;
     switch (size) {
       case 'letter':
-        return 'Carta';
+        return l10n.printOrderLetter;
       case 'legal':
-        return 'Legal';
+        return l10n.printOrderLegal;
       case 'double_letter':
-        return 'Doble Carta';
+        return l10n.printOrderDoubleLetter;
       default:
-        return 'Carta';
+        return l10n.printOrderLetter;
     }
   }
 }
@@ -703,14 +767,15 @@ class _SummarySection extends StatelessWidget {
   }
 }
 
-String _getPaymentMethodName(PaymentMethod method) {
+String _getPaymentMethodName(BuildContext context, PaymentMethod method) {
+  final l10n = AppLocalizations.of(context)!;
   switch (method) {
     case PaymentMethod.card:
-      return 'Tarjeta';
+      return l10n.printOrderPaymentCard;
     case PaymentMethod.cash:
-      return 'Efectivo';
+      return l10n.printOrderPaymentCash;
     case PaymentMethod.transfer:
-      return 'Transferencia';
+      return l10n.printOrderPaymentTransfer;
   }
 }
 

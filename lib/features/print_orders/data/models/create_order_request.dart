@@ -30,13 +30,13 @@ class CreateOrderRequest {
       },
       'delivery': {
         'method': deliveryInfo.method,
-        if (deliveryInfo.pickupLocation != null) 
+        if (deliveryInfo.method == 'pickup' && deliveryInfo.pickupLocation != null)
           'pickupLocation': deliveryInfo.pickupLocation,
-        if (deliveryInfo.address != null) 
+        if (deliveryInfo.address != null)
           'address': deliveryInfo.address,
-        if (deliveryInfo.phone != null) 
+        if (deliveryInfo.phone != null)
           'phone': deliveryInfo.phone,
-        if (deliveryInfo.notes != null) 
+        if (deliveryInfo.notes != null)
           'notes': deliveryInfo.notes,
       },
     };

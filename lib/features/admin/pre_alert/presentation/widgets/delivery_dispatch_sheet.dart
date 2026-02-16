@@ -4,11 +4,14 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../../core/design_system/ds_buttons.dart';
 import '../../../../../config/theme/mbe_theme.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../data/models/admin_pre_alert_model.dart';
 import '../../data/models/shipping_provider_model.dart';
 import '../../data/repositories/admin_pre_alerts_repository.dart';
 import '../../providers/delivery_manager.dart';
 import '../../providers/shipping_providers_provider.dart';
+import '../../providers/admin_pre_alerts_provider.dart';
+import '../../providers/context_counts_provider.dart';
 
 class DeliveryDispatchSheet extends ConsumerStatefulWidget {
   final List<AdminPreAlert> packages;
@@ -140,7 +143,7 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Proveedor de Envíos',
+                            AppLocalizations.of(context)!.adminShippingProvider,
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -200,9 +203,10 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
               child: SafeArea(
                 top: false,
                 child: DSButton.primary(
-                  label: _isLoading ? 'Procesando...' : 'Confirmar Despacho',
+                  label: _isLoading ? AppLocalizations.of(context)!.adminProcessing : AppLocalizations.of(context)!.adminConfirmDispatch,
                   fullWidth: true,
                   icon: Iconsax.box_tick,
+                  isLoading: _isLoading,
                   onPressed: _isLoading ? null : _processDispatch,
                 ),
               ),
@@ -225,7 +229,7 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
           Icon(Iconsax.scan_barcode, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
-            'Escanea paquetes para despachar',
+            AppLocalizations.of(context)!.adminScanPackagesToDispatch,
             style: TextStyle(
               color: Colors.grey[600],
               fontSize: 16,
@@ -272,14 +276,14 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
               Expanded(
                 child: _buildSummaryItem(
                   Iconsax.box_1,
-                  'Paquetes',
+                  AppLocalizations.of(context)!.adminPackages,
                   '${widget.packages.length + _scannedPackages.length}',
                 ),
               ),
               Expanded(
                 child: _buildSummaryItem(
                   Iconsax.box,
-                  'Productos',
+                  AppLocalizations.of(context)!.adminProducts,
                   '$totalProducts',
                 ),
               ),
@@ -426,8 +430,8 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Entrega a Domicilio',
+                        Text(
+                          AppLocalizations.of(context)!.adminHomeDelivery,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -478,9 +482,9 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Información básica
-                  _buildDetailRow(Iconsax.user, 'Cliente', package.clientName),
+                  _buildDetailRow(Iconsax.user, AppLocalizations.of(context)!.adminClient, package.clientName),
                   const SizedBox(height: 12),
-                  _buildDetailRow(Iconsax.box_1, 'Ebox Code', package.eboxCode),
+                  _buildDetailRow(Iconsax.box_1, AppLocalizations.of(context)!.adminEboxCode, package.eboxCode),
                   if (package.rackNumber != null &&
                       package.segmentNumber != null) ...[
                     const SizedBox(height: 12),
@@ -495,7 +499,7 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
                     const SizedBox(height: 12),
                     _buildDetailRow(
                       Iconsax.shop,
-                      'Proveedor',
+                      AppLocalizations.of(context)!.adminProvider,
                       package.providerName ?? package.provider,
                     ),
                   ],
@@ -503,7 +507,7 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
                     const SizedBox(height: 12),
                     _buildDetailRow(
                       Iconsax.truck,
-                      'Transporte',
+                      AppLocalizations.of(context)!.adminTransport,
                       package.shippingProvider!,
                     ),
                   ],
@@ -518,8 +522,8 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
                       children: [
                         Icon(Iconsax.box, size: 18, color: MBETheme.brandBlack),
                         const SizedBox(width: 8),
-                        const Text(
-                          'Productos',
+                        Text(
+                          AppLocalizations.of(context)!.adminProducts,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -570,7 +574,7 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
                                 Expanded(
                                   child: Text(
                                     product.productCategoryName ??
-                                        'Sin categoría',
+                                        AppLocalizations.of(context)!.adminNoCategory,
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -761,14 +765,14 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
           child: DropdownButtonFormField<ShippingProviderModel>(
             value: _selectedProvider,
             icon: const Icon(Iconsax.arrow_down_1, size: 18),
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 12,
               ),
               border: InputBorder.none,
-              prefixIcon: Icon(Iconsax.truck_fast, color: Colors.black87),
-              labelText: 'Proveedor de Envíos',
+              prefixIcon: const Icon(Iconsax.truck_fast, color: Colors.black87),
+              labelText: AppLocalizations.of(context)!.adminShippingProvider,
               labelStyle: TextStyle(color: Colors.grey),
             ),
             items: providers.map((provider) {
@@ -781,7 +785,7 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
               );
             }).toList(),
             onChanged: (val) => setState(() => _selectedProvider = val),
-            validator: (val) => val == null ? 'Requerido' : null,
+            validator: (val) => val == null ? AppLocalizations.of(context)!.adminRequired : null,
           ),
         );
       },
@@ -891,8 +895,8 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
     if (_selectedProvider == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Selecciona un proveedor'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.adminSelectProvider),
           backgroundColor: Colors.red,
         ),
       );
@@ -910,8 +914,8 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
     if (allPackages.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debes escanear al menos un paquete'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.adminScanAtLeastOne),
           backgroundColor: Colors.red,
         ),
       );
@@ -937,15 +941,17 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
       if (!mounted) return;
 
       if (success) {
+        ref.invalidate(adminPreAlertsProvider);
+        ref.invalidate(contextCountsProvider);
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Despacho creado exitosamente!'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.adminDispatchSuccess),
             backgroundColor: Colors.green,
           ),
         );
       } else {
-        throw Exception("Error al procesar el despacho");
+        throw Exception(AppLocalizations.of(context)!.adminDispatchError);
       }
     } catch (e) {
       if (mounted) {

@@ -19,9 +19,23 @@ class AdminPreAlert {
   final DateTime? exportedAt;
   final bool isSelected;
 
-  // Campos de rack y segmento
+  // Campos de rack y segmento (y ubicación en bodega)
   final String? rackNumber;
   final String? segmentNumber;
+  /// Ubicación completa "rack-segment" (ej. "A-01"). Viene del backend.
+  final String? fullLocation;
+  /// ID de la ubicación en bodega (multi-bodega). Opcional en respuestas.
+  final int? warehouseLocationId;
+
+  /// Ubicación para mostrar: usa [fullLocation] del backend o construye "rack-segment".
+  String? get displayLocation =>
+      fullLocation ??
+      (rackNumber != null &&
+              rackNumber!.isNotEmpty &&
+              segmentNumber != null &&
+              segmentNumber!.isNotEmpty
+          ? '$rackNumber-$segmentNumber'
+          : null);
 
   // Campos de entrega
   final DateTime? deliveredAt;
@@ -65,6 +79,8 @@ class AdminPreAlert {
     // Rack y segmento
     this.rackNumber,
     this.segmentNumber,
+    this.fullLocation,
+    this.warehouseLocationId,
     // Entrega
     this.deliveredAt,
     this.deliveredTo,
@@ -222,6 +238,10 @@ class AdminPreAlert {
       // Rack y segmento
       rackNumber: json['rack_number'] as String?,
       segmentNumber: json['segment_number'] as String?,
+      fullLocation: json['full_location'] as String?,
+      warehouseLocationId: json['warehouse_location_id'] is int
+          ? json['warehouse_location_id'] as int
+          : int.tryParse(json['warehouse_location_id']?.toString() ?? ''),
       // Entrega
       deliveredAt: json['delivered_at'] != null
           ? DateTime.tryParse(json['delivered_at'] as String)
@@ -277,6 +297,8 @@ class AdminPreAlert {
       // Rack y segmento
       'rack_number': rackNumber,
       'segment_number': segmentNumber,
+      'full_location': fullLocation,
+      'warehouse_location_id': warehouseLocationId,
       // Entrega
       'delivered_at': deliveredAt?.toIso8601String(),
       'delivered_to': deliveredTo,
@@ -320,6 +342,8 @@ class AdminPreAlert {
     // Rack y segmento
     String? rackNumber,
     String? segmentNumber,
+    String? fullLocation,
+    int? warehouseLocationId,
     // Entrega
     DateTime? deliveredAt,
     String? deliveredTo,
@@ -359,6 +383,8 @@ class AdminPreAlert {
       // Rack y segmento
       rackNumber: rackNumber ?? this.rackNumber,
       segmentNumber: segmentNumber ?? this.segmentNumber,
+      fullLocation: fullLocation ?? this.fullLocation,
+      warehouseLocationId: warehouseLocationId ?? this.warehouseLocationId,
       // Entrega
       deliveredAt: deliveredAt ?? this.deliveredAt,
       deliveredTo: deliveredTo ?? this.deliveredTo,

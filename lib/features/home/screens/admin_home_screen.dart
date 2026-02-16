@@ -2,222 +2,246 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
-import '../../../../config/theme/app_colors.dart';
-import '../../../../config/theme/mbe_theme.dart';
+import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
+import 'package:mbe_orders_app/features/auth/providers/auth_provider.dart';
+import 'package:mbe_orders_app/features/admin/pre_alert/providers/admin_kpis_provider.dart';
+import 'package:flutter_custom_clippers/flutter_custom_clippers.dart';
 
 class AdminHomeScreen extends HookConsumerWidget {
   const AdminHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F8),
+      backgroundColor: const Color(0xFFF5F7FA),
       body: Stack(
         children: [
-          // Fondo del Header
-          Container(
-            height: 280,
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1C24),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+          ClipPath(
+            clipper: WaveClipperTwo(),
+            child: Container(
+              height: 280,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [const Color(0xFFED1C24), const Color(0xFFB91419)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFED1C24).withOpacity(0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
             ),
           ),
 
           SafeArea(
             bottom: false,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                // 1. Header con Buscador Global
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
-                  sliver: SliverToBoxAdapter(child: _buildAdminHeader()),
+            child: RefreshIndicator(
+              onRefresh: () async {
+                // Refrescar los KPIs cuando se hace pull down
+                ref.invalidate(adminKPIsProvider);
+                await ref.read(adminKPIsProvider.future);
+              },
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
                 ),
-
-                // 2. KPIs del Día (Hero Section)
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverToBoxAdapter(child: _buildDailyStats()),
-                ),
-
-                // 3. Título Operaciones
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-                  sliver: SliverToBoxAdapter(
-                    child: Text(
-                      "Operaciones Rápidas",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey[800],
-                      ),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(24, 10, 24, 24),
+                    sliver: SliverToBoxAdapter(
+                      child: _buildAdminHeader(context, ref, l10n),
                     ),
                   ),
-                ),
 
-                // 4. Grid de Acciones (Scanner Modes)
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverGrid.count(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    childAspectRatio: 1.4,
-                    children: [
-                      _buildActionCard(
-                        context,
-                        title: 'Recepción',
-                        subtitle: 'Escanear entrada',
-                        icon: Iconsax.import_1,
-                        color: Colors.blueAccent,
-                        onTap: () =>
-                            context.push('/scan/receive'), // Ruta ejemplo
-                      ),
-                      _buildActionCard(
-                        context,
-                        title: 'Entrega',
-                        subtitle: 'Salida a cliente',
-                        icon: Iconsax.box_tick,
-                        color: Colors.green,
-                        onTap: () => context.push('/scan/deliver'),
-                      ),
-                      _buildActionCard(
-                        context,
-                        title: 'Inventario',
-                        subtitle: 'Consultar bodega',
-                        icon: Iconsax.box_search,
-                        color: Colors.orange,
-                        onTap: () => context.go('/inventory'),
-                      ),
-                      // _buildActionCard(
-                      //   context,
-                      //   title: 'Manifiestos',
-                      //   subtitle: 'Carga masiva',
-                      //   icon: Iconsax.document_text,
-                      //   color: Colors.purple,
-                      //   onTap: () {},
-                      // ),
-                    ],
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverToBoxAdapter(
+                      child: _buildDailyStats(context, ref, l10n),
+                    ),
                   ),
-                ),
 
-                // 5. Lista de Alertas (Paquetes con problemas)
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-                  sliver: SliverToBoxAdapter(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Requieren Atención",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey[800],
-                          ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+                    sliver: SliverToBoxAdapter(
+                      child: Text(
+                        l10n.adminQuickOps,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1A1C24),
+                          letterSpacing: -0.5,
                         ),
-                        Text(
-                          "Ver todos",
-                          style: TextStyle(
-                            color: Colors.blueAccent,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
 
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => _buildAlertTile(),
-                      childCount: 3, // Mock data count
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverLayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.crossAxisExtent;
+                        final cellWidth = (width - 16) / 2;
+                        // Altura suficiente para icono + título + subtítulo sin overflow
+                        const minCellHeight = 160.0;
+                        final aspectRatio = cellWidth / minCellHeight;
+                        return SliverGrid.count(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 16,
+                          crossAxisSpacing: 16,
+                          childAspectRatio: aspectRatio,
+                          children: [
+                            _buildActionCard(
+                              context,
+                              title: l10n.adminReception,
+                              subtitle: l10n.adminReceptionSubtitle,
+                              icon: Iconsax.import_1,
+                              accentColor: MBETheme.brandBlack,
+                              onTap: () => context.go('/admin/pre-alerts'),
+                            ),
+                            _buildActionCard(
+                              context,
+                              title: l10n.adminDelivery,
+                              subtitle: l10n.adminDeliverySubtitle,
+                              icon: Iconsax.box_tick,
+                              accentColor: MBETheme.brandBlack,
+                              onTap: () => context.go('/admin/locker-retrieval'),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
-                ),
 
-                // Espacio final
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
-              ],
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
+              ),
             ),
           ),
         ],
       ),
-      // FAB central para escaneo rápido universal
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
-        backgroundColor: const Color(0xFF1A1C24),
-        icon: const Icon(Iconsax.scan_barcode, color: Colors.white),
-        label: const Text("Escanear", style: TextStyle(color: Colors.white)),
-        elevation: 4,
-      ),
+      // floatingActionButton: Container(
+      //   decoration: BoxDecoration(
+      //     borderRadius: BorderRadius.circular(30),
+      //     gradient: const LinearGradient(
+      //       colors: [Color(0xFFED1C24), Color(0xFFB91419)],
+      //     ),
+      //     boxShadow: [
+      //       BoxShadow(
+      //         color: const Color(0xFFED1C24).withOpacity(0.4),
+      //         blurRadius: 20,
+      //         offset: const Offset(0, 10),
+      //       ),
+      //     ],
+      //   ),
+      //   child: FloatingActionButton.extended(
+      //     onPressed: () {},
+      //     backgroundColor: Colors.transparent,
+      //     elevation: 0,
+      //     icon: const Icon(Iconsax.scan_barcode, color: Colors.white),
+      //     label: const Text(
+      //       "Escanear",
+      //       style: TextStyle(
+      //         color: Colors.white,
+      //         fontWeight: FontWeight.w600,
+      //         fontSize: 16,
+      //       ),
+      //     ),
+      //   ),
+      // ),
     );
   }
 
-  // --- WIDGETS ---
+  Widget _buildAdminHeader(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l10n,
+  ) {
+    final authState = ref.watch(authProvider);
+    final user = authState.value;
 
-  Widget _buildAdminHeader() {
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
               children: [
-                Text(
-                  "Panel Admin",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1,
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                      width: 2,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  "Sucursal Central",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: const Color(0xFF0A0B0F),
+                    child: user?.name != null
+                        ? Text(
+                            user!.name[0].toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          )
+                        : const Icon(
+                            Iconsax.user,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                   ),
                 ),
               ],
             ),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Badge(
-                label: Text('3'),
-                child: Icon(Iconsax.notification, color: Colors.white),
-              ),
+            Image.asset(
+              'assets/images/logo-mbe_horizontal_3.png',
+              width: 150,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return const Text(
+                  'MBE',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1,
+                  ),
+                );
+              },
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        // Buscador Estilo Glass
+        const SizedBox(height: 24),
         Container(
-          height: 50,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          height: 54,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           child: Row(
             children: [
-              Icon(Iconsax.search_normal, color: Colors.white.withOpacity(0.7)),
+              Icon(
+                Iconsax.search_normal,
+                color: Colors.white.withOpacity(0.8),
+                size: 20,
+              ),
               const SizedBox(width: 12),
               Text(
-                "Buscar tracking, cliente, casillero...",
-                style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                l10n.adminSearchPlaceholder,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 15,
+                ),
               ),
             ],
           ),
@@ -226,139 +250,268 @@ class AdminHomeScreen extends HookConsumerWidget {
     );
   }
 
-  Widget _buildDailyStats() {
-    return Row(
-      children: [
-        // Tarjeta Grande (Principal KPI)
-        Expanded(
-          flex: 5,
-          child: Container(
-            height: 150,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.blueAccent.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Iconsax.box_time,
-                        color: Colors.blueAccent,
-                        size: 20,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        "+12%",
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "142",
-                      style: TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1A1C24),
-                        height: 1,
-                      ),
-                    ),
-                    Text(
-                      "Recibidos Hoy",
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        // Columna de Secundarios
-        Expanded(
-          flex: 4,
-          child: Column(
+  Widget _buildDailyStats(
+    BuildContext context,
+    WidgetRef ref,
+    AppLocalizations l10n,
+  ) {
+    final kpisAsync = ref.watch(adminKPIsProvider);
+
+    return kpisAsync.when(
+      data: (kpis) => Column(
+        children: [
+          // Primera fila: Alertados Hoy y Recibidos Hoy
+          Row(
             children: [
-              _buildMiniStat('En Bodega', '850', Colors.orange),
-              const SizedBox(height: 14),
-              _buildMiniStat('Salidas', '34', Colors.purple),
+              Expanded(
+                child: _buildLargeStatCard(
+                  context,
+                  label: l10n.adminAlertedToday,
+                  value: kpis.createdToday.toString(),
+                  icon: Iconsax.note_add,
+                  iconColor: MBETheme.brandBlack,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildLargeStatCard(
+                  context,
+                  label: l10n.adminReceivedToday,
+                  value: kpis.receivedToday.toString(),
+                  icon: Iconsax.box_time,
+                  iconColor: MBETheme.brandBlack,
+                ),
+              ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          // Segunda fila: En Bodega y Salidas
+          Row(
+            children: [
+              Expanded(
+                child: _buildMiniStat(
+                  context,
+                  l10n.adminInWarehouse,
+                  kpis.totalWarehouse.toString(),
+                  MBETheme.brandBlack,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildMiniStat(
+                  context,
+                  l10n.adminDepartures,
+                  kpis.departuresToday.toString(),
+                  MBETheme.brandBlack,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      loading: () => Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildLargeStatCard(
+                  context,
+                  label: l10n.adminAlertedToday,
+                  value: '...',
+                  icon: Iconsax.note_add,
+                  iconColor: const Color(0xFF6366F1),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildLargeStatCard(
+                  context,
+                  label: l10n.adminReceivedToday,
+                  value: '...',
+                  icon: Iconsax.box_time,
+                  iconColor: MBETheme.brandBlack,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMiniStat(
+                  context,
+                  l10n.adminInWarehouse,
+                  '...',
+                  MBETheme.brandBlack,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildMiniStat(
+                  context,
+                  l10n.adminDepartures,
+                  '...',
+                  MBETheme.brandBlack,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      error: (error, stackTrace) => Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildLargeStatCard(
+                  context,
+                  label: l10n.adminAlertedToday,
+                  value: '0',
+                  icon: Iconsax.note_add,
+                  iconColor: const Color(0xFF6366F1),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildLargeStatCard(
+                  context,
+                  label: l10n.adminReceivedToday,
+                  value: '0',
+                  icon: Iconsax.box_time,
+                  iconColor: MBETheme.brandBlack,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMiniStat(
+                  context,
+                  l10n.adminInWarehouse,
+                  '0',
+                  MBETheme.brandBlack,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildMiniStat(
+                  context,
+                  l10n.adminDepartures,
+                  '0',
+                  MBETheme.brandBlack,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildMiniStat(String label, String value, Color color) {
+  Widget _buildLargeStatCard(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color iconColor,
+  }) {
     return Container(
-      height: 68,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: 160,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 44,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF1A1C24),
+                  height: 1,
+                  letterSpacing: -2,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniStat(
+    BuildContext context,
+    String label,
+    String value,
+    Color color,
+  ) {
+    return Container(
+      height: 73,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: TextStyle(
               color: Colors.grey[600],
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
               color: color,
+              height: 1,
+              letterSpacing: -1,
             ),
           ),
         ],
@@ -371,7 +524,7 @@ class AdminHomeScreen extends HookConsumerWidget {
     required String title,
     required String subtitle,
     required IconData icon,
-    required Color color,
+    required Color accentColor,
     required VoidCallback onTap,
   }) {
     return Material(
@@ -379,16 +532,18 @@ class AdminHomeScreen extends HookConsumerWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
+        splashColor: accentColor.withOpacity(0.1),
+        highlightColor: accentColor.withOpacity(0.05),
         child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.grey.withOpacity(0.1)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
@@ -396,19 +551,19 @@ class AdminHomeScreen extends HookConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.08),
+                  color: accentColor.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: color, size: 28),
+                child: Icon(icon, color: accentColor, size: 32),
               ),
               const SizedBox(height: 12),
               Text(
                 title,
                 style: const TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   color: Color(0xFF1A1C24),
                 ),
               ),
@@ -424,57 +579,4 @@ class AdminHomeScreen extends HookConsumerWidget {
     );
   }
 
-  Widget _buildAlertTile() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border(
-          left: BorderSide(color: Colors.redAccent.withOpacity(0.8), width: 4),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.redAccent.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Iconsax.warning_2,
-              color: Colors.redAccent,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Paquete sin Factura",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                Text(
-                  "Tracking: 1Z999... • Hace 2h",
-                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          Icon(Iconsax.arrow_right_3, size: 16, color: Colors.grey[400]),
-        ],
-      ),
-    );
-  }
 }

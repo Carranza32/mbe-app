@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../config/theme/mbe_theme.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../core/design_system/ds_buttons.dart';
 import '../../../../core/design_system/ds_inputs.dart'; // Asegúrate de que tus DSInput soporten estilo moderno
 import '../../data/models/address_model.dart';
@@ -210,11 +211,13 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
       return;
     }
 
+    final l10n = AppLocalizations.of(context)!;
+
     // Validar campos requeridos
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("El nombre de la dirección es requerido"),
+        SnackBar(
+          content: Text(l10n.profileAddressNameRequired),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -223,8 +226,8 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
 
     if (_regionCode == null || _regionCode!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Debes seleccionar un departamento"),
+        SnackBar(
+          content: Text(l10n.profileDepartmentRequired),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -233,8 +236,8 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
 
     if (_cityCode == null || _cityCode!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Debes seleccionar un municipio"),
+        SnackBar(
+          content: Text(l10n.profileMunicipalityRequired),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -243,8 +246,8 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
 
     if (_addressController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("La dirección es requerida"),
+        SnackBar(
+          content: Text(l10n.profileAddressRequired),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -253,8 +256,8 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
 
     if (_phoneController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("El teléfono es requerido"),
+        SnackBar(
+          content: Text(l10n.profilePhoneRequired),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -265,8 +268,8 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
     final phoneRegex = RegExp(r'^(\d{4}-\d{4}|\d{8}|\+\d{1,3}\d{4,14})$');
     if (!phoneRegex.hasMatch(_phoneController.text.trim())) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Formato de teléfono inválido"),
+        SnackBar(
+          content: Text(l10n.profilePhoneInvalid),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -303,6 +306,7 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isEditing = widget.address != null;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
@@ -335,7 +339,7 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isEditing ? 'Editar Dirección' : 'Nueva Dirección',
+                      isEditing ? l10n.profileEditAddress : l10n.profileNewAddress,
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
@@ -344,7 +348,7 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "Completa los datos para tus envíos",
+                      l10n.profileCompleteAddressData,
                       style: TextStyle(color: Colors.grey[500], fontSize: 13),
                     ),
                   ],
@@ -385,10 +389,10 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
                       // Nombre (Alias)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8, left: 4),
-                        child: _buildRequiredLabel("ALIAS DE LA DIRECCIÓN"),
+                        child: _buildRequiredLabel(l10n.profileAddressAlias),
                       ),
                       DSInput.text(
-                        hint: 'Ej. Casa, Oficina, Bodega...',
+                        hint: l10n.profileAddressAliasHint,
                         controller: _nameController,
                         prefixIcon: Iconsax.tag,
                         required: true,
@@ -403,12 +407,12 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
                       const SizedBox(height: 24),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8, left: 4),
-                        child: _buildRequiredLabel("UBICACIÓN"),
+                        child: _buildRequiredLabel(l10n.profileLocation),
                       ),
 
                       // Departamento
                       _buildDropdown(
-                        hint: "Departamento",
+                        hint: l10n.profileDepartment,
                         value: _regionCode,
                         isLoading: _loadingRegions,
                         items: _regions
@@ -436,7 +440,7 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
 
                       // Municipio
                       _buildDropdown(
-                        hint: "Municipio",
+                        hint: l10n.profileMunicipality,
                         value: _cityCode,
                         isLoading: _loadingCities,
                         isDisabled: _regionCode == null,
@@ -467,7 +471,7 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
                       if (_cities.isNotEmpty && _cityCode != null) ...[
                         const SizedBox(height: 16),
                         _buildDropdown(
-                          hint: "Distrito / Subzona (Opcional)",
+                          hint: l10n.profileDistrictOptional,
                           value: _localityCode,
                           isLoading: _loadingLocalities,
                           isDisabled: _isLocalityDisabled || _cityCode == null,
@@ -514,7 +518,7 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
 
                       // Referencias
                       DSInput.textArea(
-                        hint: 'Referencias (Portón negro, frente al parque...)',
+                        hint: l10n.profileReferencesHint,
                         controller: _referencesController,
                         maxLines: 2,
                         label: '',
@@ -526,7 +530,7 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
                       // Teléfono
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8, left: 4),
-                        child: _buildRequiredLabel("TELÉFONO"),
+                        child: _buildRequiredLabel(l10n.profilePhoneLabel),
                       ),
                       DSInput.phone(
                         hint: '2222-2222 o 7777-7777',
@@ -581,7 +585,7 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "Dirección Principal",
+                                    l10n.profileMainAddress,
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: _isDefault
@@ -590,7 +594,7 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
                                     ),
                                   ),
                                   Text(
-                                    "Usar para mis próximos envíos",
+                                    l10n.profileUseForShipments,
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey[600],
@@ -697,7 +701,7 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      "Cargando...",
+                      AppLocalizations.of(context)!.profileLoading,
                       style: TextStyle(color: Colors.grey[500]),
                     ),
                   ],

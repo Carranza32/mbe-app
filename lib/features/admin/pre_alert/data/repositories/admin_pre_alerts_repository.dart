@@ -7,6 +7,8 @@ import '../models/paginated_response.dart';
 import '../models/reception_result.dart';
 import '../models/status_history_model.dart';
 import '../models/warehouse_location_model.dart';
+import '../models/admin_kpis_model.dart';
+import '../models/customer_pending_counts_model.dart';
 
 part 'admin_pre_alerts_repository.g.dart';
 
@@ -162,15 +164,18 @@ class AdminPreAlertsRepository {
     }
   }
 
-  /// Obtener ubicaciones disponibles de una tienda
+  /// Obtener ubicaciones disponibles de una tienda.
+  /// [warehouseId] opcional: filtrar por bodega (multi-bodega).
   Future<List<WarehouseLocation>> getStoreWarehouseLocations({
     required int storeId,
     bool availableOnly = false,
     String? rackNumber,
+    int? warehouseId,
   }) async {
     final queryParams = <String, dynamic>{};
     if (availableOnly) queryParams['available_only'] = 'true';
     if (rackNumber != null) queryParams['rack_number'] = rackNumber;
+    if (warehouseId != null) queryParams['warehouse_id'] = warehouseId;
 
     return await _apiService.get<List<WarehouseLocation>>(
       endpoint: ApiEndpoints.getStoreWarehouseLocations(storeId),
@@ -184,9 +189,10 @@ class AdminPreAlertsRepository {
               .toList();
         }
         if (json is Map<String, dynamic>) {
-          if (json.containsKey('data') && json['data'] is List) {
-            final data = json['data'] as List;
-            return data
+          // La API puede devolver la lista en "data" o en "locations"
+          final list = json['data'] ?? json['locations'];
+          if (list is List) {
+            return list
                 .map((item) =>
                     WarehouseLocation.fromJson(item as Map<String, dynamic>))
                 .toList();
@@ -303,10 +309,11 @@ class AdminPreAlertsRepository {
     );
   }
 
-  /// Procesar entrega pickup (cliente retira en tienda)
+  /// Procesar entrega pickup (cliente retira en tienda).
+  /// Soporta múltiples paquetes: [packageIds] puede tener uno o varios IDs.
   Future<List<AdminPreAlert>> processPickupDelivery({
     required List<String> packageIds,
-    required String signaturePath, // Base64 o URL
+    required String signaturePath, // Base64 (se envía como "signature" al backend)
     required String deliveredTo, // "titular" | nombre del encargado
     required DateTime deliveredAt,
   }) async {
@@ -314,32 +321,16 @@ class AdminPreAlertsRepository {
       endpoint: ApiEndpoints.processPickupDelivery,
       data: {
         'package_ids': packageIds,
-        'signature_path': signaturePath,
+        'signature': signaturePath, // Backend espera "signature", no "signature_path"
         'delivered_to': deliveredTo,
         'delivered_at': deliveredAt.toIso8601String(),
       },
-      fromJson: (json) {
-        if (json is List) {
-          return json
-              .map(
-                (item) => AdminPreAlert.fromJson(item as Map<String, dynamic>),
-              )
-              .toList();
-        }
-        if (json is Map && json.containsKey('data')) {
-          final data = json['data'] as List;
-          return data
-              .map(
-                (item) => AdminPreAlert.fromJson(item as Map<String, dynamic>),
-              )
-              .toList();
-        }
-        return [];
-      },
+      fromJson: (json) => _parseProcessDeliveryResponse(json),
     );
   }
 
-  /// Procesar entrega delivery (despacho a domicilio)
+  /// Procesar entrega delivery (despacho a domicilio).
+  /// Soporta múltiples paquetes: [packageIds] puede tener uno o varios IDs.
   Future<List<AdminPreAlert>> processDeliveryDispatch({
     required List<String> packageIds,
     required int shippingProviderId,
@@ -353,25 +344,33 @@ class AdminPreAlertsRepository {
         if (providerTrackingNumber != null)
           'provider_tracking_number': providerTrackingNumber,
       },
-      fromJson: (json) {
-        if (json is List) {
-          return json
-              .map(
-                (item) => AdminPreAlert.fromJson(item as Map<String, dynamic>),
-              )
-              .toList();
-        }
-        if (json is Map && json.containsKey('data')) {
-          final data = json['data'] as List;
-          return data
-              .map(
-                (item) => AdminPreAlert.fromJson(item as Map<String, dynamic>),
-              )
-              .toList();
-        }
-        return [];
-      },
+      fromJson: (json) => _parseProcessDeliveryResponse(json),
     );
+  }
+
+  /// Parsea la respuesta de process-pickup-delivery y process-delivery-dispatch.
+  /// Backend devuelve: { processed_count, failed_count, processed: [...], failed: [] }
+  static List<AdminPreAlert> _parseProcessDeliveryResponse(dynamic json) {
+    if (json is List) {
+      return json
+          .map((item) => AdminPreAlert.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+    if (json is Map<String, dynamic>) {
+      if (json.containsKey('processed') && json['processed'] is List) {
+        final list = json['processed'] as List;
+        return list
+            .map((item) => AdminPreAlert.fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
+      if (json.containsKey('data') && json['data'] is List) {
+        final list = json['data'] as List;
+        return list
+            .map((item) => AdminPreAlert.fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
+    }
+    return [];
   }
 
   /// Actualizar información de un paquete
@@ -485,6 +484,50 @@ class AdminPreAlertsRepository {
               .toList();
         }
         return [];
+      },
+    );
+  }
+
+  /// Obtener KPIs del admin
+  Future<AdminKPIs> getKPIs() async {
+    return await _apiService.get<AdminKPIs>(
+      endpoint: ApiEndpoints.adminKPIs,
+      fromJson: (json) {
+        // El api_service ya extrae el campo 'data' de la respuesta
+        // Entonces json ya es el objeto data directamente
+        if (json is Map<String, dynamic>) {
+          return AdminKPIs.fromJson(json);
+        }
+        // Si por alguna razón viene envuelto, intentar extraer 'data'
+        if (json is Map<String, dynamic> && json.containsKey('data')) {
+          return AdminKPIs.fromJson(json['data'] as Map<String, dynamic>);
+        }
+        // Retornar valores por defecto si hay error
+        return AdminKPIs(
+          createdToday: 0,
+          receivedToday: 0,
+          totalWarehouse: 0,
+          departuresToday: 0,
+        );
+      },
+    );
+  }
+
+  /// Obtener conteos de paquetes pendientes de un cliente por tipo de entrega
+  Future<CustomerPendingCounts> getCustomerPendingCounts(int customerId) async {
+    return await _apiService.get<CustomerPendingCounts>(
+      endpoint: ApiEndpoints.customerPendingCounts(customerId),
+      fromJson: (json) {
+        // El api_service ya extrae el campo 'data' de la respuesta
+        // Entonces json ya es el objeto { pickup_pending: X, delivery_pending: Y }
+        if (json is Map<String, dynamic>) {
+          return CustomerPendingCounts.fromJson(json);
+        }
+        // Retornar valores por defecto si hay error
+        return CustomerPendingCounts(
+          pickupPending: 0,
+          deliveryPending: 0,
+        );
       },
     );
   }

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../data/models/uploaded_file_model.dart';
@@ -80,7 +81,7 @@ class FileListItem extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'Listo',
+                                  AppLocalizations.of(context)!.printOrderFileReady,
                                   style: theme.textTheme.labelSmall?.copyWith(
                                     color: colorScheme.onTertiaryContainer,
                                   ),

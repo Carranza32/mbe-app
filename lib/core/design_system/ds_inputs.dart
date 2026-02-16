@@ -407,7 +407,9 @@ class DSDropdown<T> extends StatelessWidget {
             ),
             boxShadow: MBETheme.shadowSm,
           ),
-          child: DropdownButtonFormField<T>(
+          child: Material(
+            color: Colors.transparent,
+            child: DropdownButtonFormField<T>(
             value: value,
             items: items
                 .map((item) => DropdownMenuItem<T>(
@@ -427,6 +429,7 @@ class DSDropdown<T> extends StatelessWidget {
                     ),
                   )
                 : null,
+            isExpanded: true,
             decoration: InputDecoration(
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
@@ -438,6 +441,7 @@ class DSDropdown<T> extends StatelessWidget {
             icon: Icon(
               Icons.keyboard_arrow_down_rounded,
               color: colorScheme.onSurfaceVariant,
+            ),
             ),
           ),
         ),

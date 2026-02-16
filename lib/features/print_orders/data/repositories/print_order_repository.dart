@@ -46,10 +46,17 @@ class PrintOrderRepository {
     );
   }
 
-  Future<CreateOrderResponse> createOrder(CreateOrderRequest request) async {
+  /// [transferProofPath] obligatorio cuando el pago es por transferencia.
+  Future<CreateOrderResponse> createOrder(
+    CreateOrderRequest request, {
+    String? transferProofPath,
+  }) async {
     final filesMap = <String, String>{};
     for (int i = 0; i < request.files.length; i++) {
       filesMap['files[$i]'] = request.files[i];
+    }
+    if (transferProofPath != null && transferProofPath.isNotEmpty) {
+      filesMap['transfer_proof'] = transferProofPath;
     }
 
     return await _apiService.uploadFiles<CreateOrderResponse>(

@@ -1,5 +1,6 @@
 // lib/features/print_orders/presentation/widgets/steps/step3_delivery_method.dart
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
@@ -10,9 +11,11 @@ import '../../../../../core/design_system/ds_inputs.dart';
 import '../../../../../core/design_system/ds_location_card.dart';
 import '../../../../../core/design_system/ds_selection_cards.dart';
 
-// ✅ CAMBIO: Importa el provider centralizado
 import '../../../providers/create_order_provider.dart';
-import '../../../providers/print_config_provider.dart';
+import '../../../providers/print_order_delivery_promotion_provider.dart';
+import '../../../../pre_alert/providers/stores_provider.dart';
+import '../../../../pre_alert/providers/user_addresses_provider.dart';
+import '../../../../profile/data/models/address_model.dart';
 
 class Step3DeliveryMethod extends HookConsumerWidget {
   const Step3DeliveryMethod({Key? key}) : super(key: key);
@@ -21,22 +24,59 @@ class Step3DeliveryMethod extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
-    // ✅ CAMBIO: Lee desde el provider centralizado
+    final l10n = AppLocalizations.of(context)!;
+
     final orderState = ref.watch(createOrderProvider);
     final orderNotifier = ref.read(createOrderProvider.notifier);
     final deliveryInfo = orderState.request?.deliveryInfo;
     final pricing = orderNotifier.calculatePricing();
-    final configAsync = ref.watch(printConfigProvider);
+    final promoAsync = ref.watch(printOrderBestPromotionProvider(pricing.printSubtotal));
 
-    // ✅ FIX: Determinar método actual (por defecto pickup si es null)
     final isPickup = deliveryInfo?.method == 'pickup' || deliveryInfo == null;
     final isDelivery = deliveryInfo?.method == 'delivery';
+
+    // Badge de envío como en pre-alertas: promoción o costo por defecto
+    final bestPromo = promoAsync.value;
+    final appliesToDelivery = bestPromo != null &&
+        bestPromo.appliesTo.toLowerCase() == 'delivery';
+    final isFreeDeliveryPromo = appliesToDelivery &&
+        bestPromo.discountType.toLowerCase() == 'free_delivery';
+
+    Widget deliveryBadge;
+    if (appliesToDelivery) {
+      deliveryBadge = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!isFreeDeliveryPromo)
+            DSBadge.info(
+              label: '\$${bestPromo.estimatedDiscount.toStringAsFixed(0)}',
+            ),
+          if (isFreeDeliveryPromo) ...[
+            Text(
+              'Desde \$${pricing.deliveryBaseCost.toStringAsFixed(2)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                decoration: TextDecoration.lineThrough,
+                decorationColor: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: MBESpacing.xs),
+            DSBadge.success(label: bestPromo.discountLabel),
+          ],
+        ],
+      );
+    } else {
+      deliveryBadge = pricing.isFreeDelivery
+          ? DSBadge.success(label: '¡Envío gratis!')
+          : DSBadge.info(
+              label: 'Desde \$${pricing.deliveryBaseCost.toStringAsFixed(2)}',
+            );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header del paso
         FadeInDown(
           duration: const Duration(milliseconds: 400),
           child: Container(
@@ -63,14 +103,14 @@ class Step3DeliveryMethod extends HookConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Método de Entrega',
+                        l10n.preAlertDeliveryMethod,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: MBESpacing.xs),
                       Text(
-                        'Elige cómo quieres recibir tu pedido',
+                        l10n.printOrderChooseReceiveOrder,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -85,42 +125,31 @@ class Step3DeliveryMethod extends HookConsumerWidget {
 
         const SizedBox(height: MBESpacing.lg),
 
-        // Selección de método
         FadeInUp(
           duration: const Duration(milliseconds: 400),
           delay: const Duration(milliseconds: 100),
           child: Column(
             children: [
-              // Recoger en Tienda
               DSOptionCard(
-                title: 'Recoger en Tienda',
-                description: 'Recoge tu pedido en cualquiera de nuestras ubicaciones',
+                title: l10n.preAlertPickupInStore,
+                description: l10n.preAlertPickupDescription,
                 icon: Iconsax.box,
                 isSelected: isPickup,
                 onTap: () {
-                  // ✅ CAMBIO: Actualiza en el provider centralizado
                   ref.read(createOrderProvider.notifier).setDeliveryMethod('pickup');
                 },
-                badge: DSBadge.success(label: 'Sin costo adicional'),
+                badge: DSBadge.success(label: l10n.preAlertNoAdditionalCost),
               ),
-
               const SizedBox(height: MBESpacing.md),
-
-              // Envío a Domicilio
               DSOptionCard(
-                title: 'Envío a Domicilio',
-                description: 'Recibe tu pedido en la puerta de tu casa u oficina',
+                title: l10n.preAlertHomeDelivery,
+                description: l10n.preAlertDeliveryDescription,
                 icon: Iconsax.truck_fast,
                 isSelected: isDelivery,
                 onTap: () {
-                  // ✅ CAMBIO: Actualiza en el provider centralizado
                   ref.read(createOrderProvider.notifier).setDeliveryMethod('delivery');
                 },
-                badge: pricing.isFreeDelivery
-                    ? DSBadge.success(label: '¡Envío gratis!')
-                    : DSBadge.info(
-                        label: 'Desde \$${pricing.deliveryBaseCost.toStringAsFixed(2)}',
-                      ),
+                badge: deliveryBadge,
               ),
             ],
           ),
@@ -128,7 +157,6 @@ class Step3DeliveryMethod extends HookConsumerWidget {
 
         const SizedBox(height: MBESpacing.xl),
 
-        // ✅ FIX: Contenido según el método seleccionado con keys únicas
         AnimatedSwitcher(
           duration: MBEDuration.normal,
           transitionBuilder: (child, animation) {
@@ -145,8 +173,7 @@ class Step3DeliveryMethod extends HookConsumerWidget {
           },
           child: isPickup
               ? _PickupContent(
-                  key: const ValueKey('pickup-content'), // ✅ FIX: Key única
-                  configAsync: configAsync,
+                  key: const ValueKey('pickup-content'),
                   selectedLocation: deliveryInfo?.pickupLocation?.toString(),
                   onLocationSelected: (locationId) {
                     ref.read(createOrderProvider.notifier).setPickupLocation(
@@ -155,7 +182,7 @@ class Step3DeliveryMethod extends HookConsumerWidget {
                   },
                 )
               : _DeliveryContent(
-                  key: const ValueKey('delivery-content'), // ✅ FIX: Key única
+                  key: const ValueKey('delivery-content'),
                   address: deliveryInfo.address ?? '',
                   phone: deliveryInfo.phone ?? '',
                   notes: deliveryInfo.notes ?? '',
@@ -178,52 +205,52 @@ class Step3DeliveryMethod extends HookConsumerWidget {
   }
 }
 
-/// Contenido para Recoger en Tienda
-class _PickupContent extends StatelessWidget {
-  final AsyncValue configAsync;
+/// Contenido para Recoger en Tienda (tiendas MBE, igual que pre-alertas)
+class _PickupContent extends ConsumerWidget {
   final String? selectedLocation;
   final Function(String) onLocationSelected;
 
   const _PickupContent({
-    super.key, // ✅ Agregado key
-    required this.configAsync,
+    super.key,
     required this.selectedLocation,
     required this.onLocationSelected,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final storesAsync = ref.watch(mbeStoresProvider);
 
-    return configAsync.when(
+    return storesAsync.when(
       loading: () => const Center(
-        child: CircularProgressIndicator(),
+        child: Padding(
+          padding: EdgeInsets.all(MBESpacing.xl),
+          child: CircularProgressIndicator(),
+        ),
       ),
       error: (error, stack) => Center(
         child: Column(
           children: [
             const Icon(Iconsax.warning_2, size: 48, color: MBETheme.brandRed),
             const SizedBox(height: MBESpacing.lg),
-            const Text('Error al cargar ubicaciones'),
+            const Text('Error al cargar tiendas'),
             TextButton(
-              onPressed: () {}, // TODO: Retry
+              onPressed: () => ref.invalidate(mbeStoresProvider),
               child: const Text('Reintentar'),
             ),
           ],
         ),
       ),
-      data: (configModel) {
-        final locations = configModel.pickupLocations ?? [];
-
-        if (locations.isEmpty) {
+      data: (stores) {
+        if (stores.isEmpty) {
           return Center(
             child: Column(
               children: [
                 const Icon(Iconsax.location, size: 48),
                 const SizedBox(height: MBESpacing.lg),
                 Text(
-                  'No hay ubicaciones disponibles',
+                  'No hay tiendas disponibles',
                   style: theme.textTheme.titleMedium,
                 ),
               ],
@@ -234,7 +261,6 @@ class _PickupContent extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Título de sección
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: MBESpacing.xs),
               child: Row(
@@ -246,7 +272,7 @@ class _PickupContent extends StatelessWidget {
                   ),
                   const SizedBox(width: MBESpacing.sm),
                   Text(
-                    'Selecciona una ubicación',
+                    'Selecciona una tienda',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -254,38 +280,25 @@ class _PickupContent extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(height: MBESpacing.lg),
-
-            // Lista de ubicaciones desde el backend
-            ...locations.asMap().entries.map((entry) {
-              final location = entry.value;
-              final openingHours = location.openingHours;
-              
-              // Formatear horario (tomar el primer día disponible)
-              String hours = 'Consultar horarios';
-              if (openingHours != null) {
-                if (openingHours.lunes != null) {
-                  hours = 'Lun-Vie: ${openingHours.lunes}';
-                }
-              }
-
+            ...stores.asMap().entries.map((entry) {
+              final store = entry.value;
               final dsLocation = DSLocation(
-                id: location.id?.toString() ?? '',
-                name: location.name ?? 'Sin nombre',
-                address: location.address ?? 'Sin dirección',
-                zone: location.zone ?? '',
-                hours: hours,
-                phone: location.phone ?? '',
+                id: store.id.toString(),
+                name: store.name,
+                address: store.address ?? 'Sin dirección',
+                zone: store.zone ?? '',
+                hours: null,
+                phone: store.phone ?? '',
               );
-
+              final isSelected = selectedLocation == dsLocation.id;
               return FadeInUp(
                 duration: const Duration(milliseconds: 400),
-                delay: const Duration(milliseconds: 100),
+                delay: Duration(milliseconds: entry.key * 100),
                 child: DSLocationCard(
                   location: dsLocation,
-                  isSelected: selectedLocation == dsLocation.id,
-                  onTap: () => onLocationSelected(dsLocation.id),
+                  isSelected: isSelected,
+                  onTap: () => onLocationSelected(store.id.toString()),
                   animationDelay: entry.key,
                 ),
               );
@@ -297,9 +310,8 @@ class _PickupContent extends StatelessWidget {
   }
 }
 
-/// Contenido para Envío a Domicilio
-class _DeliveryContent extends StatelessWidget {
-  // ✅ FIX: Recibe valores individuales en vez de estado completo
+/// Contenido para Envío a Domicilio (direcciones del cliente, igual que pre-alertas)
+class _DeliveryContent extends ConsumerWidget {
   final String address;
   final String phone;
   final String notes;
@@ -309,7 +321,7 @@ class _DeliveryContent extends StatelessWidget {
   final Function(String) onNotesChanged;
 
   const _DeliveryContent({
-    super.key, // ✅ Agregado key
+    super.key,
     required this.address,
     required this.phone,
     required this.notes,
@@ -319,85 +331,125 @@ class _DeliveryContent extends StatelessWidget {
     required this.onNotesChanged,
   });
 
+  static String _fullAddressString(AddressModel a) {
+    final parts = [a.address, a.city, a.region];
+    return parts.where((s) => s.isNotEmpty).join(', ');
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final addressesAsync = ref.watch(userAddressesProvider);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Card de información de envío
-        FadeInUp(
-          duration: const Duration(milliseconds: 400),
-          child: Container(
-            padding: const EdgeInsets.all(MBESpacing.lg),
-            decoration: MBECardDecoration.card(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return addressesAsync.when(
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(MBESpacing.xl),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (error, stack) => Center(
+        child: Column(
+          children: [
+            const Icon(Iconsax.warning_2, size: 48, color: MBETheme.brandRed),
+            const SizedBox(height: MBESpacing.lg),
+            const Text('Error al cargar direcciones'),
+            TextButton(
+              onPressed: () => ref.invalidate(userAddressesProvider),
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      ),
+      data: (addresses) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (addresses.isEmpty) ...[
+              Center(
+                child: Column(
+                  children: [
+                    const Icon(Iconsax.location, size: 48),
+                    const SizedBox(height: MBESpacing.lg),
+                    Text(
+                      'No tienes direcciones guardadas',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: MBESpacing.md),
+                    Text(
+                      'Ingresa la dirección y teléfono abajo',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: MBESpacing.lg),
+              _DeliveryFormSection(
+                address: address,
+                phone: phone,
+                notes: notes,
+                onAddressChanged: onAddressChanged,
+                onPhoneChanged: onPhoneChanged,
+                onNotesChanged: onNotesChanged,
+              ),
+            ] else ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: MBESpacing.xs),
+                child: Row(
                   children: [
                     Icon(
-                      Iconsax.note_text,
-                      size: 24,
+                      Iconsax.location,
+                      size: 20,
                       color: colorScheme.onSurface,
                     ),
-                    const SizedBox(width: MBESpacing.md),
+                    const SizedBox(width: MBESpacing.sm),
                     Text(
-                      'Información de Envío',
+                      'Selecciona una dirección',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                
-                const SizedBox(height: MBESpacing.xl),
+              ),
+              const SizedBox(height: MBESpacing.lg),
+              ...addresses.asMap().entries.map((entry) {
+                final addressModel = entry.value;
+                final fullAddr = _fullAddressString(addressModel);
+                final isSelected = address == fullAddr && phone == addressModel.phone;
+                return FadeInUp(
+                  duration: const Duration(milliseconds: 400),
+                  delay: Duration(milliseconds: entry.key * 100),
+                  child: _AddressCard(
+                    address: addressModel,
+                    isSelected: isSelected,
+                    onTap: () {
+                      onAddressChanged(fullAddr);
+                      onPhoneChanged(addressModel.phone);
+                    },
+                  ),
+                );
+              }),
+              const SizedBox(height: MBESpacing.lg),
+              DSInput.textArea(
+                label: 'Notas Adicionales (opcional)',
+                hint: 'Horario preferido, instrucciones especiales...',
+                value: notes,
+                onChanged: onNotesChanged,
+                maxLines: 2,
+              ),
+            ],
 
-                // Dirección de Entrega
-                DSInput.textArea(
-                  label: 'Dirección de Entrega',
-                  hint: 'Calle, número, colonia, municipio, referencias (ej: portón azul)...',
-                  value: address,
-                  onChanged: onAddressChanged,
-                  required: true,
-                  maxLines: 3,
-                ),
+            const SizedBox(height: MBESpacing.lg),
 
-                const SizedBox(height: MBESpacing.lg),
-
-                // Teléfono de Contacto
-                DSInput.phone(
-                  label: 'Teléfono de Contacto',
-                  hint: '2222-2222 o 7777-7777',
-                  value: phone,
-                  onChanged: onPhoneChanged,
-                  required: true,
-                ),
-
-                const SizedBox(height: MBESpacing.lg),
-
-                // Notas Adicionales
-                DSInput.textArea(
-                  label: 'Notas Adicionales (opcional)',
-                  hint: 'Horario preferido, instrucciones especiales, punto de referencia...',
-                  value: notes,
-                  onChanged: onNotesChanged,
-                  maxLines: 3,
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: MBESpacing.lg),
-
-        // Información de costos dinámicos
-        FadeInUp(
-          duration: const Duration(milliseconds: 400),
-          delay: const Duration(milliseconds: 100),
-          child: Container(
+            // Información de costos dinámicos
+            FadeInUp(
+              duration: const Duration(milliseconds: 400),
+              delay: const Duration(milliseconds: 100),
+              child: Container(
             padding: const EdgeInsets.all(MBESpacing.lg),
             decoration: BoxDecoration(
               color: pricing.isFreeDelivery 
@@ -469,16 +521,16 @@ class _DeliveryContent extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
+              ),
+            ),
 
-        const SizedBox(height: MBESpacing.lg),
+            const SizedBox(height: MBESpacing.lg),
 
-        // Tips de entrega
-        FadeInUp(
-          duration: const Duration(milliseconds: 400),
-          delay: const Duration(milliseconds: 200),
-          child: Container(
+            // Tips de entrega
+            FadeInUp(
+              duration: const Duration(milliseconds: 400),
+              delay: const Duration(milliseconds: 200),
+              child: Container(
             padding: const EdgeInsets.all(MBESpacing.lg),
             decoration: MBECardDecoration.card(),
             child: Column(
@@ -514,9 +566,238 @@ class _DeliveryContent extends StatelessWidget {
                 ),
               ],
             ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Sección de formulario manual cuando no hay direcciones guardadas
+class _DeliveryFormSection extends StatelessWidget {
+  final String address;
+  final String phone;
+  final String notes;
+  final Function(String) onAddressChanged;
+  final Function(String) onPhoneChanged;
+  final Function(String) onNotesChanged;
+
+  const _DeliveryFormSection({
+    required this.address,
+    required this.phone,
+    required this.notes,
+    required this.onAddressChanged,
+    required this.onPhoneChanged,
+    required this.onNotesChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(MBESpacing.lg),
+      decoration: MBECardDecoration.card(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DSInput.textArea(
+            label: 'Dirección de Entrega',
+            hint: 'Calle, número, colonia, municipio...',
+            value: address,
+            onChanged: onAddressChanged,
+            required: true,
+            maxLines: 3,
+          ),
+          const SizedBox(height: MBESpacing.lg),
+          DSInput.phone(
+            label: 'Teléfono de Contacto',
+            hint: '2222-2222 o 7777-7777',
+            value: phone,
+            onChanged: onPhoneChanged,
+            required: true,
+          ),
+          const SizedBox(height: MBESpacing.lg),
+          DSInput.textArea(
+            label: 'Notas (opcional)',
+            hint: 'Horario preferido, referencias...',
+            value: notes,
+            onChanged: onNotesChanged,
+            maxLines: 2,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Card para una dirección del cliente (como en pre-alertas)
+class _AddressCard extends StatelessWidget {
+  final AddressModel address;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _AddressCard({
+    required this.address,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: MBEDuration.normal,
+        margin: const EdgeInsets.only(bottom: MBESpacing.md),
+        padding: const EdgeInsets.all(MBESpacing.lg),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? MBETheme.brandBlack.withValues(alpha: 0.06)
+              : MBETheme.lightGray,
+          borderRadius: BorderRadius.circular(MBERadius.large),
+          border: Border.all(
+            color: isSelected
+                ? MBETheme.brandBlack
+                : MBETheme.neutralGray.withValues(alpha: 0.2),
+            width: isSelected ? 2 : 1.5,
           ),
         ),
-      ],
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(MBESpacing.sm),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? MBETheme.brandBlack
+                    : colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(MBERadius.medium),
+              ),
+              child: Icon(
+                address.name.toLowerCase().contains('casa') ||
+                        address.name.toLowerCase().contains('home')
+                    ? Iconsax.home
+                    : Iconsax.building,
+                size: 24,
+                color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: MBESpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          address.name,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (address.isDefault)
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: MBESpacing.sm,
+                              vertical: MBESpacing.xs,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(MBERadius.small),
+                            ),
+                            child: Text(
+                              'Predeterminada',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: const Color(0xFF10B981),
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: MBESpacing.xs),
+                  Text(
+                    address.address,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: MBESpacing.sm),
+                  Wrap(
+                    spacing: MBESpacing.xs,
+                    runSpacing: MBESpacing.xs,
+                    children: [
+                      _InfoChip(
+                        icon: Iconsax.location,
+                        label: address.fullLocation,
+                      ),
+                      if (address.phone.isNotEmpty)
+                        _InfoChip(icon: Iconsax.call, label: address.phone),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              const Padding(
+                padding: EdgeInsets.only(left: MBESpacing.sm),
+                child: Icon(Icons.check_rounded, color: MBETheme.brandBlack, size: 24),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _InfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 200),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: MBESpacing.sm, vertical: MBESpacing.xs),
+        decoration: BoxDecoration(
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(MBERadius.small),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: colorScheme.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                style: theme.textTheme.labelSmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

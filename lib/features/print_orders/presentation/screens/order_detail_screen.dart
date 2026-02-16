@@ -1,5 +1,6 @@
 // lib/features/print_orders/presentation/screens/order_detail_screen.dart
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +16,7 @@ class OrderDetailScreen extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderState = ref.watch(orderDetailProvider(orderNumber));
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: MBETheme.lightGray,
@@ -25,8 +27,8 @@ class OrderDetailScreen extends HookConsumerWidget {
           icon: const Icon(Iconsax.arrow_left_2),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Detalle del Pedido',
+        title: Text(
+          l10n.printOrderDetailTitle,
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
@@ -171,12 +173,12 @@ class _HistoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Iconsax.clock, size: 20),
-              SizedBox(width: 8),
+              const Icon(Iconsax.clock, size: 20),
+              const SizedBox(width: 8),
               Text(
-                'Historial',
+                AppLocalizations.of(context)!.printOrderHistory,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -286,12 +288,12 @@ class _ContactCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Iconsax.user, size: 18),
-              SizedBox(width: 6),
+              const Icon(Iconsax.user, size: 18),
+              const SizedBox(width: 6),
               Text(
-                'Contacto',
+                AppLocalizations.of(context)!.preAlertContact,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -300,9 +302,9 @@ class _ContactCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _InfoRow(label: 'Nombre', value: order.customerName),
-          _InfoRow(label: 'Email', value: order.customerEmail),
-          _InfoRow(label: 'Teléfono', value: order.customerPhone ?? ''),
+          _InfoRow(label: AppLocalizations.of(context)!.preAlertName, value: order.customerName),
+          _InfoRow(label: AppLocalizations.of(context)!.preAlertEmail, value: order.customerEmail),
+          _InfoRow(label: AppLocalizations.of(context)!.preAlertPhone, value: order.customerPhone ?? ''),
         ],
       ),
     );
@@ -332,12 +334,12 @@ class _DeliveryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Iconsax.truck, size: 18),
-              SizedBox(width: 6),
+              const Icon(Iconsax.truck, size: 18),
+              const SizedBox(width: 6),
               Text(
-                'Entrega',
+                AppLocalizations.of(context)!.preAlertDelivery,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -346,9 +348,9 @@ class _DeliveryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _InfoRow(label: 'Método', value: order.delivery.methodLabel),
+          _InfoRow(label: AppLocalizations.of(context)!.printOrderMethod, value: order.delivery.methodLabel),
           if (order.delivery.location != null)
-            _InfoRow(label: 'Ubicación', value: order.delivery.location ?? ''),
+            _InfoRow(label: AppLocalizations.of(context)!.printOrderLocation, value: order.delivery.location ?? ''),
         ],
       ),
     );
@@ -378,12 +380,12 @@ class _ConfigCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Iconsax.setting_2, size: 18),
-              SizedBox(width: 6),
+              const Icon(Iconsax.setting_2, size: 18),
+              const SizedBox(width: 6),
               Text(
-                'Configuración',
+                AppLocalizations.of(context)!.printOrderConfig,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -392,9 +394,9 @@ class _ConfigCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _InfoRow(label: 'Tipo', value: order.config.printTypeLabel),
-          _InfoRow(label: 'Tamaño', value: order.config.paperSizeLabel),
-          _InfoRow(label: 'Copias', value: order.config.copies.toString()),
+          _InfoRow(label: AppLocalizations.of(context)!.printOrderType, value: order.config.printTypeLabel),
+          _InfoRow(label: AppLocalizations.of(context)!.printOrderSize, value: order.config.paperSizeLabel),
+          _InfoRow(label: AppLocalizations.of(context)!.printOrderCopies, value: order.config.copies.toString()),
         ],
       ),
     );
@@ -424,12 +426,12 @@ class _FilesCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Iconsax.document_text, size: 18),
-              SizedBox(width: 6),
+              const Icon(Iconsax.document_text, size: 18),
+              const SizedBox(width: 6),
               Text(
-                'Archivos',
+                AppLocalizations.of(context)!.printOrderFiles,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -438,7 +440,7 @@ class _FilesCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _InfoRow(label: 'Páginas', value: pagesCount.toString()),
+          _InfoRow(label: AppLocalizations.of(context)!.printOrderPages, value: pagesCount.toString()),
         ],
       ),
     );
@@ -465,8 +467,8 @@ class _TotalCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Total del Pedido',
+              Text(
+                AppLocalizations.of(context)!.printOrderTotalOrder,
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 13,
@@ -485,8 +487,8 @@ class _TotalCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text(
-                'Fecha del pedido',
+              Text(
+                AppLocalizations.of(context)!.printOrderOrderDate,
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: 12,
@@ -527,8 +529,8 @@ class _HelpCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '¿Necesitas ayuda?',
+          Text(
+            AppLocalizations.of(context)!.printOrderNeedHelp,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -536,7 +538,7 @@ class _HelpCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Si tienes alguna pregunta sobre tu pedido, contáctanos.',
+            AppLocalizations.of(context)!.printOrderHelpMessage,
             style: TextStyle(
               fontSize: 14,
               color: MBETheme.neutralGray,

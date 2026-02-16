@@ -6,6 +6,8 @@ import 'package:iconsax/iconsax.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import '../../../../config/theme/app_colors.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../home/providers/main_scaffold_provider.dart';
 import '../providers/shipping_calculator_provider.dart';
 import '../data/models/shipping_calculation_model.dart';
 import '../../admin/pre_alert/data/models/product_category_model.dart';
@@ -16,6 +18,7 @@ class QuoteInputScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     // Controladores
     final valueController = useTextEditingController();
     final weightController = useTextEditingController();
@@ -76,9 +79,25 @@ class QuoteInputScreen extends HookConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        automaticallyImplyLeading: false, // CORRECCIÓN: Quita el botón de atrás
-        title: const Text(
-          'Calculadora de Envíos',
+        leading: Builder(
+          builder: (context) {
+            // Usar watch para obtener el GlobalKey reactivamente
+            final scaffoldKey = ref.watch(mainScaffoldKeyProvider);
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                // Intentar abrir el drawer usando el GlobalKey
+                if (scaffoldKey?.currentState != null) {
+                  scaffoldKey!.currentState!.openDrawer();
+                } else {
+                  debugPrint('⚠️ GlobalKey del Scaffold no está disponible');
+                }
+              },
+            );
+          },
+        ),
+        title: Text(
+          l10n.quoteCalculatorTitle,
           style: TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
@@ -127,7 +146,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                         Expanded(
                           child: _buildCompactInput(
                             controller: weightController,
-                            label: "Peso",
+                            label: l10n.quoteWeight,
                             suffix: "lb",
                             icon: Iconsax.weight,
                           ),
@@ -136,7 +155,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                         Expanded(
                           child: _buildCompactInput(
                             controller: valueController,
-                            label: "Valor",
+                            label: l10n.quoteValue,
                             suffix: "\$",
                             icon: Iconsax.dollar_circle,
                           ),
@@ -146,8 +165,8 @@ class QuoteInputScreen extends HookConsumerWidget {
 
                     const SizedBox(height: 20),
 
-                    const Text(
-                      "Tipo de Producto",
+                    Text(
+                      l10n.quoteProductType,
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -171,7 +190,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                           showSearchBox: true,
                           searchFieldProps: TextFieldProps(
                             decoration: InputDecoration(
-                              hintText: 'Buscar categoría...',
+                              hintText: l10n.preAlertSearchCategory,
                               prefixIcon: const Icon(Iconsax.search_normal),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
@@ -213,7 +232,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                         itemAsString: (item) => item.name,
                         dropdownDecoratorProps: DropDownDecoratorProps(
                           dropdownSearchDecoration: InputDecoration(
-                            hintText: 'Selecciona o busca una categoría...',
+                            hintText: l10n.preAlertSelectCategory,
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -256,7 +275,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Error al calcular: ${error.toString()}',
+                          l10n.quoteErrorCalculating(error.toString()),
                           style: TextStyle(color: Colors.red.shade700),
                         ),
                       ),
@@ -388,7 +407,7 @@ class QuoteInputScreen extends HookConsumerWidget {
     BuildContext context,
     ShippingCalculationResponse calculation,
   ) {
-    // Usamos FadeInAnimation simple al aparecer
+    final l10n = AppLocalizations.of(context)!;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 500),
@@ -425,18 +444,18 @@ class QuoteInputScreen extends HookConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Cotización Generada",
+                      l10n.quoteGenerated,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
                     Text(
-                      "Basado en tarifas actuales",
+                      l10n.quoteBasedOnRates,
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
@@ -482,7 +501,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                       isOrange: true,
                     ),
                     _buildSummaryItem(
-                      "Valor",
+                      l10n.quoteValue,
                       "\$${calculation.valueUsd.toStringAsFixed(2)}",
                       isOrange: false,
                     ),
@@ -499,7 +518,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        "Peso aproximado (original: ${calculation.originalWeight.toStringAsFixed(1)} lbs)",
+                        l10n.quoteApproxWeight(calculation.originalWeight.toStringAsFixed(1)),
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.orange.shade700,
@@ -514,7 +533,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                 const SizedBox(height: 16),
 
                 _buildCostRow(
-                  "Costo de Flete",
+                  l10n.quoteShippingCost,
                   "\$${calculation.flete.toStringAsFixed(2)}",
                 ),
                 _buildCostRow(
@@ -534,8 +553,8 @@ class QuoteInputScreen extends HookConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "Impuestos de Aduana",
+                      Text(
+                        l10n.quoteCustomsTaxes,
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -544,7 +563,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                       _buildCostRow(
-                        "IVA-CIF",
+                        l10n.quoteIvaCif,
                         "\$${calculation.ivaTif.toStringAsFixed(2)}",
                         isSmall: true,
                       ),
@@ -560,7 +579,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                       const Divider(height: 1),
                       const SizedBox(height: 4),
                       _buildCostRow(
-                        "Total Impuestos",
+                        l10n.quoteTotalTaxes,
                         "\$${calculation.totalImpuestos.toStringAsFixed(2)}",
                         isBold: true,
                       ),
@@ -571,7 +590,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                 const SizedBox(height: 16),
 
                 _buildCostRow(
-                  "Gestión Aduanal",
+                  l10n.quoteCustomsManagement,
                   "\$${calculation.gestionAduanal.toStringAsFixed(2)}",
                 ),
                 _buildCostRow(
@@ -592,7 +611,7 @@ class QuoteInputScreen extends HookConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          "Descuento aplicado",
+                          l10n.quoteDiscountApplied,
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -624,8 +643,8 @@ class QuoteInputScreen extends HookConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        "Total a Pagar:",
+                      Text(
+                        l10n.quoteTotalToPay,
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,

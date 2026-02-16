@@ -3,25 +3,46 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../config/theme/app_colors.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../core/providers/user_role_provider.dart';
+import 'package:mbe_orders_app/features/auth/providers/auth_provider.dart';
 
 class AppDrawer extends HookConsumerWidget {
   const AppDrawer({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final isAdmin = ref.watch(isAdminProvider);
-    
+    final authState = ref.watch(authProvider);
+    final user = authState.value;
+    final customer = user?.customer;
+    final userName = customer?.name.isNotEmpty == true
+        ? customer!.name
+        : (user?.name ?? '');
+    final lockerCode = customer?.lockerCode ?? '';
+    final tierName = customer?.tierName?.trim().isNotEmpty == true
+        ? customer!.tierName!
+        : l10n.drawerTierStandard;
+
     return Drawer(
       backgroundColor: AppColors.backgroundLight,
       child: SafeArea(
         child: Column(
           children: [
-            // Header del drawer con gradiente
+            // Header: acorde con la marca (rojo MBE)
             Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                gradient: AppColors.primaryGradient,
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary,
+                    AppColors.primary.withValues(alpha: 0.85),
+                  ],
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -31,38 +52,40 @@ class AppDrawer extends HookConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
-                            width: 2,
+                            color: Colors.white.withValues(alpha: 0.35),
+                            width: 1.5,
                           ),
                         ),
                         child: const Icon(
                           Iconsax.user,
                           color: Colors.white,
-                          size: 32,
+                          size: 28,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      const Expanded(
+                      const SizedBox(width: 14),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '¡Hola! mario',
-                              style: TextStyle(
+                              l10n.drawerHello(
+                                userName.isNotEmpty ? userName : l10n.authUser,
+                              ),
+                              style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
-                              'SAL4279XJ',
+                              lockerCode.isNotEmpty ? lockerCode : '—',
                               style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 13,
                                 letterSpacing: 1,
                               ),
                             ),
@@ -71,28 +94,28 @@ class AppDrawer extends HookConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           Iconsax.medal_star,
                           color: Colors.white,
-                          size: 16,
+                          size: 14,
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
-                          'Estándar',
-                          style: TextStyle(
+                          tierName,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -105,52 +128,58 @@ class AppDrawer extends HookConsumerWidget {
               ),
             ),
 
-            // Menu items
+            // Menú: solo rutas existentes y usables
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 children: [
                   _DrawerSection(
-                    title: 'Principal',
+                    title: l10n.drawerSectionMain,
                     items: [
                       _DrawerItem(
                         icon: Iconsax.profile_circle,
-                        title: 'Perfil',
-                        onTap: () {},
+                        title: l10n.drawerProfile,
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/profile');
+                        },
                       ),
                       _DrawerItem(
                         icon: Iconsax.location,
-                        title: 'Direcciones registradas',
-                        onTap: () {},
+                        title: l10n.drawerAddresses,
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/profile/addresses');
+                        },
                       ),
                       _DrawerItem(
                         icon: Iconsax.ticket,
-                        title: 'Códigos promocionales',
-                        onTap: () {},
-                      ),
-                      _DrawerItem(
-                        icon: Iconsax.warning_2,
-                        title: 'Materiales restringidos',
-                        iconColor: AppColors.warning,
-                        onTap: () {},
+                        title: l10n.drawerPromoCodes,
+                        onTap: () {
+                          Navigator.pop(context);
+                          // Sin ruta aún; se puede agregar cuando exista
+                        },
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   _DrawerSection(
-                    title: 'Servicios',
+                    title: l10n.drawerSectionServices,
                     items: [
                       _DrawerItem(
-                        icon: Iconsax.radar,
-                        title: 'Rastrear paquete',
+                        icon: Iconsax.trend_up,
+                        title: l10n.homeNavTrends,
                         onTap: () {
                           Navigator.pop(context);
-                          context.go('/tracking');
+                          context.go('/trends');
                         },
                       ),
                       _DrawerItem(
                         icon: Iconsax.note_add,
-                        title: 'Pre-alertar',
+                        title: l10n.drawerPreAlert,
                         onTap: () {
                           Navigator.pop(context);
                           context.go('/pre-alert');
@@ -158,7 +187,7 @@ class AppDrawer extends HookConsumerWidget {
                       ),
                       _DrawerItem(
                         icon: Iconsax.calculator,
-                        title: 'Cotizar',
+                        title: l10n.drawerQuote,
                         onTap: () {
                           Navigator.pop(context);
                           context.go('/quoter');
@@ -166,10 +195,18 @@ class AppDrawer extends HookConsumerWidget {
                       ),
                       _DrawerItem(
                         icon: Iconsax.box,
-                        title: 'Tus paquetes',
+                        title: l10n.drawerYourPackages,
                         onTap: () {
                           Navigator.pop(context);
                           context.go('/packages');
+                        },
+                      ),
+                      _DrawerItem(
+                        icon: Iconsax.printer,
+                        title: l10n.homeNavPrint,
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.go('/print-orders/my-orders');
                         },
                       ),
                     ],
@@ -177,11 +214,11 @@ class AppDrawer extends HookConsumerWidget {
                   if (isAdmin) ...[
                     const SizedBox(height: 16),
                     _DrawerSection(
-                      title: 'Administración',
+                      title: l10n.drawerSectionAdmin,
                       items: [
                         _DrawerItem(
-                          icon: Iconsax.box,
-                          title: 'Admin - Pre-Alerts',
+                          icon: Iconsax.document_text,
+                          title: l10n.drawerAdminPreAlerts,
                           iconColor: AppColors.warning,
                           onTap: () {
                             Navigator.pop(context);
@@ -193,96 +230,120 @@ class AppDrawer extends HookConsumerWidget {
                   ],
                   const SizedBox(height: 16),
                   _DrawerSection(
-                    title: 'Cuenta',
-                    items: [
-                      _DrawerItem(
-                        icon: Iconsax.card,
-                        title: 'Métodos de pago',
-                        onTap: () {},
-                      ),
-                      _DrawerItem(
-                        icon: Iconsax.crown_1,
-                        title: 'Planes Premium',
-                        iconColor: AppColors.warning,
-                        badge: 'Nuevo',
-                        onTap: () {},
-                      ),
-                      _DrawerItem(
-                        icon: Iconsax.notification,
-                        title: 'Notificaciones',
-                        onTap: () {},
-                      ),
-                      _DrawerItem(
-                        icon: Iconsax.note_text,
-                        title: 'Historial',
-                        onTap: () {},
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _DrawerSection(
-                    title: 'Ayuda',
+                    title: l10n.drawerSectionHelp,
                     items: [
                       _DrawerItem(
                         icon: Iconsax.message_question,
-                        title: 'Preguntas frecuentes',
-                        onTap: () {},
+                        title: l10n.drawerFaq,
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
                       ),
                       _DrawerItem(
                         icon: Iconsax.sms,
-                        title: 'Contáctanos',
-                        onTap: () {},
+                        title: l10n.drawerContact,
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
                       ),
                       _DrawerItem(
                         icon: Iconsax.document_text,
-                        title: 'Términos y Condiciones',
-                        onTap: () {},
+                        title: l10n.drawerTerms,
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Iconsax.logout,
-                          color: Colors.red.shade700,
-                          size: 20,
+                  const SizedBox(height: 20),
+                  GestureDetector(
+                    onTap: () => _showLogoutDialog(context, ref),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.error.withValues(alpha: 0.2),
                         ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Cerrar sesión',
-                          style: TextStyle(
-                            color: Colors.red.shade700,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Iconsax.logout,
+                            color: AppColors.error,
+                            size: 20,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          Text(
+                            l10n.drawerLogout,
+                            style: const TextStyle(
+                              color: AppColors.error,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-            // Footer
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                'Versión 8.18',
-                style: TextStyle(
-                  color: AppColors.textHint,
-                  fontSize: 12,
-                ),
+                l10n.drawerVersion('8.18'),
+                style: const TextStyle(color: AppColors.textHint, fontSize: 12),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          l10n.drawerLogoutConfirm,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(l10n.drawerLogoutMessage),
+        actionsPadding: const EdgeInsets.all(20),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              l10n.authCancel,
+              style: TextStyle(color: AppColors.textHint),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              if (context.mounted) Navigator.pop(context);
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) context.go('/auth/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: Text(l10n.drawerLogout),
+          ),
+        ],
       ),
     );
   }
@@ -292,10 +353,7 @@ class _DrawerSection extends StatelessWidget {
   final String title;
   final List<_DrawerItem> items;
 
-  const _DrawerSection({
-    required this.title,
-    required this.items,
-  });
+  const _DrawerSection({required this.title, required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -303,40 +361,41 @@ class _DrawerSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 8),
+          padding: const EdgeInsets.only(left: 10, bottom: 8),
           child: Text(
             title,
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
-              letterSpacing: 0.5,
+              letterSpacing: 0.4,
             ),
           ),
         ),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
                 color: AppColors.shadowLight,
-                blurRadius: 10,
+                blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
           child: Column(
-            children: items.map((item) {
-              final isLast = item == items.last;
+            children: items.asMap().entries.map((entry) {
+              final isLast = entry.key == items.length - 1;
               return Column(
                 children: [
-                  item,
+                  entry.value,
                   if (!isLast)
-                    const Divider(
+                    Divider(
                       height: 1,
                       indent: 52,
                       endIndent: 16,
+                      color: AppColors.divider,
                     ),
                 ],
               );
@@ -352,14 +411,12 @@ class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String title;
   final Color? iconColor;
-  final String? badge;
   final VoidCallback onTap;
 
   const _DrawerItem({
     required this.icon,
     required this.title,
     this.iconColor,
-    this.badge,
     required this.onTap,
   });
 
@@ -369,19 +426,18 @@ class _DrawerItem extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: (iconColor ?? AppColors.primary).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: (iconColor ?? AppColors.primary).withValues(
+                    alpha: 0.12,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   icon,
@@ -400,32 +456,7 @@ class _DrawerItem extends StatelessWidget {
                   ),
                 ),
               ),
-              if (badge != null) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    badge!,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Icon(
-                Icons.chevron_right,
-                color: AppColors.textHint,
-                size: 20,
-              ),
+              Icon(Icons.chevron_right, color: AppColors.textHint, size: 22),
             ],
           ),
         ),

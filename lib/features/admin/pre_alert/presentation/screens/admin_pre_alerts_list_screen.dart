@@ -95,9 +95,6 @@ class _AdminPreAlertsListScreenState
   Widget build(BuildContext context) {
     final alertsState = ref.watch(adminPreAlertsProvider);
     final countsState = ref.watch(contextCountsProvider);
-    final selectionState = ref.watch(packageSelectionProvider);
-    final selectedCount = selectionState.length;
-    final isSelectionMode = selectedCount > 0;
 
     return Scaffold(
       backgroundColor: MBETheme.lightGray,
@@ -105,13 +102,33 @@ class _AdminPreAlertsListScreenState
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'Paquetes Para Envío',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: MBETheme.brandBlack,
-          ),
+          'Paquetes para envío',
+          style: TextStyle(color: MBETheme.brandBlack),
         ),
         actions: [
+          //imagen del logo
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Image.asset(
+              'assets/images/logo-mbe_horizontal_3.png',
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => Container(
+                width: 100,
+                height: 100,
+                color: MBETheme.brandBlack,
+                child: const Center(
+                  child: Text(
+                    'MBE Mail Boxes Etc.',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           // IconButton(
           //   icon: const Icon(Iconsax.search_normal, color: MBETheme.brandBlack),
           //   tooltip: 'Buscar',
@@ -131,14 +148,7 @@ class _AdminPreAlertsListScreenState
       ),
 
       // FAB que cambia según el contexto
-      floatingActionButton: isSelectionMode
-          ? null
-          : _buildContextualFAB(context, ref),
-
-      // CAMBIO UX: Barra de acciones contextual (Solo aparece si hay selección)
-      bottomSheet: isSelectionMode
-          ? _buildSelectionActionBar(context, ref, selectedCount)
-          : null,
+      floatingActionButton: _buildContextualFAB(context, ref),
 
       body: Column(
         children: [
@@ -268,8 +278,12 @@ class _AdminPreAlertsListScreenState
                   );
                 }
                 return RefreshIndicator.adaptive(
-                  onRefresh: () =>
-                      ref.read(adminPreAlertsProvider.notifier).refresh(),
+                  onRefresh: () async {
+                    // Refrescar la lista de pre-alerts
+                    await ref.read(adminPreAlertsProvider.notifier).refresh();
+                    // También refrescar los contadores
+                    ref.invalidate(contextCountsProvider);
+                  },
                   child: ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -331,73 +345,6 @@ class _AdminPreAlertsListScreenState
     );
   }
 
-  // Widget auxiliar para la barra inferior de selección
-  Widget _buildSelectionActionBar(
-    BuildContext context,
-    WidgetRef ref,
-    int count,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "$count seleccionados",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: MBETheme.brandBlack,
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () => ref
-                        .read(packageSelectionProvider.notifier)
-                        .clearSelection(),
-                    child: const Padding(
-                      padding: EdgeInsets.only(top: 4.0),
-                      child: Text(
-                        "Limpiar selección",
-                        style: TextStyle(
-                          color: MBETheme.brandRed,
-                          fontSize: 14,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: DSButton.primary(
-                label: 'Exportar',
-                icon: Iconsax.export,
-                onPressed: () => _exportSelected(context, ref),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showScanModal(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
@@ -406,59 +353,6 @@ class _AdminPreAlertsListScreenState
       useSafeArea: true,
       builder: (context) => ScanPackagesModal(mode: _selectedContext),
     );
-  }
-
-  Future<void> _exportSelected(BuildContext context, WidgetRef ref) async {
-    final selection = ref.read(packageSelectionProvider);
-    if (selection.isEmpty) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Exportar Paquetes'),
-        content: Text(
-          '¿Exportar ${selection.length} paquete(s) seleccionado(s)?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          DSButton.primary(
-            label: 'Exportar',
-            onPressed: () => Navigator.of(context).pop(true),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    // TODO: Revisar lógica de exportación - podría ser una acción que no cambia estado
-    // o cambiar a un estado específico según la lógica de negocio
-    final statusManager = ref.read(packageStatusManagerProvider.notifier);
-    final success = await statusManager.updateStatus(
-      packageIds: selection.toList(),
-      newStatus: PackageStatus
-          .listaParaRecibir, // Temporal - revisar lógica de negocio
-    );
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? '${selection.length} paquete(s) exportado(s) exitosamente'
-                : 'Error al exportar paquetes',
-          ),
-          backgroundColor: success ? Colors.green : MBETheme.brandRed,
-        ),
-      );
-
-      if (success) {
-        ref.read(packageSelectionProvider.notifier).clearSelection();
-      }
-    }
   }
 
   void _showEditModal(BuildContext context, AdminPreAlert package) {
@@ -495,13 +389,29 @@ class _AdminPreAlertsListScreenState
   Widget _buildContextualFAB(BuildContext context, WidgetRef ref) {
     switch (_selectedContext) {
       case PackageContext.porRecibir:
-        return FloatingActionButton.extended(
-          onPressed: () => _showScanModal(context, ref),
-          backgroundColor: MBETheme.brandBlack,
-          icon: const Icon(Iconsax.scan_barcode, color: Colors.white),
-          label: const Text(
-            "Escanear Recepción",
-            style: TextStyle(color: Colors.white),
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFED1C24), Color(0xFFB91419)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFED1C24).withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: FloatingActionButton.extended(
+            onPressed: () => _showScanModal(context, ref),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            icon: const Icon(Iconsax.scan_barcode, color: Colors.white),
+            label: const Text(
+              "Escanear Recepción",
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         );
 
@@ -522,13 +432,29 @@ class _AdminPreAlertsListScreenState
         return const SizedBox.shrink();
 
       case PackageContext.paraEntregar:
-        return FloatingActionButton.extended(
-          onPressed: () => _showQuickDeliveryScan(context),
-          backgroundColor: MBETheme.brandBlack,
-          icon: const Icon(Iconsax.scan_barcode, color: Colors.white),
-          label: const Text(
-            "Escanear retiro",
-            style: TextStyle(color: Colors.white),
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFED1C24), Color(0xFFB91419)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFED1C24).withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: FloatingActionButton.extended(
+            onPressed: () => _showQuickDeliveryScan(context),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            icon: const Icon(Iconsax.scan_barcode, color: Colors.white),
+            label: const Text(
+              "Escanear retiro",
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         );
     }

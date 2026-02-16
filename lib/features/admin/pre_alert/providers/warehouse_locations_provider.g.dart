@@ -17,7 +17,12 @@ final class WarehouseLocationsProvider
         $AsyncNotifierProvider<WarehouseLocations, List<WarehouseLocation>> {
   const WarehouseLocationsProvider._({
     required WarehouseLocationsFamily super.from,
-    required ({int storeId, bool availableOnly, String? rackNumber})
+    required ({
+      int storeId,
+      bool availableOnly,
+      String? rackNumber,
+      int? warehouseId,
+    })
     super.argument,
   }) : super(
          retry: null,
@@ -53,7 +58,7 @@ final class WarehouseLocationsProvider
 }
 
 String _$warehouseLocationsHash() =>
-    r'da2f9c1c966cefb5997ee377199daee5fbf38c57';
+    r'de40639f6ded7174008cd36da415a0a75d03f821';
 
 final class WarehouseLocationsFamily extends $Family
     with
@@ -62,7 +67,12 @@ final class WarehouseLocationsFamily extends $Family
           AsyncValue<List<WarehouseLocation>>,
           List<WarehouseLocation>,
           FutureOr<List<WarehouseLocation>>,
-          ({int storeId, bool availableOnly, String? rackNumber})
+          ({
+            int storeId,
+            bool availableOnly,
+            String? rackNumber,
+            int? warehouseId,
+          })
         > {
   const WarehouseLocationsFamily._()
     : super(
@@ -77,11 +87,13 @@ final class WarehouseLocationsFamily extends $Family
     required int storeId,
     bool availableOnly = false,
     String? rackNumber,
+    int? warehouseId,
   }) => WarehouseLocationsProvider._(
     argument: (
       storeId: storeId,
       availableOnly: availableOnly,
       rackNumber: rackNumber,
+      warehouseId: warehouseId,
     ),
     from: this,
   );
@@ -93,15 +105,23 @@ final class WarehouseLocationsFamily extends $Family
 abstract class _$WarehouseLocations
     extends $AsyncNotifier<List<WarehouseLocation>> {
   late final _$args =
-      ref.$arg as ({int storeId, bool availableOnly, String? rackNumber});
+      ref.$arg
+          as ({
+            int storeId,
+            bool availableOnly,
+            String? rackNumber,
+            int? warehouseId,
+          });
   int get storeId => _$args.storeId;
   bool get availableOnly => _$args.availableOnly;
   String? get rackNumber => _$args.rackNumber;
+  int? get warehouseId => _$args.warehouseId;
 
   FutureOr<List<WarehouseLocation>> build({
     required int storeId,
     bool availableOnly = false,
     String? rackNumber,
+    int? warehouseId,
   });
   @$mustCallSuper
   @override
@@ -110,6 +130,7 @@ abstract class _$WarehouseLocations
       storeId: _$args.storeId,
       availableOnly: _$args.availableOnly,
       rackNumber: _$args.rackNumber,
+      warehouseId: _$args.warehouseId,
     );
     final ref =
         this.ref

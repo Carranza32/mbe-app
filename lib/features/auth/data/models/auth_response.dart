@@ -11,9 +11,14 @@ class AuthResponse {
   });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
+    final token = json['token'];
+    final userJson = json['user'];
+    if (token == null || userJson == null || userJson is! Map<String, dynamic>) {
+      throw FormatException('AuthResponse: falta token o user. Keys: ${json.keys}');
+    }
     return AuthResponse(
-      token: json['token'] as String,
-      user: User.fromJson(json['user'] as Map<String, dynamic>),
+      token: token is String ? token : token.toString(),
+      user: User.fromJson(userJson),
     );
   }
 }

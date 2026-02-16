@@ -1,5 +1,6 @@
 // lib/features/print_orders/presentation/widgets/steps/step2_configuration.dart
 import 'package:flutter/material.dart' hide Orientation;
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
@@ -9,6 +10,7 @@ import 'package:mbe_orders_app/core/design_system/ds_badges.dart';
 // ✅ CAMBIO: Importa el provider centralizado y los helpers
 import '../../../providers/create_order_provider.dart';
 import '../../../providers/print_configuration_state_provider.dart';
+import '../../../providers/print_config_provider.dart';
 import '../../../data/helpers/config_converters.dart';
 
 class Step2Configuration extends HookConsumerWidget {
@@ -19,6 +21,8 @@ class Step2Configuration extends HookConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
+    // Depender de la config de precios para que al cargar no se pierdan los precios
+    ref.watch(printConfigProvider);
     // ✅ CAMBIO: Lee desde el provider centralizado
     final orderState = ref.watch(createOrderProvider);
     final orderNotifier = ref.read(createOrderProvider.notifier);
@@ -42,12 +46,12 @@ class Step2Configuration extends HookConsumerWidget {
             ),
             const SizedBox(height: MBESpacing.lg),
             Text(
-              'No se detectaron páginas',
+              AppLocalizations.of(context)!.printOrderNoPagesDetected,
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: MBESpacing.sm),
             Text(
-              'Regresa al paso anterior y sube tus archivos',
+              AppLocalizations.of(context)!.printOrderGoBackAndUpload,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -116,7 +120,7 @@ class Step2Configuration extends HookConsumerWidget {
                       ),
                       const SizedBox(height: MBESpacing.xs),
                       Text(
-                        'Personaliza tu pedido • $totalPages páginas',
+                        AppLocalizations.of(context)!.printOrderCustomizeOrder(totalPages),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -155,7 +159,7 @@ class Step2Configuration extends HookConsumerWidget {
                 const SizedBox(width: MBESpacing.md),
                 Expanded(
                   child: _ToggleButton(
-                    label: 'Color',
+                    label: AppLocalizations.of(context)!.printOrderColorLabel,
                     icon: Iconsax.color_swatch,
                     isSelected: printType == PrintType.color,
                     onTap: () {
@@ -183,7 +187,7 @@ class Step2Configuration extends HookConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Papel',
+                  AppLocalizations.of(context)!.printOrderPaper,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -193,6 +197,7 @@ class Step2Configuration extends HookConsumerWidget {
                 // Tamaño de Papel
                 _PaperSizeSelector(
                   value: paperSize,
+                  printType: printConfig?.printType ?? 'bw',
                   onChanged: (size) {
                     ref.read(createOrderProvider.notifier).setPaperSize(
                       ConfigConverters.paperSizeToString(size),
@@ -202,7 +207,7 @@ class Step2Configuration extends HookConsumerWidget {
 
                 const SizedBox(height: MBESpacing.lg),
 
-                // Tipo de Papel
+                // Tipo de Papel (precios desde config)
                 _PaperTypeSelector(
                   value: paperType,
                   onChanged: (type) {
@@ -241,7 +246,7 @@ class Step2Configuration extends HookConsumerWidget {
                 const SizedBox(width: MBESpacing.md),
                 Expanded(
                   child: _ToggleButton(
-                    label: 'Horizontal',
+                    label: AppLocalizations.of(context)!.printOrderOrientationLandscape,
                     icon: Iconsax.row_horizontal,
                     isSelected: orientation == Orientation.horizontal,
                     onTap: () {
@@ -293,15 +298,15 @@ class Step2Configuration extends HookConsumerWidget {
                 // Impresión a Doble Cara
                 _OptionCheckbox(
                   icon: Iconsax.copy,
-                  title: 'Impresión a Doble Cara',
+                  title: AppLocalizations.of(context)!.printOrderDoubleSidedPrint,
                   description: pricing.doubleSidedCost > 0 
                       ? '+\$${pricing.doubleSidedCost.toStringAsFixed(2)}'
-                      : 'Ahorra papel',
+                      : AppLocalizations.of(context)!.printOrderSavePaper,
                   value: doubleSided,
                   onChanged: (value) {
                     ref.read(createOrderProvider.notifier).setDoubleSided(value ?? false);
                   },
-                  badge: doubleSided ? DSBadge.success(label: 'Eco') : null,
+                  badge: doubleSided ? DSBadge.success(label: AppLocalizations.of(context)!.printOrderEco) : null,
                 ),
                 
                 const SizedBox(height: MBESpacing.md),
@@ -309,10 +314,10 @@ class Step2Configuration extends HookConsumerWidget {
                 // Engargolado
                 _OptionCheckbox(
                   icon: Iconsax.note_21,
-                  title: 'Engargolado',
+                  title: AppLocalizations.of(context)!.printOrderBinding,
                   description: pricing.bindingCost > 0
                       ? '+\$${pricing.bindingCost.toStringAsFixed(2)}'
-                      : 'Presentación profesional',
+                      : AppLocalizations.of(context)!.printOrderProfessionalPresentation,
                   value: binding,
                   onChanged: (value) {
                     ref.read(createOrderProvider.notifier).setBinding(value ?? false);
@@ -371,7 +376,7 @@ class _PricingSummary extends StatelessWidget {
               ),
               const SizedBox(width: MBESpacing.md),
               Text(
-                'Resumen de Costos',
+                AppLocalizations.of(context)!.printOrderCostSummary,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -381,15 +386,23 @@ class _PricingSummary extends StatelessWidget {
           const SizedBox(height: MBESpacing.lg),
           
           _CostRow(
-            label: 'Impresión (${pricing.totalPages} páginas × ${pricing.copies} ${pricing.copies == 1 ? 'copia' : 'copias'})',
+            label: '${AppLocalizations.of(context)!.printOrderPrintingLabel} (${pricing.totalPages} ${AppLocalizations.of(context)!.printOrderPages} × ${pricing.copies} ${pricing.copies == 1 ? AppLocalizations.of(context)!.printOrderCopy : AppLocalizations.of(context)!.printOrderCopies})',
             amount: '\$${pricing.printingCost.toStringAsFixed(2)}',
-            detail: '\$${pricing.pricePerPage.toStringAsFixed(2)} por página',
+            detail: '\$${pricing.pricePerPage.toStringAsFixed(2)} ${AppLocalizations.of(context)!.printOrderPerPage}',
           ),
+
+          if (pricing.paperTypeCost > 0) ...[
+            const SizedBox(height: MBESpacing.sm),
+            _CostRow(
+              label: AppLocalizations.of(context)!.printOrderPaperType,
+              amount: '+\$${pricing.paperTypeCost.toStringAsFixed(2)}',
+            ),
+          ],
           
           if (pricing.doubleSidedCost > 0) ...[
             const SizedBox(height: MBESpacing.sm),
             _CostRow(
-              label: 'Doble cara',
+              label: AppLocalizations.of(context)!.printOrderDoubleSided,
               amount: '+\$${pricing.doubleSidedCost.toStringAsFixed(2)}',
             ),
           ],
@@ -397,7 +410,7 @@ class _PricingSummary extends StatelessWidget {
           if (pricing.bindingCost > 0) ...[
             const SizedBox(height: MBESpacing.sm),
             _CostRow(
-              label: 'Engargolado',
+              label: AppLocalizations.of(context)!.printOrderBinding,
               amount: '+\$${pricing.bindingCost.toStringAsFixed(2)}',
             ),
           ],
@@ -407,7 +420,7 @@ class _PricingSummary extends StatelessWidget {
           const SizedBox(height: MBESpacing.md),
           
           _CostRow(
-            label: 'Subtotal',
+            label: AppLocalizations.of(context)!.printOrderSubtotal,
             amount: '\$${pricing.printSubtotal.toStringAsFixed(2)}',
           ),
           
@@ -425,7 +438,7 @@ class _PricingSummary extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Total',
+                AppLocalizations.of(context)!.printOrderTotal,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -534,10 +547,12 @@ class _ToggleButton extends StatelessWidget {
 
 class _PaperSizeSelector extends ConsumerWidget {
   final PaperSize value;
+  final String printType;
   final Function(PaperSize) onChanged;
 
   const _PaperSizeSelector({
     required this.value,
+    required this.printType,
     required this.onChanged,
   });
 
@@ -549,17 +564,17 @@ class _PaperSizeSelector extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Tamaño',
+          AppLocalizations.of(context)!.printOrderSizeLabel,
           style: Theme.of(context).textTheme.labelLarge,
         ),
         const SizedBox(height: MBESpacing.sm),
         ...PaperSize.values.map((size) {
-          final priceRange = orderNotifier.getPriceRange(size);
+          final priceRange = orderNotifier.getPriceRange(size, printType: printType);
           return _RadioOption<PaperSize>(
             value: size,
             groupValue: value,
             onChanged: onChanged,
-            label: _getPaperSizeLabel(size),
+            label: _getPaperSizeLabel(context, size),
             description: priceRange,
           );
         }),
@@ -567,19 +582,20 @@ class _PaperSizeSelector extends ConsumerWidget {
     );
   }
 
-  String _getPaperSizeLabel(PaperSize size) {
+  String _getPaperSizeLabel(BuildContext context, PaperSize size) {
+    final l10n = AppLocalizations.of(context)!;
     switch (size) {
       case PaperSize.letter:
-        return 'Carta (Letter)';
+        return '${l10n.printOrderLetter} (Letter)';
       case PaperSize.legal:
-        return 'Legal';
+        return l10n.printOrderLegal;
       case PaperSize.doubleLetter:
-        return 'Doble Carta';
+        return l10n.printOrderDoubleLetter;
     }
   }
 }
 
-class _PaperTypeSelector extends StatelessWidget {
+class _PaperTypeSelector extends ConsumerWidget {
   final PaperType value;
   final Function(PaperType) onChanged;
 
@@ -589,12 +605,15 @@ class _PaperTypeSelector extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final orderNotifier = ref.read(createOrderProvider.notifier);
+    final bondLabel = orderNotifier.getPaperTypePriceLabel('bond');
+    final glossyLabel = orderNotifier.getPaperTypePriceLabel('photo_glossy');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Tipo de Papel',
+          AppLocalizations.of(context)!.printOrderPaperType,
           style: Theme.of(context).textTheme.labelLarge,
         ),
         const SizedBox(height: MBESpacing.sm),
@@ -603,14 +622,14 @@ class _PaperTypeSelector extends StatelessWidget {
           groupValue: value,
           onChanged: onChanged,
           label: 'Papel Bond',
-          description: 'Estándar',
+          description: bondLabel.isNotEmpty ? bondLabel : 'Estándar',
         ),
         _RadioOption<PaperType>(
           value: PaperType.glossy,
           groupValue: value,
           onChanged: onChanged,
           label: 'Papel Brillante',
-          description: 'Para imágenes',
+          description: glossyLabel.isNotEmpty ? glossyLabel : 'Para imágenes',
         ),
       ],
     );
@@ -728,7 +747,7 @@ class _CopiesSelector extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Número de Copias',
+            AppLocalizations.of(context)!.printOrderNumberOfCopies,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -771,7 +790,7 @@ class _CopiesSelector extends StatelessWidget {
           const SizedBox(height: MBESpacing.sm),
           Center(
             child: Text(
-              'Máximo 100 copias',
+              AppLocalizations.of(context)!.printOrderMaxCopies,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

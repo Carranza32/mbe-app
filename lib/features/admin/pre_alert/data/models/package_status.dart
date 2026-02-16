@@ -94,6 +94,25 @@ extension PackageStatusExtension on PackageStatus {
     }
   }
 
+  /// True si el paquete ya pasó por recepción (está en tienda/bodega o ya fue entregado).
+  bool get isAlreadyReceived {
+    switch (this) {
+      case PackageStatus.enTienda:
+      case PackageStatus.retornada:
+      case PackageStatus.listaRetiro:
+      case PackageStatus.enRuta:
+      case PackageStatus.entregada:
+      case PackageStatus.completada:
+        return true;
+      case PackageStatus.ingresada:
+      case PackageStatus.listaParaRecibir:
+      case PackageStatus.solicitudRecoleccion:
+      case PackageStatus.confirmadaRecoleccion:
+      case PackageStatus.cancelada:
+        return false;
+    }
+  }
+
   static PackageStatus? fromKey(String key) {
     switch (key) {
       case 'ingresada':

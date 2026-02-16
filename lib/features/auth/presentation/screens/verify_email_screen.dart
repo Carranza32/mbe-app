@@ -12,6 +12,7 @@ import '../../../../config/theme/mbe_theme.dart';
 import '../../../../core/design_system/ds_buttons.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/network/dio_provider.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../providers/auth_provider.dart';
 
@@ -22,6 +23,7 @@ class VerifyEmailScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final pinController = useTextEditingController();
     final isLoading = useState(false);
@@ -129,7 +131,7 @@ class VerifyEmailScreen extends HookConsumerWidget {
                 FadeInDown(
                   delay: const Duration(milliseconds: 150),
                   child: Text(
-                    'Verifica tu correo',
+                    l10n.verifyEmailTitle,
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -145,7 +147,7 @@ class VerifyEmailScreen extends HookConsumerWidget {
                   child: Column(
                     children: [
                       Text(
-                        'Hemos enviado un código de verificación de 6 dígitos a:',
+                        l10n.verifyEmailCodeSent,
                         style: theme.textTheme.bodyLarge?.copyWith(
                           color: MBETheme.neutralGray,
                         ),
@@ -294,7 +296,7 @@ class VerifyEmailScreen extends HookConsumerWidget {
                 FadeInUp(
                   delay: const Duration(milliseconds: 400),
                   child: DSButton.primary(
-                    label: 'Verificar código',
+                    label: l10n.verifyCode,
                     icon: Iconsax.tick_circle,
                     onPressed:
                         pinController.text.length == 6 && !isLoading.value
@@ -337,7 +339,7 @@ class VerifyEmailScreen extends HookConsumerWidget {
     ValueNotifier<String?> errorMessage,
   ) async {
     if (code.length != 6) {
-      errorMessage.value = 'Por favor, ingresa un código de 6 dígitos';
+      errorMessage.value = AppLocalizations.of(context)!.enterSixDigitsError;
       return;
     }
 
@@ -417,11 +419,11 @@ class VerifyEmailScreen extends HookConsumerWidget {
         // Mostrar mensaje de éxito
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
-                Icon(Iconsax.tick_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('¡Correo verificado exitosamente!'),
+                const Icon(Iconsax.tick_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(AppLocalizations.of(context)!.emailVerifiedSuccess),
               ],
             ),
             backgroundColor: const Color(0xFF10B981),
@@ -436,7 +438,7 @@ class VerifyEmailScreen extends HookConsumerWidget {
         // Redirigir según el rol del usuario
         if (context.mounted) {
           final isAdmin = updatedUser.isAdmin;
-          final redirectPath = isAdmin ? '/' : '/print-orders/my-orders';
+          final redirectPath = isAdmin ? '/' : '/';
 
           // Usar go en lugar de pop para forzar la navegación
           // El router detectará automáticamente que el email está verificado
@@ -451,8 +453,7 @@ class VerifyEmailScreen extends HookConsumerWidget {
         if (e is ApiException) {
           errorMessage.value = e.message;
         } else {
-          errorMessage.value =
-              'Error al verificar el código. Por favor, intenta de nuevo.';
+          errorMessage.value = AppLocalizations.of(context)!.invalidCodeError;
         }
       }
     } finally {
@@ -487,13 +488,18 @@ class VerifyEmailScreen extends HookConsumerWidget {
               controller.text = code;
 
               // Mostrar un mensaje sutil
+              final l10nClipboard = AppLocalizations.of(context)!;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: const Row(
+                  content: Row(
                     children: [
-                      Icon(Iconsax.tick_circle, color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Text('Código detectado del portapapeles'),
+                      const Icon(
+                        Iconsax.tick_circle,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(l10nClipboard.codeDetectedClipboard),
                     ],
                   ),
                   duration: const Duration(seconds: 2),
@@ -578,8 +584,8 @@ class VerifyEmailScreen extends HookConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        String errorMessage =
-            'Ocurrió un error al reenviar el código. Por favor, intenta nuevamente.';
+        final l10nLocal = AppLocalizations.of(context)!;
+        String errorMessage = l10nLocal.resendCodeError;
 
         if (e is ApiException) {
           errorMessage = e.message;
@@ -638,7 +644,7 @@ class _ResendCodeButton extends HookConsumerWidget {
                   ),
                 )
               : Text(
-                  'Reenviar',
+                  AppLocalizations.of(context)!.authResend,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: MBETheme.brandRed,
                     fontWeight: FontWeight.w600,

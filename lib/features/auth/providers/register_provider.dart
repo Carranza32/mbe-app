@@ -7,6 +7,8 @@ class RegisterState {
   final String name;
   final String email;
   final String lockerCode;
+  final String phone;
+  final String verificationCode;
   final String password;
   final String passwordConfirmation;
   
@@ -17,6 +19,8 @@ class RegisterState {
     this.name = '',
     this.email = '',
     this.lockerCode = '',
+    this.phone = '',
+    this.verificationCode = '',
     this.password = '',
     this.passwordConfirmation = '',
     this.errors = const {},
@@ -26,6 +30,8 @@ class RegisterState {
     String? name,
     String? email,
     String? lockerCode,
+    String? phone,
+    String? verificationCode,
     String? password,
     String? passwordConfirmation,
     Map<String, String>? errors,
@@ -34,6 +40,8 @@ class RegisterState {
       name: name ?? this.name,
       email: email ?? this.email,
       lockerCode: lockerCode ?? this.lockerCode,
+      phone: phone ?? this.phone,
+      verificationCode: verificationCode ?? this.verificationCode,
       password: password ?? this.password,
       passwordConfirmation: passwordConfirmation ?? this.passwordConfirmation,
       errors: errors ?? this.errors,
@@ -41,22 +49,16 @@ class RegisterState {
   }
 
   bool get passwordsMatch => password == passwordConfirmation && passwordConfirmation.isNotEmpty;
-  
-  bool get isPasswordValid {
-    return password.length >= 8 &&
-        password.contains(RegExp(r'[A-Z]')) &&
-        password.contains(RegExp(r'[a-z]')) &&
-        password.contains(RegExp(r'[0-9]'));
-  }
 
+  /// El botón "Activar mi cuenta" se habilita cuando este getter es true.
+  /// Solo se exige que las contraseñas coincidan (sin requisitos de longitud ni caracteres).
   bool get isValid {
-    return name.isNotEmpty &&
-        email.isNotEmpty &&
-        lockerCode.isNotEmpty &&
+    return name.trim().isNotEmpty &&
+        email.trim().isNotEmpty &&
+        phone.trim().isNotEmpty &&
         password.isNotEmpty &&
         passwordConfirmation.isNotEmpty &&
-        passwordsMatch &&
-        isPasswordValid;
+        passwordsMatch;
   }
 
   /// Normaliza el locker_code: agrega prefijo SAL si no lo tiene y convierte a mayúsculas
@@ -77,6 +79,8 @@ class Register extends _$Register {
   void setName(String value) => state = state.copyWith(name: value, errors: _removeError('name'));
   void setEmail(String value) => state = state.copyWith(email: value, errors: _removeError('email'));
   void setLockerCode(String value) => state = state.copyWith(lockerCode: value, errors: _removeError('locker_code'));
+  void setPhone(String value) => state = state.copyWith(phone: value, errors: _removeError('phone'));
+  void setVerificationCode(String value) => state = state.copyWith(verificationCode: value, errors: _removeError('verification_code'));
   void setPassword(String value) => state = state.copyWith(password: value, errors: _removeError('password'));
   void setPasswordConfirmation(String value) => state = state.copyWith(passwordConfirmation: value, errors: _removeError('password_confirmation'));
 
@@ -101,4 +105,24 @@ class Register extends _$Register {
   }
 
   void reset() => state = RegisterState();
+
+  /// Establece todos los datos iniciales de una vez (para flujo de activación)
+  void setInitialData({
+    String? name,
+    String? email,
+    String? phone,
+    String? lockerCode,
+    String? verificationCode,
+  }) {
+    state = RegisterState(
+      name: name ?? '',
+      email: email ?? '',
+      phone: phone ?? '',
+      lockerCode: lockerCode ?? '',
+      verificationCode: verificationCode ?? '',
+      password: '',
+      passwordConfirmation: '',
+      errors: const {},
+    );
+  }
 }

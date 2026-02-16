@@ -15,12 +15,17 @@ class StoreModel {
   });
 
   factory StoreModel.fromJson(Map<String, dynamic> json) {
+    // Para tiendas MBE, usar city como zone si zone no está disponible
+    final zone = json['zone'] as String? ?? 
+                 json['city'] as String? ?? 
+                 (json['state'] as String?);
+    
     return StoreModel(
       id: json['id'] as int,
       name: json['name'] as String,
       address: json['address'] as String?,
       phone: json['phone'] as String?,
-      zone: json['zone'] as String?,
+      zone: zone,
     );
   }
 }

@@ -4,14 +4,21 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../config/theme/app_colors.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../core/providers/user_role_provider.dart';
+import 'package:mbe_orders_app/features/auth/providers/auth_provider.dart';
+import '../widgets/external_url_webview.dart';
 
 class HomeScreen extends HookConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final isAdmin = ref.watch(isAdminProvider);
+    final authState = ref.watch(authProvider);
+    final user = authState.value;
+    final customer = user?.customer;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -23,58 +30,83 @@ class HomeScreen extends HookConsumerWidget {
             // 1. Encabezado Personalizado (Sin AppBar tradicional)
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-              sliver: SliverToBoxAdapter(child: _buildHeader(context, isAdmin)),
+              sliver: SliverToBoxAdapter(
+                child: _buildHeader(context, l10n, isAdmin, user, customer),
+              ),
             ),
 
             // 2. Tarjeta Virtual (Dirección Miami)
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              sliver: SliverToBoxAdapter(child: _buildVirtualCard(context)),
-            ),
-
-            // 3. Estadísticas Rápidas (Placeholder data)
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               sliver: SliverToBoxAdapter(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatCard(
-                        'En Bodega',
-                        '3',
-                        Iconsax.box,
-                        Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        'En Camino',
-                        '1',
-                        Iconsax.airplane,
-                        Colors.blue,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatCard(
-                        'Disponibles',
-                        '5',
-                        Iconsax.tick_circle,
-                        Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
+                child: _buildVirtualCard(context, l10n, customer),
               ),
             ),
 
-            // 4. Título de Sección
+            // Botón igual a "Crear casillero" (abre WebView registro), debajo de la tarjeta — para reunión; luego se puede esconder
+            if (!isAdmin &&
+                ((customer?.lockerCode ?? '').trim().isNotEmpty))
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                sliver: SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (context) => ExternalUrlWebView(
+                                url: _lockerRegistrationUrl,
+                                title: l10n.homeLockerRegistrationTitle,
+                                scrollToBottomOnLoad: true,
+                              ),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 16),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                                color: const Color(0xFF1A1A2E).withOpacity(0.3)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Iconsax.box_add,
+                                color: Color(0xFF1A1A2E),
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                l10n.homeCreateLocker,
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            // 3. Título de Sección
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
                 child: Text(
-                  "¿Qué quieres hacer hoy?",
+                  l10n.homeWhatDoYouWant,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
@@ -83,7 +115,7 @@ class HomeScreen extends HookConsumerWidget {
               ),
             ),
 
-            // 5. Grid de Acciones (Bento Grid)
+            // 4. Grid de Acciones (Bento Grid)
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               sliver: SliverGrid.count(
@@ -94,8 +126,8 @@ class HomeScreen extends HookConsumerWidget {
                 children: [
                   _buildActionCard(
                     context,
-                    title: 'Pre-alertar',
-                    subtitle: 'Notifica tu compra',
+                    title: l10n.homePreAlert,
+                    subtitle: l10n.homePreAlertSubtitle,
                     icon: Iconsax.note_add5,
                     color: AppColors.primary,
                     onTap: () => context.go(
@@ -105,27 +137,27 @@ class HomeScreen extends HookConsumerWidget {
                   ),
                   _buildActionCard(
                     context,
-                    title: 'Cotizar',
-                    subtitle: 'Calcula costos',
+                    title: l10n.homeQuote,
+                    subtitle: l10n.homeQuoteSubtitle,
                     icon: Iconsax.calculator5,
                     color: Colors.purple,
                     onTap: () => context.go('/quoter'),
                   ),
                   _buildActionCard(
                     context,
-                    title: 'Mis Paquetes',
-                    subtitle: 'Ver inventario',
-                    icon: Iconsax.box_15, // Icono relleno
+                    title: l10n.homeSearchOffers,
+                    subtitle: l10n.homeSearchOffersSubtitle,
+                    icon: Iconsax.tag,
                     color: Colors.indigo,
-                    onTap: () => context.go('/packages'),
+                    onTap: () => context.push('/trends'),
                   ),
                   _buildActionCard(
                     context,
-                    title: 'Rastrear',
-                    subtitle: 'Track ID',
-                    icon: Iconsax.radar5,
+                    title: l10n.homeNavPrint,
+                    subtitle: l10n.homePrintOrdersSubtitle,
+                    icon: Iconsax.printer,
                     color: Colors.teal,
-                    onTap: () => context.go('/tracking'),
+                    onTap: () => context.go('/print-orders/my-orders'),
                   ),
                 ],
               ),
@@ -141,7 +173,81 @@ class HomeScreen extends HookConsumerWidget {
 
   // --- WIDGETS AUXILIARES ---
 
-  Widget _buildHeader(BuildContext context, bool isAdmin) {
+  /// Obtiene el saludo según la hora del día
+  String _getGreeting(AppLocalizations l10n) {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) {
+      return l10n.homeGoodMorning;
+    } else if (hour >= 12 && hour < 19) {
+      return l10n.homeGoodAfternoon;
+    } else {
+      return l10n.homeGoodEvening;
+    }
+  }
+
+  Widget _buildHeader(
+    BuildContext context,
+    AppLocalizations l10n,
+    bool isAdmin,
+    dynamic user,
+    dynamic customer,
+  ) {
+    // Solo mostrar dinámico si es customer
+    if (!isAdmin && customer != null) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _getGreeting(l10n),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                customer.name.isNotEmpty
+                    ? customer.name
+                    : user?.name ?? l10n.authUser,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+          // Logo MBE en lugar del icono de persona
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Image.asset(
+              'assets/images/logo-mbe_horizontal_3.png',
+              height: 32,
+              width: 100,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Para admin, mantener el diseño original
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -149,7 +255,7 @@ class HomeScreen extends HookConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              isAdmin ? 'Panel de Admin' : 'Buenos días,',
+              l10n.homeAdminPanel,
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,
@@ -158,7 +264,7 @@ class HomeScreen extends HookConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              isAdmin ? 'Administrador' : 'Mario Carranza',
+              l10n.homeAdministrator,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
@@ -187,14 +293,115 @@ class HomeScreen extends HookConsumerWidget {
     );
   }
 
-  Widget _buildVirtualCard(BuildContext context) {
+  static const _lockerRegistrationUrl =
+      'https://mbe-latam.com/registro/sal/ebox';
+
+  Widget _buildVirtualCard(
+    BuildContext context,
+    AppLocalizations l10n,
+    dynamic customer,
+  ) {
+    final lockerCode = customer?.lockerCode?.trim() ?? '';
+    final hasLocker = lockerCode.isNotEmpty;
+
+    // Sin casillero: mostrar mensaje y botón para crear uno (WebView)
+    if (!hasLocker) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1A1A2E).withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Iconsax.box, color: Colors.white54, size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.homeNoLocker,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              l10n.homeNoLockerSubtitle,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => ExternalUrlWebView(
+                        url: _lockerRegistrationUrl,
+                        title: l10n.homeLockerRegistrationTitle,
+                        scrollToBottomOnLoad: true,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Iconsax.box_add, color: Colors.white, size: 20),
+                label: Text(
+                  l10n.homeCreateLocker,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.15),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Con casillero: tarjeta actual
+    final tierName = customer?.tierName;
+    final hasTier =
+        tierName != null && tierName.toString().trim().isNotEmpty;
+
     return Container(
       width: double.infinity,
       height: 180,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
-          colors: [Color(0xFF1A1A2E), Color(0xFF16213E)], // Dark Navy Theme
+          colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -208,7 +415,6 @@ class HomeScreen extends HookConsumerWidget {
       ),
       child: Stack(
         children: [
-          // Fondo decorativo (Círculos sutiles)
           Positioned(
             right: -50,
             top: -50,
@@ -221,7 +427,6 @@ class HomeScreen extends HookConsumerWidget {
               ),
             ),
           ),
-
           Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -231,47 +436,49 @@ class HomeScreen extends HookConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.1),
+                    if (hasTier)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
                         ),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(
-                            Iconsax.medal_star,
-                            color: Color(0xFFFFD700),
-                            size: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
                           ),
-                          SizedBox(width: 6),
-                          Text(
-                            "ESTÁNDAR",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Iconsax.medal_star,
+                              color: Color(0xFFFFD700),
+                              size: 14,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
+                            const SizedBox(width: 6),
+                            Text(
+                              tierName!.trim().toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      const Spacer(),
                     const Icon(Iconsax.box, color: Colors.white54),
                   ],
                 ),
-
-                // Código Casillero Grande
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "TU CASILLERO",
+                      l10n.homeYourLocker,
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.5),
                         fontSize: 10,
@@ -279,29 +486,25 @@ class HomeScreen extends HookConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      "SAL 4279 XJ",
-                      style: TextStyle(
+                    Text(
+                      lockerCode.toUpperCase(),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 2,
-                        fontFamily: 'Monospace', // Estilo de tarjeta de crédito
+                        fontFamily: 'Monospace',
                       ),
                     ),
                   ],
                 ),
-
-                // Dirección Copiable
                 GestureDetector(
                   onTap: () {
                     Clipboard.setData(
                       const ClipboardData(text: "2950 NW 77th Ave, Miami, FL"),
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Dirección copiada al portapapeles"),
-                      ),
+                      SnackBar(content: Text(l10n.homeAddressCopied)),
                     );
                   },
                   child: Row(
@@ -327,53 +530,6 @@ class HomeScreen extends HookConsumerWidget {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

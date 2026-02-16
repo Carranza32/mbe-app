@@ -33,7 +33,7 @@ final class DeliveryManagerProvider
   DeliveryManager create() => DeliveryManager();
 }
 
-String _$deliveryManagerHash() => r'1eeffa5fc369ac2560adc66d4c521eb8f650e87c';
+String _$deliveryManagerHash() => r'ffd4214298960a4250629547cd7d6b38ab252033';
 
 abstract class _$DeliveryManager extends $AsyncNotifier<void> {
   FutureOr<void> build();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
@@ -76,8 +77,8 @@ class _PromotionModalState extends ConsumerState<PromotionModal> {
         }
       });
     } catch (e) {
-      setState(() {
-        _error = 'Error al cargar promoción: ${e.toString()}';
+        setState(() {
+          _error = AppLocalizations.of(context)!.preAlertErrorLoadingPromotion(e.toString());
         _isLoading = false;
       });
     }
@@ -87,6 +88,7 @@ class _PromotionModalState extends ConsumerState<PromotionModal> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       decoration: BoxDecoration(
@@ -133,7 +135,7 @@ class _PromotionModalState extends ConsumerState<PromotionModal> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Promociones Disponibles',
+                          l10n.preAlertPromotionsAvailable,
                           style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -185,7 +187,7 @@ class _PromotionModalState extends ConsumerState<PromotionModal> {
                     ElevatedButton.icon(
                       onPressed: _loadPromotion,
                       icon: const Icon(Iconsax.refresh),
-                      label: const Text('Reintentar'),
+                      label: Text(l10n.preAlertRetry),
                     ),
                   ],
                 ),
@@ -202,7 +204,7 @@ class _PromotionModalState extends ConsumerState<PromotionModal> {
                     ),
                     const SizedBox(height: MBESpacing.md),
                     Text(
-                      'No hay promociones disponibles en este momento',
+                      l10n.preAlertNoPromotions,
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant,
@@ -220,7 +222,7 @@ class _PromotionModalState extends ConsumerState<PromotionModal> {
               child: SafeArea(
                 top: false,
                 child: DSButton.primary(
-                  label: 'Cerrar',
+                  label: l10n.preAlertClose,
                   onPressed: () => Navigator.pop(context),
                   fullWidth: true,
                 ),
@@ -235,6 +237,7 @@ class _PromotionModalState extends ConsumerState<PromotionModal> {
   Widget _buildPromotionContent(BuildContext context, PromotionModel promotion) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Padding(
       padding: const EdgeInsets.all(MBESpacing.lg),
@@ -334,7 +337,7 @@ class _PromotionModalState extends ConsumerState<PromotionModal> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Ahorro estimado',
+                          l10n.preAlertEstimatedSavings,
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),

@@ -1,14 +1,14 @@
 // lib/features/print_orders/presentation/screens/my_orders_screen.dart
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../config/theme/mbe_theme.dart';
-import '../../../../core/network/dio_provider.dart';
+import '../../../home/providers/main_scaffold_provider.dart';
+import '../../../auth/presentation/widgets/verification_pending_modal.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../data/models/print_order_model.dart';
 import '../../providers/orders_provider.dart';
@@ -20,23 +20,104 @@ class MyOrdersScreen extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ordersState = ref.watch(ordersProvider);
+    final authState = ref.watch(authProvider);
+    final user = authState.value;
+    final hasShownModal = useState(false);
+
+    // Verificar si el customer está verificado después del primer frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Evitar mostrar el modal múltiples veces
+      if (hasShownModal.value) return;
+      
+      if (user != null && 
+          !user.isAdmin && 
+          user.customer != null && 
+          user.customer!.verifiedAt == null) {
+        hasShownModal.value = true;
+        // Mostrar modal de verificación pendiente
+        Future.microtask(() {
+          if (context.mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const VerificationPendingModal(),
+            );
+          }
+        });
+      }
+    });
 
     return Scaffold(
       backgroundColor: MBETheme.lightGray,
-      drawer: _AppDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
-        title: const Text(
-          'Mis Pedidos',
+        leading: Builder(
+          builder: (context) {
+            // Usar watch para obtener el GlobalKey reactivamente
+            final scaffoldKey = ref.watch(mainScaffoldKeyProvider);
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                // Intentar abrir el drawer usando el GlobalKey
+                if (scaffoldKey?.currentState != null) {
+                  scaffoldKey!.currentState!.openDrawer();
+                } else {
+                  debugPrint('⚠️ GlobalKey del Scaffold no está disponible');
+                }
+              },
+            );
+          },
+        ),
+        title: Text(
+          AppLocalizations.of(context)!.printOrderMyOrders,
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Iconsax.add_circle),
-            onPressed: () => context.push('/print-orders/create'),
+      ),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFED1C24), Color(0xFFB91419)],
           ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFED1C24).withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            final authState = ref.read(authProvider);
+            final user = authState.value;
+            
+            // Verificar si el customer está verificado antes de crear pedido
+            if (user != null && 
+                !user.isAdmin && 
+                user.customer != null && 
+                user.customer!.verifiedAt == null) {
+              showDialog(
+                context: context,
+                builder: (context) => const VerificationPendingModal(),
+              );
+            } else {
+              context.push('/print-orders/create');
+            }
+          },
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          icon: const Icon(Iconsax.add_circle, color: Colors.white, size: 24),
+          label: Text(
+            AppLocalizations.of(context)!.printOrderNewOrder,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
+        ),
       ),
       body: ordersState.when(
         data: (response) => RefreshIndicator(
@@ -63,7 +144,7 @@ class MyOrdersScreen extends HookConsumerWidget {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => ref.invalidate(ordersProvider),
-                child: const Text('Reintentar'),
+                child: Text(AppLocalizations.of(context)!.preAlertRetry),
               ),
             ],
           ),
@@ -157,7 +238,7 @@ class _OrderCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     _InfoChip(
                       icon: Iconsax.document,
-                      label: '${order.pagesCount} págs',
+                      label: '${order.pagesCount} ${AppLocalizations.of(context)!.printOrderPagesShort}',
                     ),
                     const SizedBox(width: 8),
                     _InfoChip(
@@ -165,8 +246,8 @@ class _OrderCard extends StatelessWidget {
                           ? Iconsax.shop
                           : Iconsax.truck,
                       label: order.deliveryMethod == 'pickup'
-                          ? 'Recoger'
-                          : 'Envío',
+                          ? AppLocalizations.of(context)!.printOrderPickup
+                          : AppLocalizations.of(context)!.printOrderShipping,
                     ),
                   ],
                 ),
@@ -248,199 +329,17 @@ class _EmptyState extends StatelessWidget {
             color: MBETheme.neutralGray.withOpacity(0.3),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'No tienes pedidos',
+          Text(
+            AppLocalizations.of(context)!.printOrderNoOrders,
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
-            'Crea tu primer pedido de impresión',
+            AppLocalizations.of(context)!.printOrderCreateFirst,
             style: TextStyle(color: MBETheme.neutralGray),
           ),
         ],
       ),
-    );
-  }
-}
-
-// Widget del Drawer
-class _AppDrawer extends HookConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // final authState = ref.watch(authProvider);
-    // final user = authState.value;
-
-    final secureStorage = ref.read(secureStorageProvider);
-    final userFuture = useMemoized(() => secureStorage.read(key: 'user'));
-    final userSnapshot = useFuture(userFuture);
-
-    Map<String, dynamic>? userData;
-    if (userSnapshot.hasData && userSnapshot.data != null) {
-      try {
-        userData = jsonDecode(userSnapshot.data!);
-      } catch (e) {
-        print('Error al decodificar usuario: $e');
-      }
-    }
-
-    final name = userData?['name'] ?? 'Usuario';
-    final email = userData?['email'] ?? '';
-
-    return Drawer(
-      child: Column(
-        children: [
-          // Header
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-            decoration: const BoxDecoration(color: MBETheme.brandBlack),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Iconsax.user,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  name ?? 'Usuario',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  email ?? '',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Menu items
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              children: [
-                _DrawerItem(
-                  icon: Iconsax.document_text,
-                  title: 'Mis Pedidos',
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                _DrawerItem(
-                  icon: Iconsax.user,
-                  title: 'Mi Perfil',
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Navegar a perfil
-                  },
-                ),
-                const Divider(),
-                _DrawerItem(
-                  icon: Iconsax.setting_2,
-                  title: 'Configuración',
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Navegar a settings
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          // Logout
-          const Divider(height: 1),
-          _DrawerItem(
-            icon: Iconsax.logout,
-            title: 'Cerrar Sesión',
-            isDestructive: true,
-            onTap: () async {
-              Navigator.pop(context);
-
-              // Mostrar confirmación
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Cerrar Sesión'),
-                  content: const Text('¿Estás seguro que deseas salir?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancelar'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: MBETheme.brandRed,
-                      ),
-                      child: const Text('Salir'),
-                    ),
-                  ],
-                ),
-              );
-
-              if (confirm != true) return;
-
-              // Ejecutar logout (ya maneja errores internamente)
-              await ref.read(authProvider.notifier).logout();
-
-              // Navegar a login si el contexto sigue montado
-              if (context.mounted) {
-                context.go('/auth/login');
-              }
-            },
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-}
-
-class _DrawerItem extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
-  final bool isDestructive;
-
-  const _DrawerItem({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-    this.isDestructive = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: isDestructive ? MBETheme.brandRed : MBETheme.neutralGray,
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isDestructive ? MBETheme.brandRed : MBETheme.brandBlack,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      onTap: onTap,
     );
   }
 }

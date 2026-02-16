@@ -9,6 +9,7 @@ class Customer {
   final String country;
   final int storeId;
   final int? customerTierId;
+  final String? tierName;
   final String language;
   final String? secondaryEmail;
   final String? cedulaRnc;
@@ -36,6 +37,7 @@ class Customer {
     required this.country,
     required this.storeId,
     this.customerTierId,
+    this.tierName,
     required this.language,
     this.secondaryEmail,
     this.cedulaRnc,
@@ -67,6 +69,14 @@ class Customer {
       country: json['country'] as String? ?? '',
       storeId: json['store_id'] as int? ?? 0,
       customerTierId: json['customer_tier_id'] as int?,
+      // Intentar obtener tier_name de diferentes formas posibles
+      tierName: json['tier_name'] as String? ??
+          (json['customer_tier'] is Map
+              ? (json['customer_tier'] as Map<String, dynamic>)['name'] as String?
+              : null) ??
+          (json['tier'] is Map
+              ? (json['tier'] as Map<String, dynamic>)['name'] as String?
+              : null),
       language: json['language'] as String? ?? 'es',
       secondaryEmail: json['secundary_email'] as String?,
       cedulaRnc: json['cedula_rnc'] as String?,
@@ -105,6 +115,7 @@ class Customer {
       'country': country,
       'store_id': storeId,
       'customer_tier_id': customerTierId,
+      'tier_name': tierName,
       'language': language,
       'secundary_email': secondaryEmail,
       'cedula_rnc': cedulaRnc,

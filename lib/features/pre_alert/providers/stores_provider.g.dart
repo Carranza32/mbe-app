@@ -8,12 +8,63 @@ part of 'stores_provider.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Provider para obtener las tiendas disponibles para el cliente
+/// Provider para obtener las tiendas MBE (para recoger paquetes)
+/// Usa el endpoint GET /api/v1/stores
+
+@ProviderFor(mbeStores)
+const mbeStoresProvider = MbeStoresProvider._();
+
+/// Provider para obtener las tiendas MBE (para recoger paquetes)
+/// Usa el endpoint GET /api/v1/stores
+
+final class MbeStoresProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<StoreModel>>,
+          List<StoreModel>,
+          FutureOr<List<StoreModel>>
+        >
+    with $FutureModifier<List<StoreModel>>, $FutureProvider<List<StoreModel>> {
+  /// Provider para obtener las tiendas MBE (para recoger paquetes)
+  /// Usa el endpoint GET /api/v1/stores
+  const MbeStoresProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'mbeStoresProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$mbeStoresHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<StoreModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<StoreModel>> create(Ref ref) {
+    return mbeStores(ref);
+  }
+}
+
+String _$mbeStoresHash() => r'29796ef4d14c22451672efa2316f3e4ddfef2032';
+
+/// Provider para obtener los proveedores (tiendas) disponibles para el cliente
+/// Usa el endpoint GET /api/v1/providers
+/// Por defecto solo devuelve proveedores activos, ordenados por order y luego por name
 
 @ProviderFor(customerStores)
 const customerStoresProvider = CustomerStoresProvider._();
 
-/// Provider para obtener las tiendas disponibles para el cliente
+/// Provider para obtener los proveedores (tiendas) disponibles para el cliente
+/// Usa el endpoint GET /api/v1/providers
+/// Por defecto solo devuelve proveedores activos, ordenados por order y luego por name
 
 final class CustomerStoresProvider
     extends
@@ -23,7 +74,9 @@ final class CustomerStoresProvider
           FutureOr<List<StoreModel>>
         >
     with $FutureModifier<List<StoreModel>>, $FutureProvider<List<StoreModel>> {
-  /// Provider para obtener las tiendas disponibles para el cliente
+  /// Provider para obtener los proveedores (tiendas) disponibles para el cliente
+  /// Usa el endpoint GET /api/v1/providers
+  /// Por defecto solo devuelve proveedores activos, ordenados por order y luego por name
   const CustomerStoresProvider._()
     : super(
         from: null,
@@ -50,7 +103,7 @@ final class CustomerStoresProvider
   }
 }
 
-String _$customerStoresHash() => r'c1cf06b0eef9c32f3f3a67b40a30a02bf8febfad';
+String _$customerStoresHash() => r'c9cd155d042e20665b86d2a1aa6e8eb2d9f9444e';
 
 /// Provider que convierte StoreModel a Store para el dropdown
 

@@ -5,6 +5,7 @@ class PrintOrder {
   final int id;
   final String orderNumber;
   final String status;
+  final String? paymentStatus; // 'pending' | 'paid' | 'failed' (backend)
   final String printType;
   final int pagesCount;
   final String total;
@@ -15,6 +16,7 @@ class PrintOrder {
     required this.id,
     required this.orderNumber,
     required this.status,
+    this.paymentStatus,
     required this.printType,
     required this.pagesCount,
     required this.total,
@@ -27,18 +29,28 @@ class PrintOrder {
       id: json['id'] as int,
       orderNumber: json['order_number'] as String,
       status: json['status'] as String,
+      paymentStatus: json['payment_status'] as String?,
       printType: json['print_type'] as String,
       pagesCount: json['pages_count'] as int,
-      total: json['total'] as String,
+      total: _parseStringOrNum(json['total'], '0'),
       deliveryMethod: json['delivery_method'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
 
-  // Helpers
+  static String _parseStringOrNum(dynamic value, [String fallback = '0']) {
+    if (value == null) return fallback;
+    if (value is num) return value.toString();
+    if (value is String) return value;
+    return fallback;
+  }
+
+  /// Según PRINT_ORDERS_FLOW: si payment_status === 'paid' y status === 'pending' → mostrar "Pagado"
   String get statusLabel {
+    if (paymentStatus == 'paid' && status == 'pending') return 'Pagado';
     switch (status) {
       case 'pending': return 'Pendiente';
+      case 'payment_pending': return 'Pago pendiente';
       case 'printing': return 'Imprimiendo';
       case 'ready': return 'Listo';
       case 'delivered': return 'Entregado';
@@ -48,8 +60,10 @@ class PrintOrder {
   }
 
   Color get statusColor {
+    if (paymentStatus == 'paid' && status == 'pending') return const Color(0xFF10B981); // verde "Pagado"
     switch (status) {
       case 'pending': return const Color(0xFFEAB308);
+      case 'payment_pending': return const Color(0xFFEAB308);
       case 'printing': return const Color(0xFF8B5CF6);
       case 'ready': return const Color(0xFF10B981);
       case 'delivered': return const Color(0xFF3B82F6);

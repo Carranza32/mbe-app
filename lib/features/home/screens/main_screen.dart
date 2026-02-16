@@ -3,9 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:iconsax/iconsax.dart';
 import '../../../../config/theme/app_colors.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../core/providers/user_role_provider.dart';
 import '../../pre_alert/providers/pre_alerts_provider.dart';
 import '../widgets/app_drawer.dart';
+import '../providers/main_scaffold_provider.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   final Widget child;
@@ -18,67 +20,91 @@ class MainScreen extends ConsumerStatefulWidget {
 
 class _MainScreenState extends ConsumerState<MainScreen> {
   int _selectedIndex = 0;
+  late final GlobalKey<ScaffoldState> _scaffoldKey;
 
-  List<NavigationItem> _getNavigationItems(bool isAdmin) {
+  @override
+  void initState() {
+    super.initState();
+    _scaffoldKey = GlobalKey<ScaffoldState>();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Registrar el GlobalKey después de que el árbol de widgets termine de construirse
+    // para evitar modificar el provider durante el ciclo de vida del widget
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(mainScaffoldKeyProvider.notifier).setScaffoldKey(_scaffoldKey);
+      }
+    });
+  }
+
+  List<NavigationItem> _getNavigationItems(BuildContext context, bool isAdmin) {
+    final l10n = AppLocalizations.of(context)!;
     if (isAdmin) {
-      // Navegación para Admin - 4 opciones
       return [
         NavigationItem(
           icon: Iconsax.home,
           activeIcon: Iconsax.home_15,
-          label: 'Inicio',
+          label: l10n.homeNavHome,
           route: '/',
         ),
         NavigationItem(
           icon: Iconsax.document_text,
           activeIcon: Iconsax.document_text,
-          label: 'Paquetes',
+          label: l10n.homeNavPackages,
           route: '/admin/pre-alerts',
+        ),
+        NavigationItem(
+          icon: Iconsax.box_tick,
+          activeIcon: Iconsax.box_tick5,
+          label: l10n.homeNavRetrieval,
+          route: '/admin/locker-retrieval',
         ),
         NavigationItem(
           icon: Iconsax.search_normal,
           activeIcon: Iconsax.search_normal_1,
-          label: 'Buscar',
+          label: l10n.homeNavSearch,
           route: '/admin/search',
         ),
         NavigationItem(
           icon: Iconsax.profile_circle,
           activeIcon: Iconsax.profile_circle5,
-          label: 'Perfil',
+          label: l10n.homeNavProfile,
           route: '/profile',
         ),
       ];
     } else {
-      // Navegación para Customer - 5 opciones
       return [
         NavigationItem(
           icon: Iconsax.home,
           activeIcon: Iconsax.home_15,
-          label: 'Inicio',
+          label: l10n.homeNavHome,
           route: '/',
         ),
         NavigationItem(
           icon: Iconsax.printer,
           activeIcon: Iconsax.printer5,
-          label: 'Impresiones',
+          label: l10n.homeNavPrint,
           route: '/print-orders/my-orders',
         ),
         NavigationItem(
           icon: Iconsax.note_add,
           activeIcon: Iconsax.note_add5,
-          label: 'Pre-alertar',
+          label: l10n.homeNavPreAlert,
           route: '/pre-alert',
         ),
         NavigationItem(
           icon: Iconsax.calculator,
           activeIcon: Iconsax.calculator5,
-          label: 'Cotizar',
+          label: l10n.homeNavQuote,
           route: '/quoter',
         ),
         NavigationItem(
           icon: Iconsax.profile_circle,
           activeIcon: Iconsax.profile_circle5,
-          label: 'Perfil',
+          label: l10n.homeNavProfile,
           route: '/profile',
         ),
       ];
@@ -95,46 +121,46 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  void didUpdateWidget(MainScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
     _updateSelectedIndex();
   }
 
   void _updateSelectedIndex() {
     // Usar watch en lugar de read para que se actualice reactivamente
     final isAdmin = ref.watch(isAdminProvider);
-    final items = _getNavigationItems(isAdmin);
+    final items = _getNavigationItems(context, isAdmin);
     final String location = GoRouterState.of(context).uri.toString();
 
     // Lógica mejorada para encontrar el índice activo basado en la ruta
     for (int i = 0; i < items.length; i++) {
       final route = items[i].route;
-      
+
       // Caso especial para home '/' que es match exacto
       if (location == '/' && route == '/') {
         setState(() => _selectedIndex = i);
         return;
       }
-      
+
       // Para rutas que no son '/', verificar si la ubicación comienza con la ruta
       if (route != '/' && location.startsWith(route)) {
         // Para rutas admin, asegurarse de que es el match más específico
         if (isAdmin && route.startsWith('/admin')) {
           // Verificar que no sea una subruta más específica
-          final nextChar = location.length > route.length 
-              ? location[route.length] 
+          final nextChar = location.length > route.length
+              ? location[route.length]
               : null;
           if (nextChar == null || nextChar == '/' || nextChar == '?') {
             setState(() => _selectedIndex = i);
             return;
           }
         } else {
-        setState(() => _selectedIndex = i);
-        return;
-      }
+          setState(() => _selectedIndex = i);
+          return;
+        }
       }
     }
-    
+
     // Si no se encuentra match, mantener el índice actual o poner en 0
     if (_selectedIndex >= items.length) {
       setState(() => _selectedIndex = 0);
@@ -144,20 +170,21 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(isAdminProvider);
-    final items = _getNavigationItems(isAdmin);
-    
+    final items = _getNavigationItems(context, isAdmin);
+
     // Verificar si hay acciones pendientes y el número (solo para usuarios no admin)
-    final hasPendingActions = !isAdmin 
+    final hasPendingActions = !isAdmin
         ? ref.watch(hasPendingActionsProvider)
         : false;
-    final pendingCount = !isAdmin 
-        ? ref.watch(pendingActionsCountProvider)
-        : 0;
-    
+    final pendingCount = !isAdmin ? ref.watch(pendingActionsCountProvider) : 0;
+
     // Encontrar el índice del ítem "Pre-alertar" para agregar el badge
-    final preAlertIndex = items.indexWhere((item) => item.route == '/pre-alert');
+    final preAlertIndex = items.indexWhere(
+      (item) => item.route == '/pre-alert',
+    );
 
     return Scaffold(
+      key: _scaffoldKey,
       body: widget.child,
       drawer: const AppDrawer(),
       // Usamos NavigationBarTheme para personalizar estilos finos
@@ -201,7 +228,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             final index = entry.key;
             final item = entry.value;
             final isPreAlertItem = index == preAlertIndex && hasPendingActions;
-            
+
             return NavigationDestination(
               icon: Stack(
                 clipBehavior: Clip.none,
@@ -212,8 +239,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       right: -4,
                       top: -4,
                       child: Container(
-                        padding: pendingCount > 9 
-                            ? const EdgeInsets.symmetric(horizontal: 4, vertical: 2)
+                        padding: pendingCount > 9
+                            ? const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              )
                             : const EdgeInsets.all(4),
                         decoration: const BoxDecoration(
                           color: Colors.orange,
@@ -253,8 +283,11 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       right: -4,
                       top: -4,
                       child: Container(
-                        padding: pendingCount > 9 
-                            ? const EdgeInsets.symmetric(horizontal: 4, vertical: 2)
+                        padding: pendingCount > 9
+                            ? const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 2,
+                              )
                             : const EdgeInsets.all(4),
                         decoration: const BoxDecoration(
                           color: Colors.orange,

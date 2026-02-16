@@ -1,7 +1,10 @@
 // lib/features/pre_alert/data/models/create_pre_alert_request.dart
 
 class CreatePreAlertRequest {
-  final String trackingNumber;
+  /// Número de factura (obligatorio en formulario). Se envía como invoice_number.
+  final String invoiceNumber;
+  /// Ya no se captura; se envía null para que el backend lo acepte.
+  final String? trackingNumber;
   final String mailboxNumber;
   final String storeId;
   final double totalValue;
@@ -9,7 +12,8 @@ class CreatePreAlertRequest {
   final String? invoiceFilePath;
 
   CreatePreAlertRequest({
-    required this.trackingNumber,
+    required this.invoiceNumber,
+    this.trackingNumber,
     required this.mailboxNumber,
     required this.storeId,
     required this.totalValue,
@@ -19,9 +23,10 @@ class CreatePreAlertRequest {
 
   Map<String, dynamic> toJson() {
     return {
-      'track_number': trackingNumber,
+      'invoice_number': invoiceNumber,
+      'track_number': null,
       'locker_code': mailboxNumber,
-      'provider_id': int.tryParse(storeId) ?? 0, // Convertir a int
+      'provider_id': int.tryParse(storeId) ?? 0,
       'total': totalValue,
       'product_count': products.length,
       'products': products.map((p) => p.toJson()).toList(),
@@ -29,6 +34,7 @@ class CreatePreAlertRequest {
   }
 
   CreatePreAlertRequest copyWith({
+    String? invoiceNumber,
     String? trackingNumber,
     String? mailboxNumber,
     String? storeId,
@@ -37,6 +43,7 @@ class CreatePreAlertRequest {
     String? invoiceFilePath,
   }) {
     return CreatePreAlertRequest(
+      invoiceNumber: invoiceNumber ?? this.invoiceNumber,
       trackingNumber: trackingNumber ?? this.trackingNumber,
       mailboxNumber: mailboxNumber ?? this.mailboxNumber,
       storeId: storeId ?? this.storeId,

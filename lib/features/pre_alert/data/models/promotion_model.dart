@@ -26,7 +26,7 @@ class PromotionModel {
       name: json['name'] as String,
       description: json['description'] as String,
       discountType: json['discount_type'] as String,
-      discountValue: (json['discount_value'] as num).toDouble(),
+      discountValue: (json['discount_value'] as num?)?.toDouble() ?? 0.0,
       appliesTo: json['applies_to'] as String,
       discountLabel: json['discount_label'] as String,
       estimatedDiscount: (json['estimated_discount'] as num).toDouble(),

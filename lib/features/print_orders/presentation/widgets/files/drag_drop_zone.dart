@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:file_picker/file_picker.dart';
@@ -165,7 +166,7 @@ class DragDropZone extends HookWidget {
                 const SizedBox(height: 8),
 
                 Text(
-                  'o haz clic para seleccionar',
+                  AppLocalizations.of(context)!.printOrderOrClickToSelect,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -190,7 +191,7 @@ class DragDropZone extends HookWidget {
                   children: [
                     _InfoBadge(
                       icon: Iconsax.document_text,
-                      label: 'PDF, Word',
+                      label: AppLocalizations.of(context)!.printOrderFormats,
                       colorScheme: colorScheme,
                     ),
                     _InfoBadge(
@@ -200,7 +201,7 @@ class DragDropZone extends HookWidget {
                     ),
                     _InfoBadge(
                       icon: Iconsax.star,
-                      label: 'Hasta ${config.maxFileSizeMB}MB',
+                      label: AppLocalizations.of(context)!.printOrderUpToMB(config.maxFileSizeMB),
                       colorScheme: colorScheme,
                     ),
                   ],

@@ -4,31 +4,46 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:mbe_orders_app/features/auth/presentation/screens/register_screen.dart';
 import '../../../../config/theme/mbe_theme.dart';
 import '../../../../core/design_system/ds_inputs.dart';
 import '../../../../core/design_system/ds_buttons.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../data/models/user_model.dart';
 import '../../providers/auth_provider.dart';
 
 class LoginScreen extends HookConsumerWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  /// Email pre-llenado cuando se llega desde EmailEntryScreen (active_user)
+  final String initialEmail;
+
+  /// true cuando viene del portero con has_web_login: usuario ya tiene cuenta (web), mostrar mensaje
+  final bool showHasAccountMessage;
+
+  const LoginScreen({
+    Key? key,
+    this.initialEmail = '',
+    this.showHasAccountMessage = false,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // final email = useState('mario.carranza996@gmail.com');
-    // final password = useState('Carranza32');
-    final email = useState('admin@admin.com');
-    final password = useState('super1');
+    final l10n = AppLocalizations.of(context)!;
+    final email = useState(initialEmail);
+    final password = useState('');
     final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
 
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
       next.whenData((user) {
         if (user != null) {
+          // Si el email no está verificado, redirigir a verificación
+          if (!user.isEmailVerified) {
+            context.go('/auth/verify-email', extra: user.email);
+            return;
+          }
+
           // Redirigir según el rol del usuario
           final isAdmin = user.isAdmin;
-          context.go(isAdmin ? '/' : '/print-orders/my-orders');
+          context.go(isAdmin ? '/' : '/');
         }
       });
 
@@ -101,7 +116,7 @@ class LoginScreen extends HookConsumerWidget {
                 const SizedBox(height: 40),
 
                 Text(
-                  'Bienvenido de nuevo',
+                  l10n.authWelcomeBack,
                   style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -110,11 +125,47 @@ class LoginScreen extends HookConsumerWidget {
                 const SizedBox(height: 8),
 
                 Text(
-                  'Inicia sesión para continuar',
+                  l10n.authSignInToContinue,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: MBETheme.neutralGray,
                   ),
                 ),
+
+                if (showHasAccountMessage) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF3B82F6).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Color(0xFF3B82F6).withOpacity(0.2),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 20,
+                          color: Color(0xFF3B82F6),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            l10n.authHasAccountMessage,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Color(0xFF475569),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 48),
 
@@ -136,16 +187,17 @@ class LoginScreen extends HookConsumerWidget {
                     child: Column(
                       children: [
                         DSInput.email(
-                          label: 'Correo Electrónico',
+                          label: l10n.authEmail,
                           value: email.value,
                           onChanged: (value) => email.value = value,
                           required: true,
+                          enabled: initialEmail.isEmpty,
                         ),
 
                         const SizedBox(height: 16),
 
                         DSInput.password(
-                          label: 'Contraseña',
+                          label: l10n.authPassword,
                           value: password.value,
                           onChanged: (value) => password.value = value,
                           required: true,
@@ -154,16 +206,16 @@ class LoginScreen extends HookConsumerWidget {
                         const SizedBox(height: 24),
 
                         DSButton.primary(
-                          label: 'Iniciar Sesión',
+                          label: l10n.authSignIn,
                           onPressed: authState.isLoading
                               ? null
                               : () async {
                                   if (email.value.isEmpty ||
                                       password.value.isEmpty) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
+                                      SnackBar(
                                         content: Text(
-                                          'Completa todos los campos',
+                                          l10n.authCompleteAllFields,
                                         ),
                                       ),
                                     );
@@ -187,28 +239,51 @@ class LoginScreen extends HookConsumerWidget {
 
                 const SizedBox(height: 24),
 
-                // Link a registro
+                // Link a recuperar contraseña
                 FadeInUp(
                   delay: const Duration(milliseconds: 400),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        '¿No tienes una cuenta? ',
+                        '${l10n.authForgotPassword} ',
                         style: theme.textTheme.bodyMedium,
                       ),
                       GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const RegisterScreen(),
-                          ),
-                        ),
+                        onTap: () => context.go('/auth/forgot-password'),
                         child: Text(
-                          'Crear cuenta',
+                          l10n.authRecover,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: MBETheme.brandRed,
                             fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Link a activación de cuenta
+                FadeInUp(
+                  delay: const Duration(milliseconds: 500),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${l10n.authNoAccount} ',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      GestureDetector(
+                        onTap: () => context.go('/auth/email-entry'),
+                        child: Text(
+                          l10n.authActivateAccount,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: MBETheme.brandRed,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
                           ),
                         ),
                       ),

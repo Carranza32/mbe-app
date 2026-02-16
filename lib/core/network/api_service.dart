@@ -15,13 +15,13 @@ class ApiService {
   ApiService(this._dio);
 
   /// GET - Obtener datos
-  /// 
+  ///
   /// [endpoint] - El endpoint de la API (ej: '/orders')
   /// [fromJson] - Función para convertir JSON a tu modelo
   /// [queryParameters] - Parámetros de consulta opcionales
-  /// 
+  ///
   /// Retorna directamente el tipo T o lanza ApiException si hay error
-  /// 
+  ///
   /// Ejemplo de uso:
   /// ```dart
   /// final orders = await apiService.get<List<Order>>(
@@ -50,13 +50,13 @@ class ApiService {
   }
 
   /// POST - Crear/enviar datos
-  /// 
+  ///
   /// [endpoint] - El endpoint de la API
   /// [data] - Los datos a enviar
   /// [fromJson] - Función para convertir la respuesta JSON a tu modelo
-  /// 
+  ///
   /// Retorna directamente el tipo T o lanza ApiException si hay error
-  /// 
+  ///
   /// Ejemplo de uso:
   /// ```dart
   /// final newOrder = await apiService.post<Order>(
@@ -88,13 +88,13 @@ class ApiService {
   }
 
   /// PUT - Actualizar datos completos
-  /// 
+  ///
   /// [endpoint] - El endpoint de la API
   /// [data] - Los datos a actualizar
   /// [fromJson] - Función para convertir la respuesta JSON a tu modelo
-  /// 
+  ///
   /// Retorna directamente el tipo T o lanza ApiException si hay error
-  /// 
+  ///
   /// Ejemplo de uso:
   /// ```dart
   /// final updatedOrder = await apiService.put<Order>(
@@ -126,9 +126,9 @@ class ApiService {
   }
 
   /// PATCH - Actualizar datos parciales
-  /// 
+  ///
   /// Similar a PUT pero para actualizaciones parciales
-  /// 
+  ///
   /// Retorna directamente el tipo T o lanza ApiException si hay error
   Future<T> patch<T>({
     required String endpoint,
@@ -153,20 +153,20 @@ class ApiService {
   }
 
   /// DELETE - Eliminar datos
-  /// 
+  ///
   /// [endpoint] - El endpoint de la API
   /// [fromJson] - Función opcional para convertir la respuesta (si el servidor retorna algo)
-  /// 
+  ///
   /// Retorna directamente el tipo T o lanza ApiException si hay error
   /// Por defecto, si T es bool, retorna true si la petición fue exitosa
-  /// 
+  ///
   /// Ejemplo de uso:
   /// ```dart
   /// // Para retornar bool (más común)
   /// await apiService.delete<bool>(
   ///   endpoint: ApiEndpoints.deleteOrder('123'),
   /// );
-  /// 
+  ///
   /// // O si el servidor retorna datos:
   /// final result = await apiService.delete<Order>(
   ///   endpoint: ApiEndpoints.deleteOrder('123'),
@@ -197,9 +197,7 @@ class ApiService {
       }
 
       // Si no hay fromJson y no es bool, lanzar error
-      throw ApiException(
-        message: 'Se requiere fromJson para el tipo $T',
-      );
+      throw ApiException(message: 'Se requiere fromJson para el tipo $T');
     } on DioException catch (e) {
       throw ApiException.fromDioException(e);
     } catch (e) {
@@ -208,50 +206,29 @@ class ApiService {
     }
   }
 
-  /// POST para subir archivos (multipart/form-data)
-  /// 
-  /// [endpoint] - El endpoint de la API
-  /// [files] - Mapa de archivos a subir (nombre del campo -> ruta del archivo)
-  /// [data] - Datos adicionales del formulario
-  /// [fromJson] - Función para convertir la respuesta
-  /// [onProgress] - Callback opcional para seguir el progreso de subida
-  /// 
-  /// Retorna directamente el tipo T o lanza ApiException si hay error
-  /// 
-  /// Ejemplo de uso:
-  /// ```dart
-  /// final order = await apiService.uploadFiles<Order>(
-  ///   endpoint: ApiEndpoints.createOrder,
-  ///   files: {'document': '/path/to/file.pdf'},
-  ///   data: {'name': 'Mi orden', 'quantity': 5},
-  ///   fromJson: (json) => Order.fromJson(json),
-  ///   onProgress: (sent, total) {
-  ///     print('Progreso: ${(sent / total * 100).toStringAsFixed(0)}%');
-  ///   },
-  /// );
-  /// ```
   Future<T> uploadFiles<T>({
     required String endpoint,
     required Map<String, String> files,
     Map<String, dynamic>? data,
     required T Function(dynamic json) fromJson,
     void Function(int, int)? onProgress,
+    Duration? receiveTimeout,
+    Duration? sendTimeout,
   }) async {
     try {
       final formData = FormData();
 
       // Agregar archivos
       for (final entry in files.entries) {
-        formData.files.add(MapEntry(
-          entry.key,
-          await MultipartFile.fromFile(entry.value),
-        ));
+        formData.files.add(
+          MapEntry(entry.key, await MultipartFile.fromFile(entry.value)),
+        );
       }
 
       // Agregar datos aplanados
       if (data != null) {
         final flattened = _flattenMap(data);
-      
+
         // ✅ LOG PARA DEBUG
         print('📤 Datos aplanados:');
         flattened.forEach((key, value) {
@@ -260,16 +237,20 @@ class ApiService {
         });
       }
 
-       // ✅ LOG DE ARCHIVOS
-        print('📎 Archivos:');
-        for (var file in formData.files) {
-          print('  ${file.key}: ${file.value.filename}');
-        }
+      // ✅ LOG DE ARCHIVOS
+      print('📎 Archivos:');
+      for (var file in formData.files) {
+        print('  ${file.key}: ${file.value.filename}');
+      }
 
+      final options = (receiveTimeout != null || sendTimeout != null)
+          ? Options(receiveTimeout: receiveTimeout, sendTimeout: sendTimeout)
+          : null;
       final response = await _dio.post(
         endpoint,
         data: formData,
         onSendProgress: onProgress,
+        options: options,
       );
 
       return _processResponse<T>(response, fromJson);
@@ -281,12 +262,15 @@ class ApiService {
     }
   }
 
-  Map<String, dynamic> _flattenMap(Map<String, dynamic> map, [String prefix = '']) {
+  Map<String, dynamic> _flattenMap(
+    Map<String, dynamic> map, [
+    String prefix = '',
+  ]) {
     final result = <String, dynamic>{};
-    
+
     map.forEach((key, value) {
       final newKey = prefix.isEmpty ? key : '$prefix[$key]';
-      
+
       if (value is Map<String, dynamic>) {
         result.addAll(_flattenMap(value, newKey));
       } else if (value != null) {
@@ -297,16 +281,13 @@ class ApiService {
         }
       }
     });
-    
+
     return result;
   }
 
   /// Procesa la respuesta HTTP y convierte los datos al tipo T
   /// Lanza ApiException si hay algún error
-  T _processResponse<T>(
-    Response response,
-    T Function(dynamic json) fromJson,
-  ) {
+  T _processResponse<T>(Response response, T Function(dynamic json) fromJson) {
     final statusCode = response.statusCode ?? 0;
 
     // Verificar si la respuesta es exitosa (200-299)
@@ -318,7 +299,7 @@ class ApiService {
         // extraer el campo 'data'
         if (response.data is Map<String, dynamic>) {
           final map = response.data as Map<String, dynamic>;
-          
+
           // Si tiene un campo 'data' y no es null, usar ese para la conversión
           if (map.containsKey('data') && map['data'] != null) {
             dataToConvert = map['data'];
@@ -331,9 +312,9 @@ class ApiService {
           }
           // Si no tiene 'data' ni 'result' pero tiene 'user', usar ese
           // PERO solo si no tiene 'token' (para evitar extraer user en login/register)
-          else if (map.containsKey('user') && 
-                   map['user'] != null && 
-                   !map.containsKey('token')) {
+          else if (map.containsKey('user') &&
+              map['user'] != null &&
+              !map.containsKey('token')) {
             dataToConvert = map['user'];
             print('📦 ApiService: Extraído campo "user" de la respuesta');
           }

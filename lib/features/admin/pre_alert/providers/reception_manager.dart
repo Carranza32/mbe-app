@@ -3,6 +3,7 @@ import '../data/models/admin_pre_alert_model.dart';
 import '../data/models/reception_result.dart';
 import '../data/repositories/admin_pre_alerts_repository.dart';
 import 'admin_pre_alerts_provider.dart';
+import 'context_counts_provider.dart' show contextCountsProvider;
 
 part 'reception_manager.g.dart';
 
@@ -35,8 +36,9 @@ class ReceptionManager extends _$ReceptionManager {
         packageIds: packageIds,
       );
 
-      // Invalidar la lista de pre-alerts para refrescar
+      // Invalidar la lista de pre-alerts y los contadores para refrescar
       ref.invalidate(adminPreAlertsProvider);
+      ref.invalidate(contextCountsProvider);
 
       state = const AsyncData(null);
       return result;

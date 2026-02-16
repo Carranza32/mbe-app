@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 
 import '../../../data/constants/print_order_steps.dart';
 import '../../../data/models/step_model.dart';
 
 class MbeStepper extends StatelessWidget {
-  final List<StepModel> steps = PrintOrderSteps.steps;
   final int currentStep;
 
   const MbeStepper({
@@ -18,6 +18,7 @@ class MbeStepper extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final steps = PrintOrderSteps.getSteps(AppLocalizations.of(context)!);
 
     return FadeInDown(
       duration: const Duration(milliseconds: 300),

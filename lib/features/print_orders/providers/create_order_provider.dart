@@ -16,20 +16,24 @@ part 'create_order_provider.g.dart';
 /// Métodos de pago disponibles
 enum PaymentMethod { cash, card, transfer }
 
-/// Información de pago
+/// Información de pago (solo efectivo y transferencia; en transferencia se pide comprobante)
 class PaymentInfo {
   final PaymentMethod method;
   final String? cardNumber;
   final String? cardHolder;
   final String? expiryDate;
   final String? cvv;
+  final String? transferProofPath;
+  final String? transferProofFileName;
 
   PaymentInfo({
-    this.method = PaymentMethod.card,
+    this.method = PaymentMethod.cash,
     this.cardNumber,
     this.cardHolder,
     this.expiryDate,
     this.cvv,
+    this.transferProofPath,
+    this.transferProofFileName,
   });
 
   PaymentInfo copyWith({
@@ -38,6 +42,8 @@ class PaymentInfo {
     String? cardHolder,
     String? expiryDate,
     String? cvv,
+    String? transferProofPath,
+    String? transferProofFileName,
   }) {
     return PaymentInfo(
       method: method ?? this.method,
@@ -45,6 +51,8 @@ class PaymentInfo {
       cardHolder: cardHolder ?? this.cardHolder,
       expiryDate: expiryDate ?? this.expiryDate,
       cvv: cvv ?? this.cvv,
+      transferProofPath: transferProofPath ?? this.transferProofPath,
+      transferProofFileName: transferProofFileName ?? this.transferProofFileName,
     );
   }
 
@@ -61,6 +69,7 @@ class PaymentInfo {
 class PriceBreakdown {
   final double pricePerPage;
   final double printingCost;
+  final double paperTypeCost;
   final double doubleSidedCost;
   final double bindingCost;
   final double printSubtotal;
@@ -77,6 +86,7 @@ class PriceBreakdown {
   PriceBreakdown({
     this.pricePerPage = 0,
     this.printingCost = 0,
+    this.paperTypeCost = 0,
     this.doubleSidedCost = 0,
     this.bindingCost = 0,
     this.printSubtotal = 0,
@@ -94,6 +104,7 @@ class PriceBreakdown {
   PriceBreakdown.zero()
       : pricePerPage = 0,
         printingCost = 0,
+        paperTypeCost = 0,
         doubleSidedCost = 0,
         bindingCost = 0,
         printSubtotal = 0,
@@ -112,6 +123,7 @@ class PriceBreakdown {
 class _PrintPricingResult {
   final double pricePerPage;
   final double printingCost;
+  final double paperTypeCost;
   final double doubleSidedCost;
   final double bindingCost;
   final double subtotal;
@@ -121,6 +133,7 @@ class _PrintPricingResult {
   _PrintPricingResult({
     required this.pricePerPage,
     required this.printingCost,
+    this.paperTypeCost = 0,
     required this.doubleSidedCost,
     required this.bindingCost,
     required this.subtotal,
@@ -131,6 +144,7 @@ class _PrintPricingResult {
   _PrintPricingResult.zero()
       : pricePerPage = 0,
         printingCost = 0,
+        paperTypeCost = 0,
         doubleSidedCost = 0,
         bindingCost = 0,
         subtotal = 0,
@@ -415,10 +429,18 @@ class CreateOrder extends _$CreateOrder {
     state = state.copyWith(request: updatedRequest);
   }
 
-  /// Establecer método de entrega (pickup o delivery)
+  /// Establecer método de entrega (pickup o delivery).
+  /// Si es delivery, no se envía pickupLocation al backend (evita 422).
   void setDeliveryMethod(String method) {
     final currentDelivery = state.request?.deliveryInfo ?? _defaultDeliveryInfo();
-    final updatedDelivery = currentDelivery.copyWith(method: method);
+    final updatedDelivery = method == 'delivery'
+        ? DeliveryInfo(
+            method: 'delivery',
+            address: currentDelivery.address,
+            phone: currentDelivery.phone,
+            notes: currentDelivery.notes,
+          )
+        : currentDelivery.copyWith(method: method);
     updateDeliveryInfo(updatedDelivery);
   }
 
@@ -537,6 +559,16 @@ class CreateOrder extends _$CreateOrder {
     );
   }
 
+  /// Comprobante de transferencia (obligatorio cuando el método es transferencia)
+  void setPaymentTransferProof(String? path, String? fileName) {
+    state = state.copyWith(
+      paymentInfo: state.paymentInfo.copyWith(
+        transferProofPath: path,
+        transferProofFileName: fileName,
+      ),
+    );
+  }
+
   // ====== CÁLCULOS DE PRECIOS (COMPUTED) ======
   
   /// Calcular desglose completo de precios
@@ -561,6 +593,7 @@ class CreateOrder extends _$CreateOrder {
         return PriceBreakdown(
           pricePerPage: printPricing.pricePerPage,
           printingCost: printPricing.printingCost,
+          paperTypeCost: printPricing.paperTypeCost,
           doubleSidedCost: printPricing.doubleSidedCost,
           bindingCost: printPricing.bindingCost,
           printSubtotal: printPricing.subtotal,
@@ -610,35 +643,50 @@ class CreateOrder extends _$CreateOrder {
     // 2. Calcular costo de impresión base
     final printingCost = pricePerPage * totalPages * printConfig.copies;
 
-    // 3. Calcular costo de doble cara
+    // 3. Costo por tipo de papel (config: bond: 0, photo_glossy: 0.1)
+    final paperTypeExtra = _getPaperTypeExtra(config.prices!, printConfig.paperType);
+    final paperTypeCost = paperTypeExtra * totalPages * printConfig.copies;
+
+    // 4. Calcular costo de doble cara
     final doubleSidedCost = printConfig.doubleSided
         ? (config.prices!.doubleSided ?? 0) * totalPages * printConfig.copies
         : 0.0;
 
-    // 4. Calcular costo de engargolado
+    // 5. Calcular costo de engargolado
     final bindingCost = printConfig.binding
         ? _getBindingPrice(config.prices!.binding, totalPages)
         : 0.0;
 
-    // 5. Calcular subtotal
-    final subtotal = printingCost + doubleSidedCost + bindingCost;
+    // 6. Calcular subtotal (incluye tipo de papel)
+    final subtotal = printingCost + paperTypeCost + doubleSidedCost + bindingCost;
 
-    // 6. Calcular IVA
+    // 7. Calcular IVA
     final taxRate = config.tax?.iva ?? 0.13;
     final tax = subtotal * taxRate;
 
-    // 7. Total
+    // 8. Total
     final total = subtotal;
 
     return _PrintPricingResult(
       pricePerPage: pricePerPage,
       printingCost: printingCost,
+      paperTypeCost: paperTypeCost,
       doubleSidedCost: doubleSidedCost,
       bindingCost: bindingCost,
       subtotal: subtotal,
       tax: tax,
       total: total,
     );
+  }
+
+  /// Precio extra por tipo de papel (bond: 0, photo_glossy: valor de config)
+  double _getPaperTypeExtra(Prices prices, String paperType) {
+    final pt = prices.paperType;
+    if (pt == null) return 0.0;
+    if (paperType == 'photo_glossy') {
+      return (pt.photoGlossy ?? 0).toDouble();
+    }
+    return (pt.bond ?? 0).toDouble();
   }
 
   /// Calcular precios de entrega
@@ -735,13 +783,14 @@ class CreateOrder extends _$CreateOrder {
     return bindings.last.price ?? 0.0;
   }
 
-  /// Obtener rango de precios para mostrar en UI
-  String getPriceRange(PaperSize size) {
+  /// Obtener rango de precios para mostrar en UI según tamaño y tipo (bw/color)
+  String getPriceRange(PaperSize size, {required String printType}) {
     final configAsync = ref.read(print_config.printConfigProvider);
-    
+    final isBw = printType == 'bw';
     return configAsync.when(
       data: (configModel) {
-        final prices = configModel.config?.prices?.printing?.bw;
+        final printing = configModel.config?.prices?.printing;
+        final prices = isBw ? printing?.bw : printing?.color;
         if (prices == null) return 'N/A';
 
         List<PaperCutting>? ranges;
@@ -758,12 +807,29 @@ class CreateOrder extends _$CreateOrder {
         }
 
         if (ranges == null || ranges.isEmpty) return 'N/A';
-        
         final minPrice = ranges.first.price ?? 0;
         return 'Desde \$${minPrice.toStringAsFixed(2)}';
       },
       loading: () => '...',
       error: (_, __) => 'N/A',
+    );
+  }
+
+  /// Precio extra del tipo de papel para mostrar en UI (bond / photo_glossy)
+  String getPaperTypePriceLabel(String paperType) {
+    final configAsync = ref.read(print_config.printConfigProvider);
+    return configAsync.when(
+      data: (configModel) {
+        final pt = configModel.config?.prices?.paperType;
+        if (pt == null) return '';
+        final value = paperType == 'photo_glossy'
+            ? (pt.photoGlossy ?? 0).toDouble()
+            : (pt.bond ?? 0).toDouble();
+        if (value <= 0) return paperType == 'bond' ? 'Estándar' : 'Para imágenes';
+        return '+\$${value.toStringAsFixed(2)}';
+      },
+      loading: () => '',
+      error: (_, __) => '',
     );
   }
 

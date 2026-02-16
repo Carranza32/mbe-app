@@ -7,6 +7,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 // --- TUS IMPORTS (Asegúrate que las rutas sean correctas) ---
 import '../../../../../core/design_system/ds_buttons.dart';
 import '../../../../../config/theme/mbe_theme.dart';
+import '../../../../../l10n/app_localizations.dart';
 import '../../data/models/admin_pre_alert_model.dart';
 import '../../data/repositories/admin_pre_alerts_repository.dart';
 import '../../providers/admin_pre_alerts_provider.dart';
@@ -28,7 +29,9 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
   late MobileScannerController _scannerController;
   final TextEditingController _manualInputController = TextEditingController();
   bool _isFlashOn = false;
-  final Map<String, AdminPreAlert> _scannedPackages = {}; // Paquetes escaneados que no están en la lista
+  bool _isProcessingReception = false;
+  final Map<String, AdminPreAlert> _scannedPackages =
+      {}; // Paquetes escaneados que no están en la lista
   String? _expandedPackageId; // ID del paquete expandido actualmente
 
   @override
@@ -48,16 +51,17 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
     super.dispose();
   }
 
-  String _getDynamicTitle() {
+  String _getDynamicTitle(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     switch (widget.mode) {
       case PackageContext.porRecibir:
-        return 'Recepción';
+        return l10n.adminContextReception;
       case PackageContext.enBodega:
-        return 'Ubicación';
+        return l10n.adminContextLocation;
       case PackageContext.paraEntregar:
-        return 'Entrega';
+        return l10n.adminContextDelivery;
       default:
-        return 'Escanear';
+        return l10n.adminContextScan;
     }
   }
 
@@ -82,10 +86,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
     final contextCountsState = ref.watch(contextCountsProvider);
 
     // Combinar paquetes de la lista con paquetes escaneados
-    final allAvailablePackages = [
-      ...allAlerts,
-      ..._scannedPackages.values,
-    ];
+    final allAvailablePackages = [...allAlerts, ..._scannedPackages.values];
 
     // Obtener paquetes seleccionados (de la lista o escaneados)
     final selectedAlerts = allAvailablePackages
@@ -113,91 +114,108 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
           color: Color(0xFFF9F9F9), // Fondo gris muy suave
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
-        child: Column(
+        child: Stack(
           children: [
-            // 1. HEADER LIMPIO
-            _buildElegantHeader(context),
-
-            // 2. CÁMARA (Ahora es independiente y limpia)
-            Expanded(
-              flex: 4,
-              child: Container(
-                width: double.infinity,
-                margin: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: Stack(
-                    children: [
-                      MobileScanner(
-                        controller: _scannerController,
-                        onDetect: (capture) => _handleScanDetection(capture),
-                      ),
-                      // Overlay oscuro sutil
-                      Container(color: Colors.black.withOpacity(0.1)),
-
-                      // Guía visual central
-                      Center(
-                        child: Container(
-                          width: 280,
-                          height: 160,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.8),
-                              width: 1.5,
-                            ),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Iconsax.scan,
-                                color: Colors.white.withOpacity(0.9),
-                                size: 40,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Botón Flash
-                      Positioned(
-                        top: 7,
-                        right: 7,
-                        child: _buildGlassButton(
-                          icon: _isFlashOn
-                              ? Iconsax.flash_1
-                              : Iconsax.flash_slash,
-                          color: _isFlashOn ? Colors.yellow : Colors.white,
-                          onTap: () {
-                            _scannerController.toggleTorch();
-                            setState(() => _isFlashOn = !_isFlashOn);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            Expanded(
-              flex: 5,
-              child: Stack(
-                clipBehavior: Clip
-                    .none, // IMPORTANTE: Permite que el input flote hacia arriba
+            // CONTENIDO SCROLLABLE
+            SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
                 children: [
-                  // CAPA 1: EL CONTENEDOR BLANCO CON LA LISTA
+                  // 1. HEADER LIMPIO
+                  _buildElegantHeader(context),
+
+                  // 2. CÁMARA
+                  Container(
+                    height: 280,
+                    width: double.infinity,
+                    margin: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.12),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(28),
+                      child: Stack(
+                        children: [
+                          MobileScanner(
+                            controller: _scannerController,
+                            onDetect: (capture) =>
+                                _handleScanDetection(capture),
+                          ),
+                          // Overlay oscuro sutil
+                          Container(color: Colors.black.withOpacity(0.1)),
+
+                          // Guía visual central
+                          Center(
+                            child: Container(
+                              width: 280,
+                              height: 160,
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.8),
+                                  width: 1.5,
+                                ),
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Iconsax.scan,
+                                    color: Colors.white.withOpacity(0.9),
+                                    size: 40,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          // Botón Flash
+                          Positioned(
+                            top: 7,
+                            right: 7,
+                            child: _buildGlassButton(
+                              icon: _isFlashOn
+                                  ? Iconsax.flash_1
+                                  : Iconsax.flash_slash,
+                              color: _isFlashOn ? Colors.yellow : Colors.white,
+                              onTap: () {
+                                _scannerController.toggleTorch();
+                                setState(() => _isFlashOn = !_isFlashOn);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // 3. INPUT FLOTANTE (dentro del scroll)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: ScanInputField(
+                      controller: _manualInputController,
+                      onSubmitted: (val) => _processCode(val),
+                      onScanPressed: () {
+                        // Lógica opcional si tocan el botón del scanner manual
+                        if (_manualInputController.text.isNotEmpty) {
+                          _processCode(_manualInputController.text);
+                        }
+                      },
+                      mode: widget.mode,
+                      isLoading: false,
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 4. CONTENEDOR BLANCO CON LA LISTA
                   Container(
                     width: double.infinity,
                     decoration: const BoxDecoration(
@@ -209,22 +227,25 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Padding superior extra (45) para que el texto no choque con el Input
+                        // Padding superior
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(28, 25, 28, 10),
+                          padding: const EdgeInsets.fromLTRB(28, 28, 28, 16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Contador y texto
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    "Listos para procesar",
+                                    AppLocalizations.of(context)!.adminReadyToProcess,
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
-                                      color: MBETheme.neutralGray.withOpacity(0.8),
+                                      color: MBETheme.neutralGray.withOpacity(
+                                        0.8,
+                                      ),
                                       letterSpacing: 0.5,
                                     ),
                                   ),
@@ -258,7 +279,9 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
                                     child: LinearProgressIndicator(
                                       value: progress,
                                       minHeight: 8,
-                                      backgroundColor: Colors.grey.withOpacity(0.2),
+                                      backgroundColor: Colors.grey.withOpacity(
+                                        0.2,
+                                      ),
                                       valueColor: AlwaysStoppedAnimation<Color>(
                                         _getAccentColor(),
                                       ),
@@ -269,7 +292,9 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
                                     "${(progress * 100).toStringAsFixed(0)}% completado",
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: MBETheme.neutralGray.withOpacity(0.6),
+                                      color: MBETheme.neutralGray.withOpacity(
+                                        0.6,
+                                      ),
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -279,89 +304,94 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
                           ),
                         ),
 
-                        Expanded(
-                          child: selectedAlerts.isEmpty
-                              ? _buildEmptyState()
-                              : ListView.builder(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                  ),
-                                  itemCount: selectedAlerts.length,
-                                  itemBuilder: (context, index) {
-                                    final package = selectedAlerts[index];
-                                    return _buildElegantListItem(
-                                      context,
-                                      package,
-                                      () {
-                                        final packageId = package.id;
-                                        // Remover de selección
-                                        ref
-                                            .read(
-                                              packageSelectionProvider.notifier,
-                                            )
-                                            .toggleSelection(packageId);
-                                        // Si estaba en escaneados, removerlo también
-                                        if (_scannedPackages.containsKey(packageId)) {
-                                          setState(() {
-                                            _scannedPackages.remove(packageId);
-                                          });
-                                        }
-                                        // Si estaba expandido, cerrarlo
-                                        if (_expandedPackageId == packageId) {
-                                          setState(() {
-                                            _expandedPackageId = null;
-                                          });
-                                        }
-                                      },
-                                    );
-                                  },
+                        // Lista de paquetes
+                        selectedAlerts.isEmpty
+                            ? SizedBox(height: 200, child: _buildEmptyState(context))
+                            : ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 8,
                                 ),
-                        ),
+                                itemCount: selectedAlerts.length,
+                                itemBuilder: (context, index) {
+                                  final package = selectedAlerts[index];
+                                  return _buildElegantListItem(
+                                    context,
+                                    package,
+                                    () {
+                                      final packageId = package.id;
+                                      // Remover de selección
+                                      ref
+                                          .read(
+                                            packageSelectionProvider.notifier,
+                                          )
+                                          .toggleSelection(packageId);
+                                      // Si estaba en escaneados, removerlo también
+                                      if (_scannedPackages.containsKey(
+                                        packageId,
+                                      )) {
+                                        setState(() {
+                                          _scannedPackages.remove(packageId);
+                                        });
+                                      }
+                                      // Si estaba expandido, cerrarlo
+                                      if (_expandedPackageId == packageId) {
+                                        setState(() {
+                                          _expandedPackageId = null;
+                                        });
+                                      }
+                                    },
+                                  );
+                                },
+                              ),
 
-                        // Botón Footer
-                        SafeArea(
-                          top: false,
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: DSButton.primary(
-                              label: selectedAlerts.isEmpty
-                                  ? 'Cerrar'
-                                  : 'Procesar Recepción (${selectedAlerts.length})',
-                              fullWidth: true,
-                              onPressed: selectedAlerts.isEmpty
-                                  ? () {
-                                      // Solo cerrar, mantener la selección
-                                      Navigator.pop(context);
-                                    }
-                                  : () => _processReception(context, ref, selectedAlerts),
-                            ),
-                          ),
-                        ),
+                        // Espacio inferior para el botón fijo
+                        const SizedBox(height: 100),
                       ],
                     ),
                   ),
-
-                  // CAPA 2: EL INPUT FLOTANTE
-                  // Al estar después en el Stack, se pinta ENCIMA del contenedor blanco.
-                  // 'top: -28' lo sube justo a la mitad del borde.
-                  Positioned(
-                    top: -40,
-                    left: 20,
-                    right: 20,
-                    child: ScanInputField(
-                      controller: _manualInputController,
-                      onSubmitted: (val) => _processCode(val),
-                      onScanPressed: () {
-                        // Lógica opcional si tocan el botón del scanner manual
-                        if (_manualInputController.text.isNotEmpty) {
-                          _processCode(_manualInputController.text);
-                        }
-                      },
-                      mode: widget.mode,
-                      isLoading: false,
-                    ),
-                  ),
                 ],
+              ),
+            ),
+
+            // BOTÓN FIJO EN LA PARTE INFERIOR
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(
+                top: false,
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: DSButton.primary(
+                    label: selectedAlerts.isEmpty
+                        ? AppLocalizations.of(context)!.preAlertClose
+                        : _isProcessingReception
+                        ? AppLocalizations.of(context)!.adminProcessing
+                        : '${AppLocalizations.of(context)!.adminContextReception} (${selectedAlerts.length})',
+                    fullWidth: true,
+                    isLoading: _isProcessingReception,
+                    onPressed: selectedAlerts.isEmpty
+                        ? () {
+                            Navigator.pop(context);
+                          }
+                        : _isProcessingReception
+                        ? null
+                        : () => _processReception(context, ref, selectedAlerts),
+                  ),
+                ),
               ),
             ),
           ],
@@ -378,7 +408,22 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getDynamicTitle(context),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
             InkWell(
               onTap: () => Navigator.pop(context),
               borderRadius: BorderRadius.circular(50),
@@ -390,21 +435,6 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
                 ),
                 child: const Icon(Icons.close, size: 20, color: Colors.black87),
               ),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _getDynamicTitle(),
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -437,7 +467,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
     VoidCallback onRemove,
   ) {
     final isExpanded = _expandedPackageId == package.id;
-    
+
     return Dismissible(
       key: Key(package.id),
       direction: DismissDirection.endToStart,
@@ -478,10 +508,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
               color: Colors.white,
               shape: BoxShape.circle,
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 5,
-                ),
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5),
               ],
             ),
             child: Icon(Iconsax.box, size: 20, color: _getAccentColor()),
@@ -503,9 +530,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
               ),
             ],
           ),
-          children: [
-            _buildExpandedContent(package),
-          ],
+          children: [_buildExpandedContent(context, package)],
         ),
       ),
     );
@@ -520,16 +545,12 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
         // Código del paquete
         Row(
           children: [
-            Icon(
-              Iconsax.code,
-              size: 14,
-              color: _getAccentColor(),
-            ),
+            Icon(Iconsax.code, size: 14, color: _getAccentColor()),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 package.eboxCode.isNotEmpty
-                    ? package.eboxCode
+                    ? package.trackingNumber
                     : package.trackingNumber,
                 style: const TextStyle(
                   fontSize: 15,
@@ -577,7 +598,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
   }
 
   // Contenido cuando está expandido (todos los detalles)
-  Widget _buildExpandedContent(AdminPreAlert package) {
+  Widget _buildExpandedContent(BuildContext context, AdminPreAlert package) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -590,7 +611,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
             Expanded(
               child: _buildInfoChip(
                 icon: Iconsax.shop,
-                label: 'Tienda',
+                label: AppLocalizations.of(context)!.preAlertStoreLabel,
                 value: package.store,
                 color: _getAccentColor(),
               ),
@@ -600,7 +621,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
             Expanded(
               child: _buildInfoChip(
                 icon: Iconsax.box_1,
-                label: 'Productos',
+                label: AppLocalizations.of(context)!.adminProducts,
                 value: '${package.productCount}',
                 color: _getAccentColor(),
               ),
@@ -615,8 +636,9 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
               Expanded(
                 child: _buildInfoChip(
                   icon: Iconsax.weight,
-                  label: 'Peso',
-                  value: '${package.totalWeight!.toStringAsFixed(2)} ${package.weightType ?? ''}',
+                  label: AppLocalizations.of(context)!.adminWeight,
+                  value:
+                      '${package.totalWeight!.toStringAsFixed(2)} ${package.weightType ?? ''}',
                   color: _getAccentColor(),
                 ),
               ),
@@ -624,7 +646,10 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
             // Precio total
             Expanded(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: _getAccentColor().withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -642,7 +667,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Precio Total',
+                          AppLocalizations.of(context)!.adminTotalPrice,
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -674,10 +699,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.grey.withOpacity(0.2),
-                width: 1,
-              ),
+              border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
             ),
             child: Row(
               children: [
@@ -709,10 +731,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.grey.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,7 +767,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -760,7 +779,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
           ),
           const SizedBox(height: 16),
           Text(
-            "Listo para escanear",
+            AppLocalizations.of(context)!.adminReadyToScan,
             style: TextStyle(color: Colors.grey.withOpacity(0.5), fontSize: 16),
           ),
         ],
@@ -786,7 +805,7 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
       // Buscar en la API usando find-by-ebox
       final repository = ref.read(adminPreAlertsRepositoryProvider);
       final package = await repository.findPackageByEbox(code.trim());
-      
+
       // Obtener la lista actual para verificar si el paquete ya está en ella
       final alertsState = ref.read(adminPreAlertsProvider);
       final allAlerts = alertsState.value ?? [];
@@ -841,12 +860,12 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
       }
 
       ref.read(packageSelectionProvider.notifier).toggleSelection(package.id);
-      
+
       // Expandir automáticamente el paquete recién escaneado
       setState(() {
         _expandedPackageId = package.id;
       });
-      
+
       HapticFeedback.mediumImpact();
       _manualInputController.clear();
     } catch (e) {
@@ -873,30 +892,31 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
     List<AdminPreAlert> selectedAlerts,
   ) async {
     if (selectedAlerts.isEmpty) return;
+    if (_isProcessingReception) return;
 
+    setState(() => _isProcessingReception = true);
     final packageIds = selectedAlerts.map((a) => a.id).toList();
-    
+
     try {
       final repository = ref.read(adminPreAlertsRepositoryProvider);
-      final result = await repository.processReception(
-        packageIds: packageIds,
-      );
+      final result = await repository.processReception(packageIds: packageIds);
 
       if (context.mounted) {
         // Limpiar selección solo después de procesar exitosamente
         ref.read(packageSelectionProvider.notifier).clearSelection();
-        
+
         // Limpiar paquetes escaneados
         setState(() {
           _scannedPackages.clear();
         });
-        
-        // Refrescar lista
+
+        // Refrescar lista y contadores
         ref.invalidate(adminPreAlertsProvider);
-        
+        ref.invalidate(contextCountsProvider);
+
         // Cerrar modal
         Navigator.pop(context);
-        
+
         // Mostrar mensaje de éxito
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -927,6 +947,10 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
             duration: const Duration(seconds: 3),
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessingReception = false);
       }
     }
   }

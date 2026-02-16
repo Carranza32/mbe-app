@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
@@ -7,6 +8,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import '../../../providers/create_order_provider.dart';
 import '../../../providers/order_processor_provider.dart';
+import '../../../providers/print_config_provider.dart';
 
 class Step5Payment extends ConsumerWidget {
   const Step5Payment({Key? key}) : super(key: key);
@@ -16,7 +18,7 @@ class Step5Payment extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    // ✅ CAMBIO: Usa el provider centralizado
+    ref.watch(printConfigProvider);
     final orderState = ref.watch(createOrderProvider);
     final orderNotifier = ref.read(createOrderProvider.notifier);
     final processorState = ref.watch(orderProcessorProvider);
@@ -55,7 +57,7 @@ class Step5Payment extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        showCardForm ? 'Realizar Pago' : 'Confirmar Pedido',
+                        showCardForm ? AppLocalizations.of(context)!.printOrderMakePayment : AppLocalizations.of(context)!.printOrderConfirmTitle,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -64,7 +66,7 @@ class Step5Payment extends ConsumerWidget {
                       Row(
                         children: [
                           Text(
-                            'Total: ',
+                            '${AppLocalizations.of(context)!.printOrderTotal}: ',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                             ),
@@ -164,7 +166,7 @@ class Step5Payment extends ConsumerWidget {
                       ),
                       const SizedBox(width: MBESpacing.md),
                       Text(
-                        'Información de Tarjeta',
+                        AppLocalizations.of(context)!.printOrderCardInfo,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -237,7 +239,7 @@ class Step5Payment extends ConsumerWidget {
                   ),
                   const SizedBox(height: MBESpacing.lg),
                   Text(
-                    _getPaymentMessage(paymentInfo.method),
+                    _getPaymentMessage(context, paymentInfo.method),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -245,7 +247,7 @@ class Step5Payment extends ConsumerWidget {
                   ),
                   const SizedBox(height: MBESpacing.sm),
                   Text(
-                    _getPaymentDescription(paymentInfo.method),
+                    _getPaymentDescription(context, paymentInfo.method),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -311,7 +313,7 @@ class Step5Payment extends ConsumerWidget {
                       ),
                       const SizedBox(width: MBESpacing.sm),
                       Text(
-                        _getPaymentMethodName(paymentInfo.method),
+                        _getPaymentMethodName(context, paymentInfo.method),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.white,
                         ),
@@ -381,7 +383,7 @@ class Step5Payment extends ConsumerWidget {
                 const SizedBox(width: MBESpacing.sm),
                 Expanded(
                   child: Text(
-                    'Al continuar, aceptas nuestros términos y condiciones de servicio',
+                    AppLocalizations.of(context)!.printOrderTermsAccept,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -397,36 +399,39 @@ class Step5Payment extends ConsumerWidget {
     );
   }
 
-  String _getPaymentMessage(PaymentMethod method) {
+  String _getPaymentMessage(BuildContext context, PaymentMethod method) {
+    final l10n = AppLocalizations.of(context)!;
     switch (method) {
       case PaymentMethod.cash:
-        return 'Pago en efectivo';
+        return l10n.printOrderCashPayment;
       case PaymentMethod.transfer:
-        return 'Pago por transferencia';
+        return l10n.printOrderTransferPayment;
       case PaymentMethod.card:
-        return 'Pago con tarjeta';
+        return l10n.printOrderCardPayment;
     }
   }
 
-  String _getPaymentDescription(PaymentMethod method) {
+  String _getPaymentDescription(BuildContext context, PaymentMethod method) {
+    final l10n = AppLocalizations.of(context)!;
     switch (method) {
       case PaymentMethod.cash:
-        return 'Pagarás al momento de recibir tu pedido';
+        return l10n.printOrderCashPaymentDesc;
       case PaymentMethod.transfer:
-        return 'Recibirás las instrucciones por correo electrónico';
+        return l10n.printOrderTransferPaymentDesc;
       case PaymentMethod.card:
-        return 'Paga de forma segura con tu tarjeta';
+        return l10n.printOrderCardPaymentDesc;
     }
   }
 
-  String _getPaymentMethodName(PaymentMethod method) {
+  String _getPaymentMethodName(BuildContext context, PaymentMethod method) {
+    final l10n = AppLocalizations.of(context)!;
     switch (method) {
       case PaymentMethod.card:
-        return 'Tarjeta';
+        return l10n.printOrderPaymentCard;
       case PaymentMethod.cash:
-        return 'Efectivo';
+        return l10n.printOrderPaymentCash;
       case PaymentMethod.transfer:
-        return 'Transferencia';
+        return l10n.printOrderPaymentTransfer;
     }
   }
 
@@ -604,8 +609,8 @@ class _CardHolderField extends StatelessWidget {
     return TextFormField(
       initialValue: initialValue,
       decoration: InputDecoration(
-        labelText: 'Nombre del Titular',
-        hintText: 'Como aparece en la tarjeta',
+        labelText: AppLocalizations.of(context)!.printOrderCardHolder,
+        hintText: AppLocalizations.of(context)!.printOrderCardHolderHint,
         prefixIcon: const Icon(Iconsax.user),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(MBERadius.large),
@@ -628,8 +633,8 @@ class _ExpiryDateField extends StatelessWidget {
     return TextFormField(
       initialValue: initialValue,
       decoration: InputDecoration(
-        labelText: 'Vencimiento',
-        hintText: 'MM/AA',
+        labelText: AppLocalizations.of(context)!.printOrderExpiry,
+        hintText: AppLocalizations.of(context)!.printOrderExpiryHint,
         prefixIcon: const Icon(Iconsax.calendar),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(MBERadius.large),

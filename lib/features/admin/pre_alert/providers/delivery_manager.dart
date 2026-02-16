@@ -27,13 +27,15 @@ class DeliveryManager extends _$DeliveryManager {
         deliveredAt: deliveredAt,
       );
 
-      // Invalidar la lista de pre-alerts para refrescar
-      ref.invalidate(adminPreAlertsProvider);
-
-      state = const AsyncData(null);
+      _safeUpdateAfterAsync(() {
+        ref.invalidate(adminPreAlertsProvider);
+        state = const AsyncData(null);
+      });
       return true;
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      _safeUpdateAfterAsync(() {
+        state = AsyncError(e, StackTrace.current);
+      });
       return false;
     }
   }
@@ -54,14 +56,26 @@ class DeliveryManager extends _$DeliveryManager {
         providerTrackingNumber: providerTrackingNumber,
       );
 
-      // Invalidar la lista de pre-alerts para refrescar
-      ref.invalidate(adminPreAlertsProvider);
-
-      state = const AsyncData(null);
+      _safeUpdateAfterAsync(() {
+        ref.invalidate(adminPreAlertsProvider);
+        state = const AsyncData(null);
+      });
       return true;
     } catch (e) {
-      state = AsyncError(e, StackTrace.current);
+      _safeUpdateAfterAsync(() {
+        state = AsyncError(e, StackTrace.current);
+      });
       return false;
+    }
+  }
+
+  /// Evita usar [ref] o [state] después de que el provider fue disposed
+  /// (p. ej. usuario cerró el modal antes de que terminara el request).
+  void _safeUpdateAfterAsync(void Function() action) {
+    try {
+      action();
+    } catch (_) {
+      // Ref/state ya no válidos (provider disposed), ignorar
     }
   }
 }

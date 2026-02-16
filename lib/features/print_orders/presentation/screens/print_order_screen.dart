@@ -1,13 +1,14 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mbe_orders_app/config/theme/mbe_theme.dart';
 import 'package:mbe_orders_app/features/print_orders/providers/stepper_provider.dart';
 
-import '../../../../core/network/dio_provider.dart';
+import '../../../auth/presentation/widgets/verification_pending_modal.dart';
+import '../../../auth/providers/auth_provider.dart';
 import '../../providers/create_order_provider.dart';
 import '../../providers/order_processor_provider.dart';
 import '../widgets/stepper/mbe_stepper.dart';
@@ -25,24 +26,40 @@ class PrintOrderScreen extends HookConsumerWidget {
     final currentStep = ref.watch(currentStepProvider);
     final totalSteps = 5;
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = theme.colorScheme;
     final progress = (currentStep - 1) / (totalSteps - 1);
+    final authState = ref.watch(authProvider);
+    final user = authState.value;
+    final hasShownModal = useState(false);
 
-    final secureStorage = ref.read(secureStorageProvider);
-    final userFuture = useMemoized(() => secureStorage.read(key: 'user'));
-    final userSnapshot = useFuture(userFuture);
-
-    Map<String, dynamic>? userData;
-    if (userSnapshot.hasData && userSnapshot.data != null) {
-      try {
-        userData = jsonDecode(userSnapshot.data!);
-      } catch (e) {
-        print('Error al decodificar usuario: $e');
+    // Verificar si el customer está verificado después del primer frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Evitar mostrar el modal múltiples veces
+      if (hasShownModal.value) return;
+      
+      if (user != null && 
+          !user.isAdmin && 
+          user.customer != null && 
+          user.customer!.verifiedAt == null) {
+        hasShownModal.value = true;
+        // Mostrar modal de verificación pendiente y volver atrás
+        Future.microtask(() {
+          if (context.mounted) {
+            context.pop();
+            showDialog(
+              context: context,
+              builder: (context) => const VerificationPendingModal(),
+            );
+          }
+        });
       }
-    }
+    });
 
-    final name = userData?['name'] ?? 'Usuario';
-    final email = userData?['email'] ?? '';
+    // Datos del usuario logueado (auth) para prellenar información de contacto en paso 4
+    final name = user?.name ?? user?.customer?.name ?? '';
+    final email = user?.email ?? user?.customer?.email ?? '';
+    final phone = user?.customer?.phone ?? user?.customer?.homePhone ?? user?.customer?.officePhone ?? '';
 
     return Scaffold(
       // Background gris claro estilo Grab
@@ -60,13 +77,13 @@ class PrintOrderScreen extends HookConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Crear pedido',
+              l10n.printOrderCreateTitle,
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             Text(
-              'Paso $currentStep de $totalSteps',
+              l10n.preAlertStepOf(currentStep, totalSteps),
               style: theme.textTheme.labelMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -127,7 +144,7 @@ class PrintOrderScreen extends HookConsumerWidget {
                     ),
                   );
                 },
-                child: _buildStepContent(currentStep, ref, name: name, email: email),
+                child: _buildStepContent(currentStep, ref, name: name, email: email, phone: phone),
               ),
             ),
           ),
@@ -158,14 +175,14 @@ class PrintOrderScreen extends HookConsumerWidget {
     );
   }
 
-  Widget _buildStepContent(int step, WidgetRef ref, {String name = '', String email = ''}) {
+  Widget _buildStepContent(int step, WidgetRef ref, {String name = '', String email = '', String phone = ''}) {
     return KeyedSubtree(
       key: ValueKey(step),
-      child: _getStepWidget(step, name, email),
+      child: _getStepWidget(step, name, email, phone),
     );
   }
 
-  Widget _getStepWidget(int step, String name, String email) {
+  Widget _getStepWidget(int step, String name, String email, String phone) {
     switch (step) {
       case 1:
         return const Step1UploadFiles();
@@ -174,7 +191,7 @@ class PrintOrderScreen extends HookConsumerWidget {
       case 3:
         return const Step3DeliveryMethod();
       case 4:
-        return Step4Confirmation(userName: name, userEmail: email);
+        return Step4Confirmation(userName: name, userEmail: email, userPhone: phone);
       case 5:
         return const Step5Payment();
       default:
@@ -183,6 +200,7 @@ class PrintOrderScreen extends HookConsumerWidget {
   }
 
   void _showOptionsMenu(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -207,17 +225,17 @@ class PrintOrderScreen extends HookConsumerWidget {
             const SizedBox(height: MBESpacing.sm),
             ListTile(
               leading: const Icon(Iconsax.save_2),
-              title: const Text('Guardar borrador'),
+              title: Text(l10n.printOrderSaveDraft),
               onTap: () => Navigator.pop(context),
             ),
             ListTile(
               leading: const Icon(Iconsax.refresh),
-              title: const Text('Reiniciar pedido'),
+              title: Text(l10n.printOrderResetOrder),
               onTap: () => Navigator.pop(context),
             ),
             ListTile(
               leading: const Icon(Iconsax.info_circle),
-              title: const Text('Ayuda'),
+              title: Text(l10n.printOrderHelp),
               onTap: () => Navigator.pop(context),
             ),
             const SizedBox(height: MBESpacing.md),
@@ -228,6 +246,7 @@ class PrintOrderScreen extends HookConsumerWidget {
   }
 
   Future<void> _finishOrder(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
     // Mostrar loading
     showDialog(
       context: context,
@@ -260,20 +279,22 @@ class PrintOrderScreen extends HookConsumerWidget {
         final orderId = processorState.orderId ?? '';
         
         showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) {
+          final l10nDialog = AppLocalizations.of(ctx)!;
+          return AlertDialog(
             icon: const Icon(
               Iconsax.tick_circle,
               size: 64,
               color: Color(0xFF10B981),
             ),
-            title: const Text('¡Pedido creado!'),
+            title: Text(l10nDialog.printOrderCreatedSuccess),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Tu pedido ha sido creado exitosamente',
+                Text(
+                  l10nDialog.printOrderCreatedMessage,
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -281,26 +302,25 @@ class PrintOrderScreen extends HookConsumerWidget {
             actions: [
               FilledButton(
                 onPressed: () {
-                  // Limpiar estados
                   ref.read(createOrderProvider.notifier).reset();
                   ref.read(orderProcessorProvider.notifier).reset();
-                  
-                  Navigator.pop(context); // Cerrar dialog
-                  Navigator.pop(context); // Volver a lista
+                  Navigator.pop(ctx);
+                  context.pop();
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: MBETheme.brandBlack,
                 ),
-                child: const Text('Aceptar'),
+                child: Text(l10nDialog.preAlertAccept),
               ),
             ],
-          ),
-        );
+          );
+        },
+      );
       } else {
         final processorState = ref.read(orderProcessorProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(processorState.errorMessage ?? 'Error al crear el pedido'),
+            content: Text(processorState.errorMessage ?? l10n.printOrderCreateError),
             backgroundColor: MBETheme.brandRed,
           ),
         );
@@ -312,7 +332,7 @@ class PrintOrderScreen extends HookConsumerWidget {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error inesperado: $e'),
+          content: Text(l10n.printOrderUnexpectedError(e.toString())),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -336,6 +356,7 @@ class _NavigationButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(MBESpacing.lg),
       decoration: BoxDecoration(
@@ -364,7 +385,7 @@ class _NavigationButtons extends StatelessWidget {
                     ),
                   ),
                   icon: const Icon(Iconsax.arrow_left_2, size: 20),
-                  label: const Text('Atrás'),
+                  label: Text(l10n.preAlertBack),
                 ),
               ),
               const SizedBox(width: MBESpacing.lg),
@@ -391,7 +412,7 @@ class _NavigationButtons extends StatelessWidget {
                   size: 20,
                 ),
                 label: Text(
-                  currentStep < totalSteps ? 'Continuar' : 'Finalizar',
+                  currentStep < totalSteps ? l10n.preAlertContinue : l10n.preAlertFinish,
                 ),
               ),
             ),
