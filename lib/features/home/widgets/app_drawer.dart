@@ -162,14 +162,6 @@ class AppDrawer extends HookConsumerWidget {
                     title: l10n.drawerSectionServices,
                     items: [
                       _DrawerItem(
-                        icon: Iconsax.trend_up,
-                        title: l10n.homeNavTrends,
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/trends');
-                        },
-                      ),
-                      _DrawerItem(
                         icon: Iconsax.note_add,
                         title: l10n.drawerPreAlert,
                         onTap: () {

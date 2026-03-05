@@ -27,7 +27,6 @@ import 'package:mbe_orders_app/features/pre_alert/data/models/pre_alert_model.da
 import 'package:mbe_orders_app/features/print_orders/presentation/screens/my_orders_screen.dart';
 import 'package:mbe_orders_app/features/print_orders/presentation/screens/print_order_screen.dart';
 import 'package:mbe_orders_app/features/quoter/screens/quote_input_screen.dart';
-import 'package:mbe_orders_app/features/trends/presentation/screens/trends_screen.dart';
 import 'package:mbe_orders_app/features/tracking/screens/tracking_screen.dart';
 import 'package:mbe_orders_app/features/admin/pre_alert/presentation/screens/admin_pre_alerts_list_screen.dart';
 import 'package:mbe_orders_app/features/admin/pre_alert/presentation/screens/reception_scan_screen.dart';
@@ -45,10 +44,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   // El redirect lee authProvider al evaluar, eso basta.
   // Si la app se abrió desde un deep link de reset-password, ir ahí de entrada
   final initialUri = ref.watch(initialDeepLinkUriProvider);
-  final initialLocation =
-      (initialUri != null && isResetPasswordUri(initialUri))
-          ? buildResetPasswordRoute(initialUri)
-          : '/splash';
+  final initialLocation = (initialUri != null && isResetPasswordUri(initialUri))
+      ? buildResetPasswordRoute(initialUri)
+      : '/splash';
 
   return GoRouter(
     initialLocation: initialLocation,
@@ -71,19 +69,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           state.matchedLocation == '/auth/otp-verification' ||
           state.matchedLocation == '/auth/create-password';
       final isVerifyEmailRoute = state.matchedLocation == '/auth/verify-email';
-      final isCompleteProfileRoute = state.matchedLocation == '/auth/complete-profile';
-      final isForgotPasswordRoute = state.matchedLocation == '/auth/forgot-password';
-      final isResetPasswordRoute = state.matchedLocation.startsWith('/auth/reset-password');
+      final isCompleteProfileRoute =
+          state.matchedLocation == '/auth/complete-profile';
+      final isForgotPasswordRoute =
+          state.matchedLocation == '/auth/forgot-password';
+      final isResetPasswordRoute = state.matchedLocation.startsWith(
+        '/auth/reset-password',
+      );
 
       // Obtener el estado del authProvider
       // Usar read para obtener el estado actual (el router se reconstruye cuando cambia)
       final authState = ref.read(authProvider);
-      
+
       // Si el estado está cargando, no redirigir (dejar que la splash screen maneje)
       if (authState.isLoading) {
         return null;
       }
-      
+
       // Si hay error, solo redirigir si no estamos en rutas de autenticación/recuperación
       if (authState.hasError) {
         if (!isLoginRoute &&
@@ -95,7 +97,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         }
         return null;
       }
-      
+
       final user = authState.value;
       final isAuthenticated = user != null;
 
@@ -123,7 +125,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // Si est? autenticado pero el email no est? verificado, redirigir a verificaci?n
       // (excepto si ya est? en la pantalla de verificaci?n o completar perfil)
-      if (isAuthenticated && !user.isEmailVerified && !isVerifyEmailRoute && !isCompleteProfileRoute) {
+      if (isAuthenticated &&
+          !user.isEmailVerified &&
+          !isVerifyEmailRoute &&
+          !isCompleteProfileRoute) {
         return '/auth/verify-email';
       }
 
@@ -133,9 +138,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       // Si est? en complete-profile pero el customer ya est? verificado, redirigir al home
-      if (isCompleteProfileRoute && 
-          isAuthenticated && 
-          user.customer != null && 
+      if (isCompleteProfileRoute &&
+          isAuthenticated &&
+          user.customer != null &&
           user.customer!.verifiedAt != null) {
         return '/';
       }
@@ -200,12 +205,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             name: 'quoter',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: QuoteInputScreen()),
-          ),
-          GoRoute(
-            path: '/trends',
-            name: 'trends',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: TrendsScreen()),
           ),
           GoRoute(
             path: '/packages',
@@ -279,7 +278,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             email = extra['email'] as String? ?? '';
             hasWebLogin = extra['hasWebLogin'] as bool? ?? false;
           }
-          return LoginScreen(initialEmail: email, showHasAccountMessage: hasWebLogin);
+          return LoginScreen(
+            initialEmail: email,
+            showHasAccountMessage: hasWebLogin,
+          );
         },
       ),
 
@@ -351,7 +353,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             activationMessage = extra['activationMessage'] as String?;
             initialName = extra['name'] as String?;
           }
-          final initialPhone = extra is Map<String, dynamic> ? extra['phone'] as String? : null;
+          final initialPhone = extra is Map<String, dynamic>
+              ? extra['phone'] as String?
+              : null;
           final fromOtpFlow = extra is Map<String, dynamic>
               ? (extra['fromOtpFlow'] as bool? ?? false)
               : false;
@@ -424,10 +428,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             );
           }
 
-          return ResetPasswordScreen(
-            email: email,
-            token: token,
-          );
+          return ResetPasswordScreen(email: email, token: token);
         },
       ),
 

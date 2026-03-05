@@ -150,14 +150,6 @@ class HomeScreen extends HookConsumerWidget {
                   ),
                   _buildActionCard(
                     context,
-                    title: l10n.homeSearchOffers,
-                    subtitle: l10n.homeSearchOffersSubtitle,
-                    icon: Iconsax.tag,
-                    color: Colors.indigo,
-                    onTap: () => context.push('/trends'),
-                  ),
-                  _buildActionCard(
-                    context,
                     title: l10n.homeNavPrint,
                     subtitle: l10n.homePrintOrdersSubtitle,
                     icon: Iconsax.printer,

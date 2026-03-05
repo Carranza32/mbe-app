@@ -19,7 +19,6 @@ import '../../providers/stores_provider.dart';
 import '../../data/models/create_pre_alert_request.dart';
 import '../../providers/pre_alerts_provider.dart';
 import '../widgets/product_form_item.dart';
-import '../widgets/autocomplete_ai_section.dart';
 
 /// Permite adjuntar la factura manualmente (sin usar IA). Mismo archivo se envía con la pre-alerta.
 Future<void> _pickInvoiceFileManually(
@@ -51,7 +50,9 @@ Future<void> _pickInvoiceFileManually(
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.preAlertErrorSelecting(e.toString())),
+          content: Text(
+            AppLocalizations.of(context)!.preAlertErrorSelecting(e.toString()),
+          ),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -168,17 +169,6 @@ class CreatePreAlertScreen extends HookConsumerWidget {
 
               const SizedBox(height: MBESpacing.xl),
 
-              // Autocompletar con IA (mismo archivo se usa al enviar)
-              AutocompleteAiSection(
-                selectedFile: state.invoiceFile,
-                isAnalyzing: state.isAnalyzingInvoice,
-                error: state.invoiceAnalysisError,
-                onFilePicked: (file) => notifier.analyzeInvoiceAndApply(file),
-                onDismissError: notifier.clearInvoiceAnalysisError,
-              ),
-
-              const SizedBox(height: MBESpacing.xl),
-
               // Formulario Principal (con animación fade al rellenar por IA)
               FadeInUp(
                 duration: const Duration(milliseconds: 400),
@@ -224,7 +214,8 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                       // Factura: desde "Autocompletar con IA" o adjuntar manualmente aquí
                       _InvoiceSummary(
                         file: state.invoiceFile,
-                        onPickFile: () => _pickInvoiceFileManually(context, ref, notifier),
+                        onPickFile: () =>
+                            _pickInvoiceFileManually(context, ref, notifier),
                       ),
 
                       const SizedBox(height: MBESpacing.lg),
@@ -253,47 +244,47 @@ class CreatePreAlertScreen extends HookConsumerWidget {
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              const SizedBox(width: MBESpacing.sm),
-                              // Text(
-                              //   '${state.request?.products.length ?? 0} productos',
-                              //   style: theme.textTheme.bodySmall?.copyWith(
-                              //     color: MBETheme.neutralGray,
-                              //   ),
-                              // ),
-                              Text(
-                                '*',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: MBETheme.brandRed,
+                                const SizedBox(width: MBESpacing.sm),
+                                // Text(
+                                //   '${state.request?.products.length ?? 0} productos',
+                                //   style: theme.textTheme.bodySmall?.copyWith(
+                                //     color: MBETheme.neutralGray,
+                                //   ),
+                                // ),
+                                Text(
+                                  '*',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: MBETheme.brandRed,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
 
-                          // Lista de productos
-                          ...List.generate(
-                            state.request?.products.length ?? 0,
-                            (index) {
-                              final product = state.request!.products[index];
-                              return ProductFormItem(
-                                key: ValueKey('product_$index'),
-                                index: index,
-                                product: product,
-                                onRemove: () => notifier.removeProduct(index),
-                                onProductChanged: (productId, productName) =>
-                                    notifier.setProductName(
-                                      index,
-                                      productId,
-                                      productName,
-                                    ),
-                                onQuantityChanged: (quantity) => notifier
-                                    .setProductQuantity(index, quantity),
-                                onPriceChanged: (price) =>
-                                    notifier.setProductPrice(index, price),
-                              );
-                            },
-                          ),
+                            // Lista de productos
+                            ...List.generate(
+                              state.request?.products.length ?? 0,
+                              (index) {
+                                final product = state.request!.products[index];
+                                return ProductFormItem(
+                                  key: ValueKey('product_$index'),
+                                  index: index,
+                                  product: product,
+                                  onRemove: () => notifier.removeProduct(index),
+                                  onProductChanged: (productId, productName) =>
+                                      notifier.setProductName(
+                                        index,
+                                        productId,
+                                        productName,
+                                      ),
+                                  onQuantityChanged: (quantity) => notifier
+                                      .setProductQuantity(index, quantity),
+                                  onPriceChanged: (price) =>
+                                      notifier.setProductPrice(index, price),
+                                );
+                              },
+                            ),
 
-                          const SizedBox(height: MBESpacing.md),
+                            const SizedBox(height: MBESpacing.md),
 
                             // Botón Agregar Producto
                             OutlinedButton.icon(
@@ -454,85 +445,85 @@ class CreatePreAlertScreen extends HookConsumerWidget {
         builder: (ctx) {
           final l10nDialog = AppLocalizations.of(ctx)!;
           return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(MBERadius.large),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(MBESpacing.xl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Icono animado
-                FadeIn(
-                  duration: const Duration(milliseconds: 500),
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Iconsax.tick_circle,
-                      size: 48,
-                      color: Color(0xFF10B981),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: MBESpacing.lg),
-
-                // Título
-                FadeInUp(
-                  duration: const Duration(milliseconds: 500),
-                  delay: const Duration(milliseconds: 100),
-                  child: Text(
-                    l10nDialog.preAlertCreatedSuccess,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: MBETheme.brandBlack,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: MBESpacing.sm),
-
-                // Mensaje
-                FadeInUp(
-                  duration: const Duration(milliseconds: 500),
-                  delay: const Duration(milliseconds: 200),
-                  child: Text(
-                    l10nDialog.preAlertCreatedMessage,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: MBETheme.neutralGray,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: MBESpacing.xl),
-
-                // Botón
-                FadeInUp(
-                  duration: const Duration(milliseconds: 500),
-                  delay: const Duration(milliseconds: 300),
-                  child: FilledButton(
-                    onPressed: () {
-                      ref.read(createPreAlertProvider.notifier).reset();
-                      Navigator.pop(context); // Cerrar dialog
-                      context.pop(); // Volver a lista usando go_router
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: MBETheme.brandBlack,
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(MBERadius.medium),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(MBERadius.large),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(MBESpacing.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icono animado
+                  FadeIn(
+                    duration: const Duration(milliseconds: 500),
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Iconsax.tick_circle,
+                        size: 48,
+                        color: Color(0xFF10B981),
                       ),
                     ),
-                    child: Text(l10nDialog.preAlertAccept),
                   ),
-                ),
-              ],
+                  const SizedBox(height: MBESpacing.lg),
+
+                  // Título
+                  FadeInUp(
+                    duration: const Duration(milliseconds: 500),
+                    delay: const Duration(milliseconds: 100),
+                    child: Text(
+                      l10nDialog.preAlertCreatedSuccess,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: MBETheme.brandBlack,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: MBESpacing.sm),
+
+                  // Mensaje
+                  FadeInUp(
+                    duration: const Duration(milliseconds: 500),
+                    delay: const Duration(milliseconds: 200),
+                    child: Text(
+                      l10nDialog.preAlertCreatedMessage,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: MBETheme.neutralGray,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: MBESpacing.xl),
+
+                  // Botón
+                  FadeInUp(
+                    duration: const Duration(milliseconds: 500),
+                    delay: const Duration(milliseconds: 300),
+                    child: FilledButton(
+                      onPressed: () {
+                        ref.read(createPreAlertProvider.notifier).reset();
+                        Navigator.pop(context); // Cerrar dialog
+                        context.pop(); // Volver a lista usando go_router
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: MBETheme.brandBlack,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(MBERadius.medium),
+                        ),
+                      ),
+                      child: Text(l10nDialog.preAlertAccept),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
+          );
         },
       );
     } else {
@@ -540,7 +531,7 @@ class CreatePreAlertScreen extends HookConsumerWidget {
       final l10nErr = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-        content: Text(state.error ?? l10nErr.preAlertCreateError),
+          content: Text(state.error ?? l10nErr.preAlertCreateError),
           backgroundColor: MBETheme.brandRed,
         ),
       );
@@ -567,7 +558,8 @@ class _StoreDropdown extends ConsumerWidget {
         final storesAsync = ref.watch(allStoresProvider);
         return storesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Text(l10n.preAlertErrorGeneric(error.toString())),
+          error: (error, stack) =>
+              Text(l10n.preAlertErrorGeneric(error.toString())),
           data: (stores) {
             return DSDropdownSearch<Store>(
               label: l10n.preAlertStoreWhereBought,
@@ -630,9 +622,7 @@ class _InvoiceSummary extends StatelessWidget {
           decoration: BoxDecoration(
             color: MBETheme.lightGray,
             borderRadius: BorderRadius.circular(MBERadius.medium),
-            border: Border.all(
-              color: MBETheme.neutralGray.withOpacity(0.3),
-            ),
+            border: Border.all(color: MBETheme.neutralGray.withOpacity(0.3)),
           ),
           child: file != null
               ? Row(

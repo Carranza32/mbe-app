@@ -5,7 +5,6 @@ import '../../../../core/network/api_service.dart';
 import '../models/pre_alert_model.dart';
 import '../models/create_pre_alert_request.dart';
 import '../models/promotion_model.dart';
-import '../models/invoice_analysis_model.dart';
 import '../models/pre_alert_detail_model.dart';
 import 'dart:convert';
 
@@ -20,29 +19,6 @@ class PreAlertsRepository {
   final ApiService _apiService;
 
   PreAlertsRepository(this._apiService);
-
-  /// Analizar factura/PDF con IA (Gemini). Requiere autenticación.
-  /// El archivo es el mismo que se puede adjuntar al crear la pre-alerta.
-  Future<InvoiceAnalysisResult> analyzeInvoice(
-    File file, {
-    List<Map<String, dynamic>>? productCategories,
-  }) async {
-    final files = <String, String>{'file': file.path};
-    final data = <String, dynamic>{};
-    if (productCategories != null && productCategories.isNotEmpty) {
-      data['product_categories'] = jsonEncode(productCategories);
-    }
-    // El análisis con IA (Gemini) puede tardar 15-60+ segundos
-    return _apiService.uploadFiles<InvoiceAnalysisResult>(
-      endpoint: ApiEndpoints.analyzeInvoice,
-      files: files,
-      data: data.isEmpty ? null : data,
-      fromJson: (json) =>
-          InvoiceAnalysisResult.fromJson(json as Map<String, dynamic>),
-      receiveTimeout: const Duration(seconds: 120),
-      sendTimeout: const Duration(seconds: 60),
-    );
-  }
 
   Future<PreAlertsResponse> getPreAlerts({int? page, int? perPage}) async {
     final queryParams = <String, dynamic>{};

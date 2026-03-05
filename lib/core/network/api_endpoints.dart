@@ -31,6 +31,7 @@ class ApiEndpoints {
   static String updateOrder(String id) => '/orders/$id';
   static String deleteOrder(String id) => '/orders/$id';
   static String orderStatus(String id) => '/orders/$id/status';
+
   /// Iniciar pago con tarjeta (CyberSource) para una orden de impresión ya creada.
   static String initiatePrintOrderPayment(String orderId) =>
       '/print-orders/$orderId/payment';
@@ -38,7 +39,6 @@ class ApiEndpoints {
   // Pre-alerts endpoints (customer)
   static const String preAlerts = '/pre-alerts';
   static const String createPreAlert = '/pre-alerts';
-  static const String analyzeInvoice = '/pre-alerts/analyze-invoice';
   static String preAlertById(String id) => '/pre-alerts/$id';
   static String completePreAlertInfo(String id) =>
       '/pre-alerts/$id/complete-info';
@@ -154,11 +154,9 @@ class ApiEndpoints {
 
   /// Estados/departamentos Boxful (incluye Cities) para completar información - método casillero
   static const String boxfulStates = '/boxful/states';
+
   /// Casilleros Boxful por ciudad (city_id = boxful_city_id de MongoDB)
   static const String boxfulLockers = '/boxful/lockers';
-
-  // Trends (productos en tendencia - no requiere auth)
-  static const String trends = '/trends';
 
   // Puedes agregar más endpoints según necesites
   static const String products = '/products';
