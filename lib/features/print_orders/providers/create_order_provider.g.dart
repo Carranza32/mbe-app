@@ -41,7 +41,7 @@ final class CreateOrderProvider
   }
 }
 
-String _$createOrderHash() => r'aa767a37db031beaa3114bf53ef81dab091e5b31';
+String _$createOrderHash() => r'03037f4d21f173531bb7a61f3df962f9a0adc851';
 
 abstract class _$CreateOrder extends $Notifier<CreateOrderState> {
   CreateOrderState build();

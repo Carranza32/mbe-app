@@ -56,9 +56,10 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
     switch (widget.mode) {
       case PackageContext.porRecibir:
         return l10n.adminContextReception;
-      case PackageContext.enBodega:
+      case PackageContext.disponibles:
         return l10n.adminContextLocation;
-      case PackageContext.paraEntregar:
+      case PackageContext.solicitudEnvio:
+      case PackageContext.confirmacionesDeEnvio:
         return l10n.adminContextDelivery;
       default:
         return l10n.adminContextScan;
@@ -69,9 +70,10 @@ class _ScanPackagesModalState extends ConsumerState<ScanPackagesModal> {
     switch (widget.mode) {
       case PackageContext.porRecibir:
         return Colors.blue;
-      case PackageContext.enBodega:
+      case PackageContext.disponibles:
         return Colors.amber;
-      case PackageContext.paraEntregar:
+      case PackageContext.solicitudEnvio:
+      case PackageContext.confirmacionesDeEnvio:
         return Colors.green;
       default:
         return MBETheme.brandBlack;

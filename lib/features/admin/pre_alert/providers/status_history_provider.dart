@@ -10,11 +10,6 @@ Future<List<StatusHistoryItem>> statusHistory(
   String packageId,
 ) async {
   final repository = ref.read(adminPreAlertsRepositoryProvider);
-  try {
-    return await repository.getStatusHistory(packageId);
-  } catch (e) {
-    // Si hay error, retornar lista vacía
-    return [];
-  }
+  return await repository.getStatusHistory(packageId);
 }
 

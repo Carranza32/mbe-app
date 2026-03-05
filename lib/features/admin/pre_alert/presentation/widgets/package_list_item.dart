@@ -9,6 +9,13 @@ import '../../data/models/package_status.dart';
 import '../../providers/package_selection_provider.dart';
 import '../widgets/context_filter_segmented.dart';
 
+/// Muestra locker_code si existe; si no, clientName (evita N/A cuando hay casillero)
+String _clientOrLockerDisplay(AdminPreAlert package) {
+  final locker = package.lockerCode?.trim();
+  if (locker != null && locker.isNotEmpty) return locker;
+  return package.clientName;
+}
+
 class PackageListItem extends ConsumerWidget {
   final AdminPreAlert package;
   final VoidCallback? onTap;
@@ -17,6 +24,14 @@ class PackageListItem extends ConsumerWidget {
   /// Si false, no se muestra checkbox ni estado de selección (p. ej. en listas Por Recibir / Para Entregar).
   final bool showSelectionCheckbox;
 
+  /// Cuando no null, fuerza el estado de selección y el borde (sin checkbox). Útil en pantallas de escaneo.
+  final bool? isSelectedOverride;
+  /// Color del borde cuando está seleccionado (p. ej. rojo). Si null y isSelectedOverride true, usa brandBlack.
+  final Color? selectedBorderColor;
+
+  /// Si se provee, se muestra un botón "Completar información" (p. ej. en tab Disponibles).
+  final VoidCallback? onCompleteDeliveryInfo;
+
   const PackageListItem({
     super.key,
     required this.package,
@@ -24,25 +39,35 @@ class PackageListItem extends ConsumerWidget {
     this.context,
     this.showLocation = false,
     this.showSelectionCheckbox = false,
+    this.isSelectedOverride,
+    this.selectedBorderColor,
+    this.onCompleteDeliveryInfo,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final hasContext = this.context != null;
-    final showCheckbox = hasContext && showSelectionCheckbox;
-    final isSelected = showCheckbox
-        ? ref.watch(
-            packageSelectionProvider.select(
-              (state) => state.contains(package.id),
-            ),
-          )
-        : false;
+    final useOverride = isSelectedOverride != null;
+    final showCheckbox = hasContext && showSelectionCheckbox && !useOverride;
+    final isSelected = useOverride
+        ? isSelectedOverride!
+        : (showCheckbox
+            ? ref.watch(
+                packageSelectionProvider.select(
+                  (state) => state.contains(package.id),
+                ),
+              )
+            : false);
     final selectionNotifier = ref.read(packageSelectionProvider.notifier);
+    final borderColor = isSelected
+        ? (selectedBorderColor ?? MBETheme.brandBlack)
+        : Colors.transparent;
 
-    // Formateador de fecha (Asumiendo que tienes un campo date o createdAt)
-    // Si tu modelo no tiene fecha, usa DateTime.now() como placeholder o agrégalo al modelo.
-    final dateStr = DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now());
+    // Formateador de fecha
+    final dateStr = DateFormat('dd MMM yyyy, HH:mm').format(package.createdAt);
+
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return GestureDetector(
       onTap: onTap,
@@ -53,15 +78,15 @@ class PackageListItem extends ConsumerWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: (showCheckbox && isSelected) ? MBETheme.brandBlack : Colors.transparent,
-            width: (showCheckbox && isSelected) ? 2 : 1,
+            color: borderColor,
+            width: isSelected ? 2 : 1,
           ),
           boxShadow: MBETheme.shadowMd,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. CHECKBOX (solo si showSelectionCheckbox está activo; no en listas Por Recibir / Para Entregar)
+            // 1. CHECKBOX (solo si showSelectionCheckbox y no useOverride)
             if (showCheckbox)
               Padding(
                 padding: const EdgeInsets.only(top: 2),
@@ -162,11 +187,18 @@ class PackageListItem extends ConsumerWidget {
                         color: MBETheme.neutralGray,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        package.eboxCode,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: MBETheme.brandBlack,
+                      Container(
+                        constraints: BoxConstraints(
+                          maxWidth: screenWidth * 0.4,
+                        ),
+                        child: Text(
+                          package.eboxCode,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: MBETheme.brandBlack,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Padding(
@@ -184,7 +216,7 @@ class PackageListItem extends ConsumerWidget {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          package.clientName,
+                          _clientOrLockerDisplay(package),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: MBETheme.neutralGray,
                           ),
@@ -205,9 +237,28 @@ class PackageListItem extends ConsumerWidget {
                     children: [
                       _buildPriceAndDate(theme, dateStr),
                       // Si está en bodega, mostrar rack y segmento debajo de la fecha
-                      if (this.context == PackageContext.enBodega || showLocation) ...[
+                      if (this.context == PackageContext.disponibles ||
+                          showLocation) ...[
                         const SizedBox(height: 8),
                         _buildRackSegmentInfo(theme),
+                      ],
+                      // Botón "Completar información" solo en tab Disponibles
+                      if (onCompleteDeliveryInfo != null) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: onCompleteDeliveryInfo,
+                            icon: const Icon(Iconsax.edit_2, size: 18),
+                            label: const Text('Completar información'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: MBETheme.brandBlack,
+                              side: const BorderSide(
+                                color: MBETheme.brandBlack,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -260,10 +311,11 @@ class PackageListItem extends ConsumerWidget {
   Widget _buildRackSegmentInfo(ThemeData theme) {
     final rack = package.rackNumber ?? 'N/A';
     final segment = package.segmentNumber ?? 'N/A';
-    final hasLocation = package.rackNumber != null && 
-                        package.rackNumber!.isNotEmpty &&
-                        package.segmentNumber != null && 
-                        package.segmentNumber!.isNotEmpty;
+    final hasLocation =
+        package.rackNumber != null &&
+        package.rackNumber!.isNotEmpty &&
+        package.segmentNumber != null &&
+        package.segmentNumber!.isNotEmpty;
 
     return Row(
       children: [
@@ -289,10 +341,7 @@ class PackageListItem extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Text(
-          '•',
-          style: TextStyle(color: MBETheme.neutralGray),
-        ),
+        Text('•', style: TextStyle(color: MBETheme.neutralGray)),
         const SizedBox(width: 12),
         Text(
           'Segmento: ',
@@ -323,12 +372,11 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     // Mapeo de estados a badges según el color del backend
     switch (status) {
-      // Estados que requieren acción (warning/info)
-      case PackageStatus.ingresada:
+      case PackageStatus.enTransito:
         return DSBadge.info(label: status.label);
-      case PackageStatus.listaParaRecibir:
+      case PackageStatus.listaParaRecepcionar:
         return DSBadge.custom(label: status.label, color: MBETheme.brandBlack);
-      case PackageStatus.enTienda:
+      case PackageStatus.disponibleParaRetiro:
         return DSBadge.warning(label: status.label);
       case PackageStatus.solicitudRecoleccion:
         return DSBadge.info(label: status.label);
@@ -336,15 +384,9 @@ class _StatusBadge extends StatelessWidget {
         return DSBadge.success(label: status.label);
       case PackageStatus.enRuta:
         return DSBadge.warning(label: status.label);
-      case PackageStatus.entregada:
+      case PackageStatus.entregado:
         return DSBadge.success(label: status.label);
-      case PackageStatus.retornada:
-        return DSBadge.error(label: status.label);
-      case PackageStatus.listaRetiro:
-        return DSBadge.info(label: status.label);
-      case PackageStatus.completada:
-        return DSBadge.success(label: status.label);
-      case PackageStatus.cancelada:
+      case PackageStatus.cancelado:
         return DSBadge.error(label: status.label);
     }
   }

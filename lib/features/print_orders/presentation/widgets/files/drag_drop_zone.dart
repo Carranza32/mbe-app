@@ -153,8 +153,8 @@ class DragDropZone extends HookWidget {
                 // Título
                 Text(
                   isDragging.value
-                      ? '¡Suelta tus archivos aquí!'
-                      : 'Arrastra tus archivos',
+                      ? AppLocalizations.of(context)!.printOrderDropFilesHere
+                      : AppLocalizations.of(context)!.printOrderDragFiles,
                   style: theme.textTheme.titleLarge?.copyWith(
                     color: isDragging.value
                         ? colorScheme.onSurface
@@ -178,7 +178,7 @@ class DragDropZone extends HookWidget {
                 FilledButton.icon(
                   onPressed: pickFiles,
                   icon: const Icon(Iconsax.document_text),
-                  label: const Text('Seleccionar archivos'),
+                  label: Text(AppLocalizations.of(context)!.printOrderSelectFiles),
                 ),
 
                 const SizedBox(height: 24),
@@ -196,7 +196,7 @@ class DragDropZone extends HookWidget {
                     ),
                     _InfoBadge(
                       icon: Iconsax.gallery,
-                      label: 'Imágenes',
+                      label: AppLocalizations.of(context)!.printOrderImages,
                       colorScheme: colorScheme,
                     ),
                     _InfoBadge(

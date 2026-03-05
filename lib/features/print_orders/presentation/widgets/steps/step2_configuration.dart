@@ -113,7 +113,7 @@ class Step2Configuration extends HookConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Configurar Impresión',
+                        AppLocalizations.of(context)!.printOrderConfigurePrint,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -140,12 +140,12 @@ class Step2Configuration extends HookConsumerWidget {
           duration: const Duration(milliseconds: 400),
           delay: const Duration(milliseconds: 100),
           child: _SectionCard(
-            title: 'Tipo de Impresión',
+            title: AppLocalizations.of(context)!.printOrderPrintType,
             child: Row(
               children: [
                 Expanded(
                   child: _ToggleButton(
-                    label: 'Blanco y Negro',
+                    label: AppLocalizations.of(context)!.printOrderBwLabel,
                     icon: Iconsax.document_text,
                     isSelected: printType == PrintType.blackWhite,
                     onTap: () {
@@ -228,12 +228,12 @@ class Step2Configuration extends HookConsumerWidget {
           duration: const Duration(milliseconds: 400),
           delay: const Duration(milliseconds: 300),
           child: _SectionCard(
-            title: 'Orientación',
+            title: AppLocalizations.of(context)!.printOrderOrientationLabel,
             child: Row(
               children: [
                 Expanded(
                   child: _ToggleButton(
-                    label: 'Vertical',
+                    label: AppLocalizations.of(context)!.printOrderOrientationPortrait,
                     icon: Iconsax.menu,
                     isSelected: orientation == Orientation.vertical,
                     onTap: () {
@@ -288,7 +288,7 @@ class Step2Configuration extends HookConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Opciones Adicionales',
+                  AppLocalizations.of(context)!.printOrderAdditionalOptions,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -621,15 +621,15 @@ class _PaperTypeSelector extends ConsumerWidget {
           value: PaperType.bond,
           groupValue: value,
           onChanged: onChanged,
-          label: 'Papel Bond',
-          description: bondLabel.isNotEmpty ? bondLabel : 'Estándar',
+          label: AppLocalizations.of(context)!.printOrderBondPaper,
+          description: bondLabel.isNotEmpty ? bondLabel : AppLocalizations.of(context)!.printOrderStandard,
         ),
         _RadioOption<PaperType>(
           value: PaperType.glossy,
           groupValue: value,
           onChanged: onChanged,
-          label: 'Papel Brillante',
-          description: glossyLabel.isNotEmpty ? glossyLabel : 'Para imágenes',
+          label: AppLocalizations.of(context)!.printOrderGlossyPaper,
+          description: glossyLabel.isNotEmpty ? glossyLabel : AppLocalizations.of(context)!.printOrderForImages,
         ),
       ],
     );

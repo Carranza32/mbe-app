@@ -146,8 +146,13 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
                 child: TextField(
                   controller: _manualInputController,
                   decoration: InputDecoration(
-                    hintText: AppLocalizations.of(context)!.adminEnterEboxManually,
-                    prefixIcon: const Icon(Iconsax.barcode, color: MBETheme.brandBlack),
+                    hintText: AppLocalizations.of(
+                      context,
+                    )!.adminEnterEboxManually,
+                    prefixIcon: const Icon(
+                      Iconsax.barcode,
+                      color: MBETheme.brandBlack,
+                    ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -257,10 +262,7 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
               children: [
                 Text(
                   AppLocalizations.of(context)!.adminPackagesScanned,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: MBETheme.neutralGray,
-                  ),
+                  style: TextStyle(fontSize: 14, color: MBETheme.neutralGray),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -282,11 +284,7 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
             ),
             child: Row(
               children: [
-                Icon(
-                  Iconsax.tick_circle,
-                  color: MBETheme.brandBlack,
-                  size: 20,
-                ),
+                Icon(Iconsax.tick_circle, color: MBETheme.brandBlack, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   AppLocalizations.of(context)!.adminReadyToReceive,
@@ -345,7 +343,7 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
     }
 
     // Verificar que el paquete esté en un estado válido para recepción
-    if (package.status != PackageStatus.listaParaRecibir) {
+    if (package.status != PackageStatus.listaParaRecepcionar) {
       HapticFeedback.vibrate();
       _showSnackBar(
         'El paquete no está listo para recibir. Estado: ${package.status.label}',
@@ -361,7 +359,10 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
     });
 
     HapticFeedback.mediumImpact();
-    _showSnackBar('Paquete escaneado: ${package.trackingNumber}', isError: false);
+    _showSnackBar(
+      'Paquete escaneado: ${package.trackingNumber}',
+      isError: false,
+    );
   }
 
   Future<void> _finalizeReception() async {
@@ -403,7 +404,10 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
         _showSuccessDialog(result);
       } else {
         if (mounted) {
-          _showSnackBar(AppLocalizations.of(context)!.adminReceptionProcessError, isError: true);
+          _showSnackBar(
+            AppLocalizations.of(context)!.adminReceptionProcessError,
+            isError: true,
+          );
         }
       }
     } catch (e) {
@@ -441,13 +445,10 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
               const SizedBox(height: 8),
               Text(
                 '${result.failedCount} paquete(s) fallaron.',
-                style: TextStyle(
-                  color: MBETheme.brandRed,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: MBETheme.brandRed, fontSize: 14),
               ),
             ],
-            if (result.packages.isNotEmpty && 
+            if (result.packages.isNotEmpty &&
                 result.packages.first.rackNumber != null) ...[
               const SizedBox(height: 16),
               Container(
@@ -481,11 +482,11 @@ class _ReceptionScanScreenState extends ConsumerState<ReceptionScanScreen> {
             fullWidth: true,
             onPressed: () {
               Navigator.of(context).pop(); // Cerrar diálogo
-              
+
               // Invalidar providers para recargar la lista y los contadores
               ref.invalidate(adminPreAlertsProvider);
               ref.invalidate(contextCountsProvider);
-              
+
               Navigator.of(context).pop(); // Volver a la lista
             },
           ),
@@ -510,10 +511,7 @@ class _ScannedPackageCard extends StatelessWidget {
   final AdminPreAlert package;
   final VoidCallback onRemove;
 
-  const _ScannedPackageCard({
-    required this.package,
-    required this.onRemove,
-  });
+  const _ScannedPackageCard({required this.package, required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -564,10 +562,7 @@ class _ScannedPackageCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Ebox: ${package.eboxCode}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: MBETheme.neutralGray,
-                    ),
+                    style: TextStyle(fontSize: 12, color: MBETheme.neutralGray),
                   ),
                 ],
               ],
@@ -575,10 +570,7 @@ class _ScannedPackageCard extends StatelessWidget {
           ),
           // Botón eliminar
           IconButton(
-            icon: const Icon(
-              Icons.delete_outline,
-              color: MBETheme.brandRed,
-            ),
+            icon: const Icon(Icons.delete_outline, color: MBETheme.brandRed),
             onPressed: onRemove,
           ),
         ],
@@ -586,4 +578,3 @@ class _ScannedPackageCard extends StatelessWidget {
     );
   }
 }
-

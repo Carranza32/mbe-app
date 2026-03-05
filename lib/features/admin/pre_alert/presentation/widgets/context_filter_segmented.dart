@@ -2,22 +2,74 @@ import 'package:flutter/material.dart';
 import '../../../../../config/theme/mbe_theme.dart';
 import 'package:iconsax/iconsax.dart';
 
-/// Filtros de contexto principales para la Super Lista
+/// Filtros de contexto para la Super Lista (menú horizontal con scroll).
 enum PackageContext {
-  porRecibir, // Pre-alertados / En Tránsito
-  enBodega, // Recibidos / En Tienda
-  paraEntregar, // Listos para retiro
+  porRecibir,
+  disponibles,
+  solicitudEnvio, // Con sub-tabs: Domicilio | Casillero
+  confirmacionesDeEnvio,
+  enCamino,
+  entregado,
+}
+
+/// Sub-tabs Domicilio | Casillero para solicitudEnvio, confirmacionesDeEnvio, enCamino
+enum DeliveryMethodSubContext {
+  domicilio, // delivery_method=delivery
+  casillero, // delivery_method=locker
+}
+
+extension DeliveryMethodSubContextExtension on DeliveryMethodSubContext {
+  String get label {
+    switch (this) {
+      case DeliveryMethodSubContext.domicilio:
+        return 'Domicilio';
+      case DeliveryMethodSubContext.casillero:
+        return 'Casillero';
+    }
+  }
+
+  String get deliveryMethod {
+    switch (this) {
+      case DeliveryMethodSubContext.domicilio:
+        return 'delivery';
+      case DeliveryMethodSubContext.casillero:
+        return 'locker';
+    }
+  }
 }
 
 extension PackageContextExtension on PackageContext {
   String get label {
     switch (this) {
       case PackageContext.porRecibir:
-        return 'Por Recibir';
-      case PackageContext.enBodega:
-        return 'En Bodega';
-      case PackageContext.paraEntregar:
-        return 'Para Entregar';
+        return 'Por recibir';
+      case PackageContext.disponibles:
+        return 'Disponibles';
+      case PackageContext.solicitudEnvio:
+        return 'Solicitud envío';
+      case PackageContext.confirmacionesDeEnvio:
+        return 'Confirmaciones de envío';
+      case PackageContext.enCamino:
+        return 'En camino';
+      case PackageContext.entregado:
+        return 'Entregado';
+    }
+  }
+
+  String get shortLabel {
+    switch (this) {
+      case PackageContext.porRecibir:
+        return 'Por recibir';
+      case PackageContext.disponibles:
+        return 'Disponibles';
+      case PackageContext.solicitudEnvio:
+        return 'Sol. envío';
+      case PackageContext.confirmacionesDeEnvio:
+        return 'Conf. envío';
+      case PackageContext.enCamino:
+        return 'En camino';
+      case PackageContext.entregado:
+        return 'Entregado';
     }
   }
 
@@ -25,23 +77,38 @@ extension PackageContextExtension on PackageContext {
     switch (this) {
       case PackageContext.porRecibir:
         return Iconsax.box_tick;
-      case PackageContext.enBodega:
+      case PackageContext.disponibles:
         return Iconsax.box;
-      case PackageContext.paraEntregar:
+      case PackageContext.solicitudEnvio:
+        return Iconsax.document_text;
+      case PackageContext.confirmacionesDeEnvio:
         return Iconsax.truck_fast;
+      case PackageContext.enCamino:
+        return Iconsax.truck;
+      case PackageContext.entregado:
+        return Iconsax.tick_circle;
     }
   }
 
-  String get description {
+  String get statusFilter {
     switch (this) {
       case PackageContext.porRecibir:
-        return 'Paquetes por recibir';
-      case PackageContext.enBodega:
-        return 'Recibidos / En tienda';
-      case PackageContext.paraEntregar:
-        return 'Listos para retiro';
+        return 'lista_para_recepcionar';
+      case PackageContext.disponibles:
+        return 'disponible_para_retiro';
+      case PackageContext.solicitudEnvio:
+        return 'solicitud_recoleccion';
+      case PackageContext.confirmacionesDeEnvio:
+        return 'confirmada_recoleccion';
+      case PackageContext.enCamino:
+        return 'en_ruta';
+      case PackageContext.entregado:
+        return 'entregado';
     }
   }
+
+  /// delivery_method solo para solicitudEnvio (se usa con solicitudEnvioSub)
+  String? get deliveryMethodFilter => null;
 }
 
 class ContextFilterSegmented extends StatelessWidget {
@@ -49,17 +116,32 @@ class ContextFilterSegmented extends StatelessWidget {
   final Function(PackageContext) onContextChanged;
   final Map<PackageContext, int>? counts;
 
+  /// Sub-pills Domicilio | Casillero para solicitudEnvio, confirmacionesDeEnvio, enCamino
+  final DeliveryMethodSubContext? selectedSubContext;
+  final Function(DeliveryMethodSubContext)? onSubContextChanged;
+  final Map<DeliveryMethodSubContext, int>? subCounts;
+
   const ContextFilterSegmented({
     super.key,
     required this.selectedContext,
     required this.onContextChanged,
     this.counts,
+    this.selectedSubContext,
+    this.onSubContextChanged,
+    this.subCounts,
   });
+
+  /// True si el contexto actual tiene sub-pills
+  static bool hasSubPills(PackageContext context) {
+    return context == PackageContext.solicitudEnvio ||
+        context == PackageContext.confirmacionesDeEnvio ||
+        context == PackageContext.enCamino;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -73,75 +155,62 @@ class ContextFilterSegmented extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Segmented Control
-          Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.start, // Asegura alineación superior
-            children: [
-              Expanded(
-                child: _ContextButton(
-                  context: PackageContext.porRecibir,
-                  isSelected: selectedContext == PackageContext.porRecibir,
-                  count: counts?[PackageContext.porRecibir],
-                  onTap: () => onContextChanged(PackageContext.porRecibir),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ContextButton(
-                  context: PackageContext.enBodega,
-                  isSelected: selectedContext == PackageContext.enBodega,
-                  count: counts?[PackageContext.enBodega],
-                  onTap: () => onContextChanged(PackageContext.enBodega),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ContextButton(
-                  context: PackageContext.paraEntregar,
-                  isSelected: selectedContext == PackageContext.paraEntregar,
-                  count: counts?[PackageContext.paraEntregar],
-                  onTap: () => onContextChanged(PackageContext.paraEntregar),
-                ),
-              ),
-            ],
+          // Menú principal horizontal con scroll
+          SizedBox(
+            height: 88,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: PackageContext.values.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final ctx = PackageContext.values[index];
+                final isSelected = selectedContext == ctx;
+                final count = counts?[ctx] ?? 0;
+                return _ContextPill(
+                  packageContext: ctx,
+                  isSelected: isSelected,
+                  count: count,
+                  onTap: () => onContextChanged(ctx),
+                );
+              },
+            ),
           ),
-
-          // Descripción y contador inferior
-          if (counts != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(
-                  selectedContext.icon,
-                  size: 16,
-                  color: MBETheme.neutralGray,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  selectedContext.description,
-                  style: TextStyle(color: MBETheme.neutralGray, fontSize: 13),
-                ),
-                const Spacer(),
-                // Aquí también forzamos a mostrar 0 si es nulo para consistencia
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: MBETheme.brandBlack.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${counts![selectedContext] ?? 0}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
+          // Sub-pills Domicilio | Casillero para solicitudEnvio, confirmacionesDeEnvio, enCamino
+          if (ContextFilterSegmented.hasSubPills(selectedContext) &&
+              onSubContextChanged != null) ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _SubPill(
+                      label: DeliveryMethodSubContext.domicilio.label,
+                      isSelected:
+                          selectedSubContext ==
+                          DeliveryMethodSubContext.domicilio,
+                      count: subCounts?[DeliveryMethodSubContext.domicilio] ?? 0,
+                      onTap: () =>
+                          onSubContextChanged!(DeliveryMethodSubContext
+                              .domicilio),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _SubPill(
+                      label: DeliveryMethodSubContext.casillero.label,
+                      isSelected:
+                          selectedSubContext ==
+                          DeliveryMethodSubContext.casillero,
+                      count: subCounts?[DeliveryMethodSubContext.casillero] ?? 0,
+                      onTap: () =>
+                          onSubContextChanged!(DeliveryMethodSubContext
+                              .casillero),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ],
@@ -150,36 +219,32 @@ class ContextFilterSegmented extends StatelessWidget {
   }
 }
 
-class _ContextButton extends StatelessWidget {
-  final PackageContext context;
+class _ContextPill extends StatelessWidget {
+  final PackageContext packageContext;
   final bool isSelected;
-  final int? count;
+  final int count;
   final VoidCallback onTap;
 
-  const _ContextButton({
-    required this.context,
+  const _ContextPill({
+    required this.packageContext,
     required this.isSelected,
-    this.count,
+    required this.count,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Usamos 0 si el count es nulo
-    final displayCount = count ?? 0;
-
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        constraints: const BoxConstraints(minWidth: 95, maxWidth: 130),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
         decoration: BoxDecoration(
           color: isSelected ? MBETheme.brandBlack : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected
-                ? MBETheme.brandBlack
-                : MBETheme.neutralGray.withOpacity(0.3),
+            color: isSelected ? MBETheme.brandBlack : Colors.grey.shade400,
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
@@ -194,36 +259,105 @@ class _ContextButton extends StatelessWidget {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              this.context.icon,
-              size: 20,
+              packageContext.icon,
+              size: 18,
               color: isSelected ? Colors.white : MBETheme.brandBlack,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
-              this.context.label,
+              packageContext.shortLabel,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 color: isSelected ? Colors.white : MBETheme.brandBlack,
               ),
               textAlign: TextAlign.center,
-              maxLines: 1, // Evita saltos de línea inesperados
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
-            // SIEMPRE mostramos el contenedor, así mantienen la misma altura
+            const SizedBox(height: 2),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
                 color: isSelected
                     ? Colors.white.withOpacity(0.2)
                     : MBETheme.brandBlack.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                '$displayCount',
+                '$count',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : MBETheme.brandBlack,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SubPill extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final int count;
+  final VoidCallback onTap;
+
+  const _SubPill({
+    required this.label,
+    required this.isSelected,
+    required this.count,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? MBETheme.brandBlack : Colors.white,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(
+            color: isSelected ? MBETheme.brandBlack : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? Colors.white : MBETheme.brandBlack,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? Colors.white.withOpacity(0.2)
+                    : MBETheme.brandBlack.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Text(
+                '$count',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,

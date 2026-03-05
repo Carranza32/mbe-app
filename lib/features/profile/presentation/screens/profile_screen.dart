@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../config/theme/mbe_theme.dart';
 import '../../../../config/router/app_router.dart';
 import '../../../../core/providers/locale_provider.dart';
+import '../../../../core/providers/biometric_preference_provider.dart';
 import '../../../../features/auth/providers/auth_provider.dart';
 import '../../../../features/auth/data/models/user_model.dart';
 import '../../../../l10n/app_localizations.dart';
@@ -117,6 +118,11 @@ class ProfileScreen extends HookConsumerWidget {
                               builder: (ctx) => const LanguageSelectorSheet(),
                             );
                           },
+                        ),
+                        _BiometricToggleTile(
+                          icon: Iconsax.finger_cricle,
+                          title: l10n.settingsBiometricLogin,
+                          subtitle: l10n.settingsBiometricLoginSubtitle,
                         ),
                         _SettingsTile(
                           icon: Iconsax.support,
@@ -494,6 +500,76 @@ class ProfileScreen extends HookConsumerWidget {
             child: Text(l10n.authLogout),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Fila de configuración con Switch para el ingreso biométrico.
+class _BiometricToggleTile extends ConsumerWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _BiometricToggleTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final biometricState = ref.watch(biometricPreferenceProvider);
+    final isEnabled = biometricState.maybeWhen(data: (v) => v, orElse: () => true);
+
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF6F8FA),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: MBETheme.brandBlack, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                      color: MBETheme.brandBlack,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: MBETheme.neutralGray.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: isEnabled,
+              onChanged: (value) {
+                ref.read(biometricPreferenceProvider.notifier).setEnabled(value);
+              },
+              activeTrackColor: MBETheme.brandBlack.withValues(alpha: 0.5),
+              activeThumbColor: MBETheme.brandBlack,
+            ),
+          ],
+        ),
       ),
     );
   }

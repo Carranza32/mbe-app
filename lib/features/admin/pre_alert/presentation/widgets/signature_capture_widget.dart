@@ -6,8 +6,15 @@ import 'package:signature/signature.dart';
 import '../../../../../config/theme/mbe_theme.dart';
 
 class SignatureCaptureWidget extends StatefulWidget {
+  /// Título del bloque de firma (ej. "Firma del Cliente *" o "Firma del proveedor").
+  final String title;
+  /// Se llama cuando el usuario dibuja o borra la firma. Útil para habilitar/deshabilitar botón de envío.
+  final ValueChanged<bool>? onSignatureChanged;
+
   const SignatureCaptureWidget({
     super.key,
+    this.title = 'Firma del Cliente *',
+    this.onSignatureChanged,
   });
 
   @override
@@ -32,9 +39,9 @@ class SignatureCaptureWidgetState extends State<SignatureCaptureWidget> {
   }
 
   void _onSignatureChanged() {
-    setState(() {
-      _hasSignature = _controller.points.isNotEmpty;
-    });
+    final has = _controller.points.isNotEmpty;
+    setState(() => _hasSignature = has);
+    widget.onSignatureChanged?.call(has);
   }
 
   @override
@@ -52,9 +59,9 @@ class SignatureCaptureWidgetState extends State<SignatureCaptureWidget> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Firma del Cliente *',
-              style: TextStyle(
+            Text(
+              widget.title,
+              style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
               ),
@@ -108,9 +115,15 @@ class SignatureCaptureWidgetState extends State<SignatureCaptureWidget> {
     setState(() {
       _hasSignature = false;
     });
+    widget.onSignatureChanged?.call(false);
   }
 
   bool get hasSignature => _hasSignature;
+
+  /// Limpia la firma (útil cuando se limpia el formulario).
+  void clear() {
+    _clearSignature();
+  }
 
   Future<String?> captureSignature() async {
     if (!_hasSignature || _controller.points.isEmpty) return null;

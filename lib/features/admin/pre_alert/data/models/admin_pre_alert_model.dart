@@ -45,6 +45,7 @@ class AdminPreAlert {
 
   // Campos adicionales del backend
   final int? customerId;
+  final String? lockerCode; // Código de casillero del cliente (para buscar por by-locker-code)
   final String? contactName;
   final String? contactEmail;
   final String? contactPhone;
@@ -88,6 +89,7 @@ class AdminPreAlert {
     this.shippingProvider,
     // Campos adicionales
     this.customerId,
+    this.lockerCode,
     this.contactName,
     this.contactEmail,
     this.contactPhone,
@@ -155,7 +157,7 @@ class AdminPreAlert {
     }
 
     PackageStatus getStatus(dynamic statusData) {
-      if (statusData == null) return PackageStatus.ingresada;
+      if (statusData == null) return PackageStatus.enTransito;
 
       if (statusData is String) {
         // Primero intentar como key del estado
@@ -169,12 +171,12 @@ class AdminPreAlert {
           if (byId != null) return byId;
         }
 
-        return PackageStatus.ingresada;
+        return PackageStatus.enTransito;
       }
 
       if (statusData is int) {
         return PackageStatusExtension.fromStatusId(statusData) ??
-            PackageStatus.ingresada;
+            PackageStatus.enTransito;
       }
 
       if (statusData is Map) {
@@ -182,13 +184,13 @@ class AdminPreAlert {
         final statusName = statusData['name'] as String?;
         if (statusName != null) {
           return PackageStatusExtension.fromKey(statusName) ??
-              PackageStatus.ingresada;
+              PackageStatus.enTransito;
         }
         // Intentar obtener el key
         final statusKey = statusData['key'] as String?;
         if (statusKey != null) {
           return PackageStatusExtension.fromKey(statusKey) ??
-              PackageStatus.ingresada;
+              PackageStatus.enTransito;
         }
         // Intentar obtener el ID (puede venir como int o String)
         final statusIdValue = statusData['id'];
@@ -198,12 +200,12 @@ class AdminPreAlert {
               : (statusIdValue is String ? int.tryParse(statusIdValue) : null);
           if (statusId != null) {
             return PackageStatusExtension.fromStatusId(statusId) ??
-                PackageStatus.ingresada;
+                PackageStatus.enTransito;
           }
         }
       }
 
-      return PackageStatus.ingresada;
+      return PackageStatus.enTransito;
     }
 
     return AdminPreAlert(
@@ -254,6 +256,8 @@ class AdminPreAlert {
               : json['shipping_provider'] as String?),
       // Campos adicionales
       customerId: parseInt(json['customer_id']),
+      lockerCode: json['locker_code'] as String? ??
+          (json['customer'] is Map ? (json['customer'] as Map)['locker_code'] as String? : null),
       contactName: json['contact_name'] as String?,
       contactEmail: json['contact_email'] as String?,
       contactPhone: json['contact_phone'] as String?,
@@ -306,6 +310,7 @@ class AdminPreAlert {
       'shipping_provider': shippingProvider,
       // Campos adicionales
       'customer_id': customerId,
+      'locker_code': lockerCode,
       'contact_name': contactName,
       'contact_email': contactEmail,
       'contact_phone': contactPhone,
@@ -351,6 +356,7 @@ class AdminPreAlert {
     String? shippingProvider,
     // Campos adicionales
     int? customerId,
+    String? lockerCode,
     String? contactName,
     String? contactEmail,
     String? contactPhone,
@@ -392,6 +398,7 @@ class AdminPreAlert {
       shippingProvider: shippingProvider ?? this.shippingProvider,
       // Campos adicionales
       customerId: customerId ?? this.customerId,
+      lockerCode: lockerCode ?? this.lockerCode,
       contactName: contactName ?? this.contactName,
       contactEmail: contactEmail ?? this.contactEmail,
       contactPhone: contactPhone ?? this.contactPhone,

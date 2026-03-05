@@ -463,6 +463,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsLanguageSubtitleEn => 'English (EN)';
 
   @override
+  String get settingsBiometricLogin => 'Ingreso biométrico';
+
+  @override
+  String get settingsBiometricLoginSubtitle =>
+      'Usar huella o Face ID al abrir la app';
+
+  @override
   String get settingsAccount => 'Configuración de Cuenta';
 
   @override
@@ -584,10 +591,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get homeNavPackages => 'Paquetes';
 
   @override
-  String get homeNavRetrieval => 'Retiro';
+  String get homeNavRetrieval => 'Casilleros';
 
   @override
-  String get homeNavSearch => 'Buscar';
+  String get homeNavSearch => 'Entregar';
 
   @override
   String get homeNavProfile => 'Perfil';
@@ -1606,6 +1613,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get printOrderCardPaymentDesc => 'Paga de forma segura con tu tarjeta';
 
   @override
+  String get printOrderCardStepDescription =>
+      'Al pulsar Finalizar se abrirá la ventana segura para completar el pago con tu tarjeta.';
+
+  @override
+  String get printOrderPaymentMethodSelected => 'Método de pago seleccionado';
+
+  @override
   String get printOrderCardNumber => 'Número de Tarjeta';
 
   @override
@@ -1744,6 +1758,130 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get printOrderEco => 'Eco';
+
+  @override
+  String get printOrderContactInfo => 'Información de Contacto';
+
+  @override
+  String get printOrderSelectImageOrPdf => 'Seleccionar imagen o PDF';
+
+  @override
+  String get printOrderUploadAtLeastOne => 'Debes subir al menos un archivo';
+
+  @override
+  String get printOrderSomeFilesHaveErrors => 'Algunos archivos tienen errores';
+
+  @override
+  String get printOrderMissingOrderData => 'Faltan datos del pedido';
+
+  @override
+  String get printOrderNoFilesToPrint => 'No hay archivos para imprimir';
+
+  @override
+  String get printOrderContactInfoIncomplete =>
+      'Información de contacto incompleta';
+
+  @override
+  String get printOrderDeliveryInfoIncomplete =>
+      'Información de entrega incompleta';
+
+  @override
+  String get printOrderEnterAddressBelow =>
+      'Ingresa la dirección y teléfono abajo';
+
+  @override
+  String get printOrderFreeShippingOver => 'Envío gratis en pedidos mayores a';
+
+  @override
+  String get printOrderDeliveryTips => 'Consejos para tu entrega';
+
+  @override
+  String get printOrderDeliveryAddress => 'Dirección de Entrega';
+
+  @override
+  String get printOrderContactPhone => 'Teléfono de Contacto';
+
+  @override
+  String get printOrderCardHolderLabel => 'TITULAR';
+
+  @override
+  String get printOrderCardHolderNameHint => 'NOMBRE APELLIDO';
+
+  @override
+  String get printOrderValidUntil => 'VÁLIDO HASTA';
+
+  @override
+  String get printOrderBaseCost => 'Costo base';
+
+  @override
+  String get printOrderEstimatedTime => 'Tiempo estimado';
+
+  @override
+  String get printOrderAddressHint => 'Calle, número, colonia, municipio...';
+
+  @override
+  String get printOrderAdditionalNotesOptional =>
+      'Notas Adicionales (opcional)';
+
+  @override
+  String get printOrderAdditionalNotesHint =>
+      'Horario preferido, instrucciones especiales...';
+
+  @override
+  String get printOrderDeliveryNotesHint => 'Horario preferido, referencias...';
+
+  @override
+  String get printOrderPhoneHint => '2222-2222 o 7777-7777';
+
+  @override
+  String printOrderFreeShippingOverAmount(String amount) {
+    return '¡Envío gratis! (pedido mayor a $amount)';
+  }
+
+  @override
+  String printOrderShippingCostAmount(String amount) {
+    return 'Costo de envío: $amount';
+  }
+
+  @override
+  String get printOrderEstimatedTimeValue => '1-2 días hábiles';
+
+  @override
+  String get printOrderTipLocationRefs =>
+      '• Asegúrate de incluir referencias claras de tu ubicación';
+
+  @override
+  String get printOrderTipPhoneAvailable =>
+      '• Verifica que tu teléfono esté disponible durante la entrega';
+
+  @override
+  String get printOrderTipPreferredSchedule =>
+      '• Puedes agregar un horario preferido en las notas';
+
+  @override
+  String get printOrderTransferUploadSubtitle =>
+      'Banco Agrícola, BAC, etc. Sube tu comprobante.';
+
+  @override
+  String get printOrderCvv => 'CVV';
+
+  @override
+  String get printOrderCvvHint => '3 o 4 dígitos';
+
+  @override
+  String printOrderMaxFilesAllowed(int max) {
+    return 'Máximo $max archivos permitidos';
+  }
+
+  @override
+  String printOrderOnlyAddMoreFiles(int count) {
+    return 'Solo se pueden agregar $count archivos más';
+  }
+
+  @override
+  String printOrderAnalyzeFilesError(String error) {
+    return 'Error al analizar archivos: $error';
+  }
 
   @override
   String get profileMyProfile => 'Mi Perfil';

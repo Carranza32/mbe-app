@@ -1,79 +1,64 @@
 enum PackageStatus {
-  ingresada,              // id: 1 - Pre Alerta Ingresada
-  listaParaRecibir,       // id: 2 - Lista para Recibir
-  enTienda,              // id: 3 - Paquete en Tienda
+  enTransito,             // id: 1 - En Tránsito
+  listaParaRecepcionar,   // id: 2 - Lista para Recepcionar
+  disponibleParaRetiro,   // id: 3 - Disponible para Retiro
   solicitudRecoleccion,   // id: 4 - Solicitud de Recolección
   confirmadaRecoleccion,  // id: 5 - Recolección Confirmada
-  enRuta,                 // id: 6 - En Ruta de Entrega
-  entregada,              // id: 7 - Entregada al Cliente (Delivery)
-  retornada,              // id: 8 - Retornada a Tienda
-  listaRetiro,            // id: 9 - Lista para Retiro
-  completada,             // id: 10 - Entregada en Tienda (Pickup)
-  cancelada,              // id: 11 - Cancelada
+  enRuta,                 // id: 6 - En Ruta
+  entregado,              // id: 7 - Entregado
+  cancelado,              // id: 8 - Cancelado
 }
 
 extension PackageStatusExtension on PackageStatus {
   String get label {
     switch (this) {
-      case PackageStatus.ingresada:
-        return 'Pre Alerta Ingresada';
-      case PackageStatus.listaParaRecibir:
-        return 'Lista para Recibir';
-      case PackageStatus.enTienda:
-        return 'Paquete en Tienda';
+      case PackageStatus.enTransito:
+        return 'En Tránsito';
+      case PackageStatus.listaParaRecepcionar:
+        return 'Lista para Recepcionar';
+      case PackageStatus.disponibleParaRetiro:
+        return 'Disponible para Retiro';
       case PackageStatus.solicitudRecoleccion:
         return 'Solicitud de Recolección';
       case PackageStatus.confirmadaRecoleccion:
         return 'Recolección Confirmada';
       case PackageStatus.enRuta:
-        return 'En Ruta de Entrega';
-      case PackageStatus.entregada:
-        return 'Entregada al Cliente';
-      case PackageStatus.retornada:
-        return 'Retornada a Tienda';
-      case PackageStatus.listaRetiro:
-        return 'Lista para Retiro';
-      case PackageStatus.completada:
-        return 'Entregada en Tienda';
-      case PackageStatus.cancelada:
-        return 'Cancelada';
+        return 'En Ruta';
+      case PackageStatus.entregado:
+        return 'Entregado';
+      case PackageStatus.cancelado:
+        return 'Cancelado';
     }
   }
 
   String get key {
     switch (this) {
-      case PackageStatus.ingresada:
-        return 'ingresada';
-      case PackageStatus.listaParaRecibir:
-        return 'lista_para_recibir';
-      case PackageStatus.enTienda:
-        return 'en_tienda';
+      case PackageStatus.enTransito:
+        return 'en_tránsito';
+      case PackageStatus.listaParaRecepcionar:
+        return 'lista_para_recepcionar';
+      case PackageStatus.disponibleParaRetiro:
+        return 'disponible_para_retiro';
       case PackageStatus.solicitudRecoleccion:
         return 'solicitud_recoleccion';
       case PackageStatus.confirmadaRecoleccion:
         return 'confirmada_recoleccion';
       case PackageStatus.enRuta:
         return 'en_ruta';
-      case PackageStatus.entregada:
-        return 'entregada';
-      case PackageStatus.retornada:
-        return 'retornada';
-      case PackageStatus.listaRetiro:
-        return 'lista_retiro';
-      case PackageStatus.completada:
-        return 'completada';
-      case PackageStatus.cancelada:
-        return 'cancelada';
+      case PackageStatus.entregado:
+        return 'entregado';
+      case PackageStatus.cancelado:
+        return 'cancelado';
     }
   }
 
   int get statusId {
     switch (this) {
-      case PackageStatus.ingresada:
+      case PackageStatus.enTransito:
         return 1;
-      case PackageStatus.listaParaRecibir:
+      case PackageStatus.listaParaRecepcionar:
         return 2;
-      case PackageStatus.enTienda:
+      case PackageStatus.disponibleParaRetiro:
         return 3;
       case PackageStatus.solicitudRecoleccion:
         return 4;
@@ -81,62 +66,62 @@ extension PackageStatusExtension on PackageStatus {
         return 5;
       case PackageStatus.enRuta:
         return 6;
-      case PackageStatus.entregada:
+      case PackageStatus.entregado:
         return 7;
-      case PackageStatus.retornada:
+      case PackageStatus.cancelado:
         return 8;
-      case PackageStatus.listaRetiro:
-        return 9;
-      case PackageStatus.completada:
-        return 10;
-      case PackageStatus.cancelada:
-        return 11;
     }
   }
 
   /// True si el paquete ya pasó por recepción (está en tienda/bodega o ya fue entregado).
   bool get isAlreadyReceived {
     switch (this) {
-      case PackageStatus.enTienda:
-      case PackageStatus.retornada:
-      case PackageStatus.listaRetiro:
-      case PackageStatus.enRuta:
-      case PackageStatus.entregada:
-      case PackageStatus.completada:
-        return true;
-      case PackageStatus.ingresada:
-      case PackageStatus.listaParaRecibir:
+      case PackageStatus.disponibleParaRetiro:
       case PackageStatus.solicitudRecoleccion:
       case PackageStatus.confirmadaRecoleccion:
-      case PackageStatus.cancelada:
+      case PackageStatus.enRuta:
+      case PackageStatus.entregado:
+        return true;
+      case PackageStatus.enTransito:
+      case PackageStatus.listaParaRecepcionar:
+      case PackageStatus.cancelado:
         return false;
     }
   }
 
   static PackageStatus? fromKey(String key) {
-    switch (key) {
-      case 'ingresada':
-        return PackageStatus.ingresada;
-      case 'lista_para_recibir':
-        return PackageStatus.listaParaRecibir;
-      case 'en_tienda':
-        return PackageStatus.enTienda;
+    // Normalizar: quitar tildes para comparación flexible
+    final normalized = key.toLowerCase().replaceAll('á', 'a').replaceAll('í', 'i');
+    switch (normalized) {
+      case 'en_transito':
+        return PackageStatus.enTransito;
+      case 'lista_para_recepcionar':
+        return PackageStatus.listaParaRecepcionar;
+      case 'disponible_para_retiro':
+        return PackageStatus.disponibleParaRetiro;
       case 'solicitud_recoleccion':
         return PackageStatus.solicitudRecoleccion;
       case 'confirmada_recoleccion':
         return PackageStatus.confirmadaRecoleccion;
       case 'en_ruta':
         return PackageStatus.enRuta;
-      case 'entregada':
-        return PackageStatus.entregada;
-      case 'retornada':
-        return PackageStatus.retornada;
+      case 'entregado':
+        return PackageStatus.entregado;
+      case 'cancelado':
+        return PackageStatus.cancelado;
+      // Aliases para compatibilidad con respuestas legacy
+      case 'ingresada':
+        return PackageStatus.enTransito;
+      case 'lista_para_recibir':
+        return PackageStatus.listaParaRecepcionar;
+      case 'en_tienda':
       case 'lista_retiro':
-        return PackageStatus.listaRetiro;
+        return PackageStatus.disponibleParaRetiro;
+      case 'entregada':
       case 'completada':
-        return PackageStatus.completada;
+        return PackageStatus.entregado;
       case 'cancelada':
-        return PackageStatus.cancelada;
+        return PackageStatus.cancelado;
       default:
         return null;
     }
@@ -145,11 +130,11 @@ extension PackageStatusExtension on PackageStatus {
   static PackageStatus? fromStatusId(int statusId) {
     switch (statusId) {
       case 1:
-        return PackageStatus.ingresada;
+        return PackageStatus.enTransito;
       case 2:
-        return PackageStatus.listaParaRecibir;
+        return PackageStatus.listaParaRecepcionar;
       case 3:
-        return PackageStatus.enTienda;
+        return PackageStatus.disponibleParaRetiro;
       case 4:
         return PackageStatus.solicitudRecoleccion;
       case 5:
@@ -157,18 +142,11 @@ extension PackageStatusExtension on PackageStatus {
       case 6:
         return PackageStatus.enRuta;
       case 7:
-        return PackageStatus.entregada;
+        return PackageStatus.entregado;
       case 8:
-        return PackageStatus.retornada;
-      case 9:
-        return PackageStatus.listaRetiro;
-      case 10:
-        return PackageStatus.completada;
-      case 11:
-        return PackageStatus.cancelada;
+        return PackageStatus.cancelado;
       default:
         return null;
     }
   }
 }
-

@@ -171,8 +171,10 @@ class Step1UploadFiles extends HookConsumerWidget {
                 config: orderState.config,
                 onFilesAdded: (newFiles) {
                   debugPrint('📁 Agregando ${newFiles.length} archivos...');
-                  // ✅ CAMBIO: Usa el nuevo provider
-                  ref.read(createOrderProvider.notifier).addFiles(newFiles);
+                  ref.read(createOrderProvider.notifier).addFiles(
+                    newFiles,
+                    l10n: AppLocalizations.of(context)!,
+                  );
                 },
               ),
             ),
@@ -248,7 +250,7 @@ class Step1UploadFiles extends HookConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Archivos seleccionados',
+                                    AppLocalizations.of(context)!.printOrderFilesSelected,
                                     style:
                                         theme.textTheme.titleSmall?.copyWith(
                                       fontWeight: FontWeight.w600,
@@ -363,7 +365,7 @@ class Step1UploadFiles extends HookConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Formatos aceptados',
+                        AppLocalizations.of(context)!.printOrderAcceptedFormats,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -409,7 +411,7 @@ class Step1UploadFiles extends HookConsumerWidget {
                     ),
                     const SizedBox(width: MBESpacing.sm),
                     Text(
-                      'Tips para mejores resultados',
+                      AppLocalizations.of(context)!.printOrderTipsTitle,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),

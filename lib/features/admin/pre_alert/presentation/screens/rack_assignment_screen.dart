@@ -25,9 +25,9 @@ class _RackAssignmentScreenState extends ConsumerState<RackAssignmentScreen> {
     final alertsState = ref.watch(adminPreAlertsProvider);
     final allAlerts = alertsState.value ?? [];
 
-    // Filtrar solo paquetes en estado "en_tienda"
+    // Filtrar solo paquetes en estado "disponible_para_retiro" (en bodega)
     final packagesInStore = allAlerts
-        .where((alert) => alert.status == PackageStatus.enTienda)
+        .where((alert) => alert.status == PackageStatus.disponibleParaRetiro)
         .toList();
 
     final selectedCount = _selectedPackageIds.length;
@@ -76,7 +76,7 @@ class _RackAssignmentScreenState extends ConsumerState<RackAssignmentScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Mostrando paquetes en estado "En Tienda" (${packagesInStore.length})',
+                    'Mostrando paquetes en estado "Disponible para Retiro" (${packagesInStore.length})',
                     style: TextStyle(
                       color: MBETheme.neutralGray,
                       fontSize: 14,

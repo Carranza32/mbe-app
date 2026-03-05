@@ -24,9 +24,12 @@ class PickupDeliveryModal extends ConsumerStatefulWidget {
 class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
   final GlobalKey<SignatureCaptureWidgetState> _signatureKey =
       GlobalKey<SignatureCaptureWidgetState>();
+  final GlobalKey<RecipientSelectorState> _recipientKey =
+      GlobalKey<RecipientSelectorState>();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   RecipientType? _recipientType;
   String? _recipientName;
+  RecipientData? _recipientData;
   bool _isLoading = false;
   final Map<String, bool> _expandedPackages = {};
 
@@ -110,12 +113,22 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
 
                     // Selector de receptor
                     RecipientSelector(
+                      key: _recipientKey,
                       onRecipientChanged: (type, name) {
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (mounted) {
                             setState(() {
                               _recipientType = type;
                               _recipientName = name;
+                            });
+                          }
+                        });
+                      },
+                      onRecipientDataChanged: (data) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            setState(() {
+                              _recipientData = data;
                             });
                           }
                         });
@@ -750,18 +763,26 @@ class _PickupDeliveryModalState extends ConsumerState<PickupDeliveryModal> {
         throw Exception('Error al capturar la firma');
       }
 
+      // Obtener datos del receptor
+      final recipientData = _recipientKey.currentState?.recipientData ?? _recipientData;
+      final isDifferentReceiver = _recipientType == RecipientType.encargado;
+      
       // Determinar quién recibe
-      final deliveredTo = _recipientType == RecipientType.titular
-          ? 'titular'
-          : _recipientName!;
+      final deliveredTo = isDifferentReceiver
+          ? (recipientData?.name ?? _recipientName ?? '')
+          : widget.packages.first.clientName;
 
       // Procesar entrega
       final deliveryManager = ref.read(deliveryManagerProvider.notifier);
       final success = await deliveryManager.processPickupDelivery(
         packageIds: widget.packages.map((p) => p.id).toList(),
-        signaturePath: signature,
+        signature: signature,
         deliveredTo: deliveredTo,
         deliveredAt: DateTime.now(),
+        isDifferentReceiver: isDifferentReceiver,
+        receiverName: isDifferentReceiver ? recipientData?.name : null,
+        receiverEmail: isDifferentReceiver ? recipientData?.email : null,
+        receiverPhone: isDifferentReceiver ? recipientData?.phone : null,
       );
 
       if (mounted) {

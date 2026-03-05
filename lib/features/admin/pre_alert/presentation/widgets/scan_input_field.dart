@@ -23,11 +23,12 @@ class ScanInputField extends StatelessWidget {
     switch (mode) {
       case PackageContext.porRecibir:
         return 'Modo Recepción';
-      case PackageContext.enBodega:
+      case PackageContext.disponibles:
         return 'Modo Ubicación';
-      case PackageContext.paraEntregar:
+      case PackageContext.solicitudEnvio:
+      case PackageContext.confirmacionesDeEnvio:
         return 'Modo Entrega';
-      case null:
+      default:
         return '';
     }
   }
@@ -36,11 +37,12 @@ class ScanInputField extends StatelessWidget {
     switch (mode) {
       case PackageContext.porRecibir:
         return Colors.blue; // Azul para recepción
-      case PackageContext.enBodega:
+      case PackageContext.disponibles:
         return Colors.amber; // Amarillo para ubicación
-      case PackageContext.paraEntregar:
+      case PackageContext.solicitudEnvio:
+      case PackageContext.confirmacionesDeEnvio:
         return Colors.green; // Verde para entrega
-      case null:
+      default:
         return MBETheme.brandBlack;
     }
   }

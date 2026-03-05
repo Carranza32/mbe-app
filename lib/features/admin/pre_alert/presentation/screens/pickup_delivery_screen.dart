@@ -37,13 +37,13 @@ class _PickupDeliveryScreenState extends ConsumerState<PickupDeliveryScreen> {
 
     // Filtrar paquetes según el tipo de entrega
     final filteredPackages = allAlerts.where((alert) {
-      // Debe estar en estado lista_retiro
-      if (alert.status != PackageStatus.listaRetiro) return false;
-
-      // Filtrar por tipo de entrega
+      // Pickup: disponible_para_retiro (cliente recoge en tienda)
+      // Delivery: solicitud_recoleccion (operador va a recoger para llevar a domicilio)
       if (_deliveryType == 'pickup') {
+        if (alert.status != PackageStatus.disponibleParaRetiro) return false;
         return alert.deliveryMethod == 'pickup';
       } else {
+        if (alert.status != PackageStatus.solicitudRecoleccion) return false;
         return alert.deliveryMethod == 'delivery';
       }
     }).toList();

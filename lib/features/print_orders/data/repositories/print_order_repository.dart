@@ -1,12 +1,14 @@
 // lib/features/print_orders/data/repositories/print_order_repository.dart
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/network/api_service.dart';
 import '../models/create_order_request.dart';
 import '../models/print_configuration_model.dart';
 import '../models/print_order_detail.dart';
 import '../models/print_order_model.dart';
 import '../models/uploaded_file_model.dart';
+import 'package:mbe_orders_app/features/pre_alert/data/models/payment_models.dart';
 
 final printOrderRepositoryProvider = Provider<PrintOrderRepository>((ref) {
   return PrintOrderRepository(ref.read(apiServiceProvider));
@@ -79,6 +81,29 @@ class PrintOrderRepository {
     return await _apiService.get<PrintOrderDetail>(
       endpoint: '/print-orders/$orderNumber',
       fromJson: (json) => PrintOrderDetail.fromJson(json['order']),
+    );
+  }
+
+  /// Iniciar pago con tarjeta (CyberSource) para una orden ya creada.
+  /// POST con gateway "card" y total. Devuelve redirect_url para abrir en WebView.
+  Future<PaymentInitResponse> initiatePaymentCard(
+    String orderId, {
+    required double total,
+  }) async {
+    final data = <String, dynamic>{
+      'gateway': 'card',
+      'total': total,
+    };
+    return await _apiService.post<PaymentInitResponse>(
+      endpoint: ApiEndpoints.initiatePrintOrderPayment(orderId),
+      data: data,
+      fromJson: (json) {
+        if (json == null) throw Exception('Respuesta vacía del servidor');
+        if (json is Map<String, dynamic>) {
+          return PaymentInitResponse.fromJson(json);
+        }
+        throw Exception('Formato de respuesta inesperado');
+      },
     );
   }
 }

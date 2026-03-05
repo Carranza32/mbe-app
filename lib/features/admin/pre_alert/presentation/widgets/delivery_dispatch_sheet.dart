@@ -203,7 +203,9 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
               child: SafeArea(
                 top: false,
                 child: DSButton.primary(
-                  label: _isLoading ? AppLocalizations.of(context)!.adminProcessing : AppLocalizations.of(context)!.adminConfirmDispatch,
+                  label: _isLoading
+                      ? AppLocalizations.of(context)!.adminProcessing
+                      : AppLocalizations.of(context)!.adminConfirmDispatch,
                   fullWidth: true,
                   icon: Iconsax.box_tick,
                   isLoading: _isLoading,
@@ -482,9 +484,17 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Información básica
-                  _buildDetailRow(Iconsax.user, AppLocalizations.of(context)!.adminClient, package.clientName),
+                  _buildDetailRow(
+                    Iconsax.user,
+                    AppLocalizations.of(context)!.adminClient,
+                    package.clientName,
+                  ),
                   const SizedBox(height: 12),
-                  _buildDetailRow(Iconsax.box_1, AppLocalizations.of(context)!.adminEboxCode, package.eboxCode),
+                  _buildDetailRow(
+                    Iconsax.box_1,
+                    AppLocalizations.of(context)!.adminEboxCode,
+                    package.eboxCode,
+                  ),
                   if (package.rackNumber != null &&
                       package.segmentNumber != null) ...[
                     const SizedBox(height: 12),
@@ -574,7 +584,9 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
                                 Expanded(
                                   child: Text(
                                     product.productCategoryName ??
-                                        AppLocalizations.of(context)!.adminNoCategory,
+                                        AppLocalizations.of(
+                                          context,
+                                        )!.adminNoCategory,
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -785,7 +797,9 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
               );
             }).toList(),
             onChanged: (val) => setState(() => _selectedProvider = val),
-            validator: (val) => val == null ? AppLocalizations.of(context)!.adminRequired : null,
+            validator: (val) => val == null
+                ? AppLocalizations.of(context)!.adminRequired
+                : null,
           ),
         );
       },
@@ -892,17 +906,6 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
   Future<void> _processDispatch() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedProvider == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.adminSelectProvider),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     // Combinar paquetes iniciales con escaneados
     final allPackages = [
       ...widget.packages,
@@ -932,10 +935,6 @@ class _DeliveryDispatchSheetState extends ConsumerState<DeliveryDispatchSheet> {
 
       final success = await deliveryManager.processDeliveryDispatch(
         packageIds: allPackages.map((p) => p.id).toList(),
-        shippingProviderId: _selectedProvider!.id,
-        providerTrackingNumber: _trackingController.text.trim().isEmpty
-            ? null
-            : _trackingController.text.trim(),
       );
 
       if (!mounted) return;

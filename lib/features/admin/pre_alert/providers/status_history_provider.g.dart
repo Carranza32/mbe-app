@@ -66,7 +66,7 @@ final class StatusHistoryProvider
   }
 }
 
-String _$statusHistoryHash() => r'd19f3a07ab59f02c91de7e6cac790abcf9c2c606';
+String _$statusHistoryHash() => r'8918747ef4917130bf18e6eba61f2c980cd3394a';
 
 final class StatusHistoryFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<List<StatusHistoryItem>>, String> {

@@ -59,14 +59,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
         NavigationItem(
           icon: Iconsax.box_tick,
           activeIcon: Iconsax.box_tick5,
-          label: l10n.homeNavRetrieval,
-          route: '/admin/locker-retrieval',
-        ),
-        NavigationItem(
-          icon: Iconsax.search_normal,
-          activeIcon: Iconsax.search_normal_1,
           label: l10n.homeNavSearch,
           route: '/admin/search',
+        ),
+        NavigationItem(
+          icon: Iconsax.sms,
+          activeIcon: Iconsax.sms5,
+          label: l10n.homeNavRetrieval,
+          route: '/admin/locker-retrieval',
         ),
         NavigationItem(
           icon: Iconsax.profile_circle,

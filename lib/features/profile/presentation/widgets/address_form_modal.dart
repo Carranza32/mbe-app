@@ -76,56 +76,112 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadRegions());
   }
 
+  /// Busca una región que coincida con el nombre (por label).
+  GeoOption? _findMatchingRegion(List<GeoOption> regions, String? name) {
+    if (name == null || name.trim().isEmpty) return null;
+    final lower = name.toLowerCase().trim();
+    for (final r in regions) {
+      if (r.label.toLowerCase() == lower) return r;
+      if (r.label.toLowerCase().contains(lower)) return r;
+      if (lower.contains(r.label.toLowerCase())) return r;
+    }
+    return null;
+  }
+
   Future<void> _loadRegions() async {
     setState(() => _loadingRegions = true);
     try {
       final regions = await ref
           .read(geoRepositoryProvider)
           .getAdm1(_countryCode);
-      if (mounted) {
-        setState(() {
-          _regions = regions;
-          _loadingRegions = false;
-        });
-        if (widget.address != null && _regionCode != null) _loadCities();
+      if (!mounted) return;
+      GeoOption? matchedRegion;
+      if (widget.address != null && widget.address!.region.trim().isNotEmpty) {
+        matchedRegion = _findMatchingRegion(regions, widget.address!.region);
+      } else if (_regionCode != null && _regionCode!.trim().isNotEmpty) {
+        try {
+          matchedRegion = regions.firstWhere((r) => r.code == _regionCode);
+        } on StateError {
+          matchedRegion = null;
+        }
       }
+      setState(() {
+        _regions = regions;
+        _loadingRegions = false;
+        if (matchedRegion != null) {
+          _regionCode = matchedRegion.code;
+          _region = matchedRegion.label;
+        }
+      });
+      if (matchedRegion != null) await _loadCities();
     } catch (e) {
       if (mounted) setState(() => _loadingRegions = false);
     }
   }
 
+  /// Busca una ciudad que coincida con el nombre (por label).
+  GeoOption? _findMatchingCity(List<GeoOption> cities, String? name) {
+    if (name == null || name.trim().isEmpty) return null;
+    final lower = name.toLowerCase().trim();
+    for (final c in cities) {
+      if (c.label.toLowerCase() == lower) return c;
+      if (c.label.toLowerCase().contains(lower)) return c;
+      if (lower.contains(c.label.toLowerCase())) return c;
+    }
+    return null;
+  }
+
   Future<void> _loadCities() async {
-    if (_regionCode == null) return;
+    if (_regionCode == null || _regionCode!.trim().isEmpty) return;
     setState(() => _loadingCities = true);
     try {
       final cities = await ref
           .read(geoRepositoryProvider)
           .getAdm2(_countryCode, _regionCode!);
-      if (mounted) {
-        setState(() {
-          _cities = cities;
-          _loadingCities = false;
-          // Solo limpiar localidades si NO estamos editando
-          if (widget.address == null) {
-            _localities = [];
-            _localityCode = null;
-            _locality = null;
-            _isLocalityDisabled = true;
-          } else {
-            // Mantener los valores mientras cargamos (no limpiar localityCode/locality)
-            _localities = [];
-            _isLocalityDisabled = true;
-          }
-        });
-
-        // Si estamos editando y ya tenemos cityCode, cargar localidades
-        if (widget.address != null && _cityCode != null) {
-          await _loadLocalities();
+      if (!mounted) return;
+      GeoOption? matchedCity;
+      if (widget.address != null && widget.address!.city.trim().isNotEmpty) {
+        matchedCity = _findMatchingCity(cities, widget.address!.city);
+      } else if (_cityCode != null && _cityCode!.trim().isNotEmpty) {
+        try {
+          matchedCity = cities.firstWhere((c) => c.code == _cityCode);
+        } on StateError {
+          matchedCity = null;
         }
+      }
+      setState(() {
+        _cities = cities;
+        _loadingCities = false;
+        if (matchedCity != null) {
+          _cityCode = matchedCity.code;
+          _city = matchedCity.label;
+        }
+        _localities = [];
+        _isLocalityDisabled = true;
+        // Preservar locality al editar; solo limpiar si no estamos editando
+        if (widget.address == null) {
+          _localityCode = null;
+          _locality = null;
+        }
+      });
+      if (matchedCity != null && widget.address != null) {
+        await _loadLocalities();
       }
     } catch (e) {
       if (mounted) setState(() => _loadingCities = false);
     }
+  }
+
+  /// Busca una localidad que coincida con el nombre (por label).
+  GeoOption? _findMatchingLocality(List<GeoOption> localities, String? name) {
+    if (name == null || name.trim().isEmpty) return null;
+    final lower = name.toLowerCase().trim();
+    for (final l in localities) {
+      if (l.label.toLowerCase() == lower) return l;
+      if (l.label.toLowerCase().contains(lower)) return l;
+      if (lower.contains(l.label.toLowerCase())) return l;
+    }
+    return null;
   }
 
   Future<void> _loadLocalities() async {
@@ -133,7 +189,6 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
       setState(() {
         _localities = [];
         _isLocalityDisabled = true;
-        // Solo limpiar si NO estamos editando
         if (widget.address == null) {
           _localityCode = null;
           _locality = null;
@@ -144,38 +199,35 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
 
     // Guardar el valor actual de localidad si estamos editando
     final savedLocalityCode = widget.address != null ? _localityCode : null;
-    final savedLocality = widget.address != null ? _locality : null;
 
     setState(() => _loadingLocalities = true);
     try {
       final localities = await ref
           .read(geoRepositoryProvider)
           .getAdm3(_countryCode, _regionCode!, _cityCode!);
-      if (mounted) {
-        setState(() {
-          _localities = localities;
-          _isLocalityDisabled = localities.isEmpty;
-          _loadingLocalities = false;
-
-          // Si estamos editando y tenemos un localityCode guardado, restaurarlo
-          if (widget.address != null && savedLocalityCode != null) {
-            // Verificar que el código existe en la lista cargada
-            final exists = localities.any((l) => l.code == savedLocalityCode);
-            if (exists) {
-              _localityCode = savedLocalityCode;
-              _locality = savedLocality;
-            } else {
-              // Si no existe, limpiar
-              _localityCode = null;
-              _locality = null;
-            }
-          } else if (localities.isEmpty) {
-            // Si no hay localidades, limpiar la selección
-            _localityCode = null;
-            _locality = null;
-          }
-        });
+      if (!mounted) return;
+      GeoOption? matchedLocality;
+      if (widget.address != null && widget.address!.locality != null && widget.address!.locality!.trim().isNotEmpty) {
+        matchedLocality = _findMatchingLocality(localities, widget.address!.locality);
+      } else if (savedLocalityCode != null && savedLocalityCode.trim().isNotEmpty) {
+        try {
+          matchedLocality = localities.firstWhere((l) => l.code == savedLocalityCode);
+        } on StateError {
+          matchedLocality = null;
+        }
       }
+      setState(() {
+        _localities = localities;
+        _isLocalityDisabled = localities.isEmpty;
+        _loadingLocalities = false;
+        if (matchedLocality != null) {
+          _localityCode = matchedLocality.code;
+          _locality = matchedLocality.label;
+        } else if (localities.isEmpty || (widget.address == null && savedLocalityCode == null)) {
+          _localityCode = null;
+          _locality = null;
+        }
+      });
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -679,6 +731,12 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
     bool isLoading = false,
     bool isDisabled = false,
   }) {
+    // Si value no existe en items, usar null para evitar fallo del DropdownButton
+    final safeValue = value != null &&
+            value.toString().isNotEmpty &&
+            items.any((i) => i.value == value)
+        ? value
+        : null;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
@@ -688,7 +746,7 @@ class _AddressFormModalState extends ConsumerState<AddressFormModal> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton(
-          value: value,
+          value: safeValue,
           items: items,
           onChanged: isDisabled ? null : onChanged,
           hint: isLoading

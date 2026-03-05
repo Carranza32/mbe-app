@@ -11,6 +11,7 @@ import '../../../../../core/design_system/ds_inputs.dart';
 import '../../../../auth/providers/auth_provider.dart';
 
 import '../../../providers/create_order_provider.dart';
+import '../../../providers/print_config_provider.dart';
 
 Future<void> _pickTransferProof(
   BuildContext context,
@@ -41,6 +42,9 @@ class Step4Confirmation extends HookConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // Watch printConfigProvider para que el pricing se calcule correctamente
+    ref.watch(printConfigProvider);
+    
     final authState = ref.watch(authProvider);
     final user = authState.value;
     final orderState = ref.watch(createOrderProvider);
@@ -144,7 +148,7 @@ class Step4Confirmation extends HookConsumerWidget {
                     ),
                     const SizedBox(width: MBESpacing.md),
                     Text(
-                      'Información de Contacto',
+                      AppLocalizations.of(context)!.printOrderContactInfo,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -177,7 +181,7 @@ class Step4Confirmation extends HookConsumerWidget {
 
                 // Teléfono
                 DSInput.phone(
-                  label: 'Teléfono (opcional)',
+                  label: AppLocalizations.of(context)!.printOrderPhoneOptional,
                   value: effectivePhone,
                   onChanged: (value) => orderNotifier.setCustomerPhone(value),
                 ),
@@ -186,8 +190,8 @@ class Step4Confirmation extends HookConsumerWidget {
 
                 // Notas Adicionales
                 DSInput.textArea(
-                  label: 'Notas Adicionales (opcional)',
-                  hint: 'Alguna instrucción especial...',
+                  label: AppLocalizations.of(context)!.printOrderAdditionalNotesOptional,
+                  hint: AppLocalizations.of(context)!.printOrderNotesHint,
                   value: customerInfo?.notes ?? '',
                   onChanged: (value) => orderNotifier.setCustomerNotes(value),
                   maxLines: 3,
@@ -242,10 +246,18 @@ class Step4Confirmation extends HookConsumerWidget {
 
                 _PaymentOption(
                   icon: Iconsax.bank,
-                  title: 'Transferencia',
-                  subtitle: 'Banco Agrícola, BAC, etc. Sube tu comprobante.',
+                  title: AppLocalizations.of(context)!.printOrderPaymentTransfer,
+                  subtitle: AppLocalizations.of(context)!.printOrderTransferUploadSubtitle,
                   isSelected: paymentInfo.method == PaymentMethod.transfer,
                   onTap: () => orderNotifier.setPaymentMethod(PaymentMethod.transfer),
+                ),
+
+                _PaymentOption(
+                  icon: Iconsax.card,
+                  title: AppLocalizations.of(context)!.printOrderPaymentCard,
+                  subtitle: AppLocalizations.of(context)!.printOrderCardPaymentDesc,
+                  isSelected: paymentInfo.method == PaymentMethod.card,
+                  onTap: () => orderNotifier.setPaymentMethod(PaymentMethod.card),
                 ),
 
                 // Comprobante de transferencia (obligatorio)
@@ -262,7 +274,7 @@ class Step4Confirmation extends HookConsumerWidget {
                     onPressed: () => _pickTransferProof(context, ref, orderNotifier, paymentInfo),
                     icon: const Icon(Iconsax.document_upload, size: 20),
                     label: Text(
-                      paymentInfo.transferProofFileName ?? 'Seleccionar imagen o PDF',
+                      paymentInfo.transferProofFileName ?? AppLocalizations.of(context)!.printOrderSelectImageOrPdf,
                     ),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 44),
@@ -346,14 +358,14 @@ class Step4Confirmation extends HookConsumerWidget {
                 // Archivos
                 _SummarySection(
                   icon: Iconsax.document,
-                  title: 'Archivos',
+                  title: AppLocalizations.of(context)!.printOrderFiles,
                   items: [
                     _SummaryItem(
-                      'Documentos:',
+                      '${AppLocalizations.of(context)!.printOrderDocuments}:',
                       '${orderState.uploadedFiles.length}',
                     ),
                     _SummaryItem(
-                      'Total páginas:',
+                      '${AppLocalizations.of(context)!.printOrderTotalPages}:',
                       '${orderState.totalPages ?? 0}',
                     ),
                   ],
@@ -408,19 +420,19 @@ class Step4Confirmation extends HookConsumerWidget {
                 // Entrega
                 _SummarySection(
                   icon: Iconsax.truck,
-                  title: 'Entrega',
+                  title: AppLocalizations.of(context)!.preAlertDelivery,
                   items: [
                     _SummaryItem(
-                      'Método:',
+                      '${AppLocalizations.of(context)!.printOrderMethod}:',
                       deliveryInfo?.method == 'pickup' 
-                          ? 'Recoger en tienda' 
-                          : 'Envío a domicilio',
+                          ? AppLocalizations.of(context)!.printOrderPickupInStore 
+                          : AppLocalizations.of(context)!.printOrderHomeDelivery,
                     ),
                     if (deliveryInfo?.method == 'delivery' && 
                         deliveryInfo?.address != null &&
                         deliveryInfo!.address!.isNotEmpty)
                       _SummaryItem(
-                        'Dirección:',
+                        '${AppLocalizations.of(context)!.printOrderAddress}:',
                         deliveryInfo.address!.length > 30
                             ? '${deliveryInfo.address!.substring(0, 30)}...'
                             : deliveryInfo.address!,

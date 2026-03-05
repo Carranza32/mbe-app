@@ -152,15 +152,7 @@ class AppDrawer extends HookConsumerWidget {
                         title: l10n.drawerAddresses,
                         onTap: () {
                           Navigator.pop(context);
-                          context.go('/profile/addresses');
-                        },
-                      ),
-                      _DrawerItem(
-                        icon: Iconsax.ticket,
-                        title: l10n.drawerPromoCodes,
-                        onTap: () {
-                          Navigator.pop(context);
-                          // Sin ruta aún; se puede agregar cuando exista
+                          context.push('/profile/addresses');
                         },
                       ),
                     ],
@@ -191,14 +183,6 @@ class AppDrawer extends HookConsumerWidget {
                         onTap: () {
                           Navigator.pop(context);
                           context.go('/quoter');
-                        },
-                      ),
-                      _DrawerItem(
-                        icon: Iconsax.box,
-                        title: l10n.drawerYourPackages,
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.go('/packages');
                         },
                       ),
                       _DrawerItem(

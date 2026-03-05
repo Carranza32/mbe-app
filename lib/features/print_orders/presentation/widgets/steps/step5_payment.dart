@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mbe_orders_app/l10n/app_localizations.dart';
-import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:iconsax/iconsax.dart';
@@ -25,12 +24,11 @@ class Step5Payment extends ConsumerWidget {
 
     final paymentInfo = orderState.paymentInfo;
     final pricing = orderNotifier.calculatePricing();
-    final showCardForm = paymentInfo.method == PaymentMethod.card;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header
+        // Header: mismo título para todos los métodos; icono según método seleccionado
         FadeInDown(
           duration: const Duration(milliseconds: 400),
           child: Container(
@@ -46,7 +44,7 @@ class Step5Payment extends ConsumerWidget {
                     boxShadow: MBETheme.shadowSm,
                   ),
                   child: Icon(
-                    showCardForm ? Iconsax.card : Iconsax.money,
+                    _getPaymentIcon(paymentInfo.method),
                     size: 28,
                     color: Colors.white,
                   ),
@@ -57,7 +55,7 @@ class Step5Payment extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        showCardForm ? AppLocalizations.of(context)!.printOrderMakePayment : AppLocalizations.of(context)!.printOrderConfirmTitle,
+                        AppLocalizations.of(context)!.printOrderConfirmTitle,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -91,7 +89,7 @@ class Step5Payment extends ConsumerWidget {
         const SizedBox(height: MBESpacing.lg),
 
         // Security Badge (solo si es tarjeta)
-        if (showCardForm) ...[
+        if (paymentInfo.method == PaymentMethod.card) ...[
           FadeInUp(
             duration: const Duration(milliseconds: 400),
             delay: const Duration(milliseconds: 50),
@@ -122,7 +120,7 @@ class Step5Payment extends ConsumerWidget {
                   const SizedBox(width: MBESpacing.md),
                   Expanded(
                     child: Text(
-                      'Pago 100% seguro y encriptado',
+                      AppLocalizations.of(context)!.printOrderSecurePaymentFull,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: const Color(0xFF059669),
                         fontWeight: FontWeight.w600,
@@ -133,131 +131,75 @@ class Step5Payment extends ConsumerWidget {
               ),
             ),
           ),
-          const SizedBox(height: MBESpacing.xl),
+          const SizedBox(height: MBESpacing.lg),
         ],
 
-        // Contenido según método de pago
-        if (showCardForm) ...[
-          // 🎴 Vista previa simple de la tarjeta
-          FadeInUp(
-            duration: const Duration(milliseconds: 400),
-            delay: const Duration(milliseconds: 100),
-            child: _CardPreview(paymentInfo: paymentInfo),
-          ),
-
-          const SizedBox(height: MBESpacing.xl),
-
-          // 📝 Formulario simple
-          FadeInUp(
-            duration: const Duration(milliseconds: 400),
-            delay: const Duration(milliseconds: 200),
-            child: Container(
-              padding: const EdgeInsets.all(MBESpacing.lg),
-              decoration: MBECardDecoration.card(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Iconsax.card_pos,
-                        size: 24,
-                        color: colorScheme.onSurface,
-                      ),
-                      const SizedBox(width: MBESpacing.md),
-                      Text(
-                        AppLocalizations.of(context)!.printOrderCardInfo,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+        // Bloque único: método de pago seleccionado (Efectivo, Transferencia o Tarjeta)
+        FadeInUp(
+          duration: const Duration(milliseconds: 400),
+          delay: const Duration(milliseconds: 100),
+          child: Container(
+            padding: const EdgeInsets.all(MBESpacing.xl),
+            decoration: MBECardDecoration.card(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppLocalizations.of(context)!.printOrderPaymentMethodSelected,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
                   ),
-
-                  const SizedBox(height: MBESpacing.xl),
-
-                  // 🎯 Campos individuales simples
-                  _CardNumberField(
-                    initialValue: paymentInfo.cardNumber ?? '',
-                    onChanged: (value) {
-                      orderNotifier.setCardNumber(value);
-                    },
-                  ),
-
-                  const SizedBox(height: MBESpacing.lg),
-
-                  _CardHolderField(
-                    initialValue: paymentInfo.cardHolder ?? '',
-                    onChanged: (value) {
-                      orderNotifier.setCardHolder(value);
-                    },
-                  ),
-
-                  const SizedBox(height: MBESpacing.lg),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _ExpiryDateField(
-                          initialValue: paymentInfo.expiryDate ?? '',
-                          onChanged: (value) {
-                            orderNotifier.setExpiryDate(value);
-                          },
-                        ),
+                ),
+                const SizedBox(height: MBESpacing.md),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(MBESpacing.md),
+                      decoration: BoxDecoration(
+                        color: MBETheme.brandBlack.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(MBERadius.medium),
                       ),
-                      const SizedBox(width: MBESpacing.md),
-                      Expanded(
-                        child: _CVVField(
-                          initialValue: paymentInfo.cvv ?? '',
-                          onChanged: (value) {
-                            orderNotifier.setCVV(value);
-                          },
-                        ),
+                      child: Icon(
+                        _getPaymentIcon(paymentInfo.method),
+                        size: 28,
+                        color: MBETheme.brandBlack,
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                    const SizedBox(width: MBESpacing.lg),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _getPaymentMethodName(context, paymentInfo.method),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: MBESpacing.xs),
+                          Text(
+                            paymentInfo.method == PaymentMethod.card
+                                ? AppLocalizations.of(
+                                    context,
+                                  )!.printOrderCardStepDescription
+                                : _getPaymentDescription(
+                                    context,
+                                    paymentInfo.method,
+                                  ),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ] else ...[
-          // Mensaje para otros métodos de pago
-          FadeInUp(
-            duration: const Duration(milliseconds: 400),
-            delay: const Duration(milliseconds: 100),
-            child: Container(
-              padding: const EdgeInsets.all(MBESpacing.xl),
-              decoration: MBECardDecoration.card(),
-              child: Column(
-                children: [
-                  Icon(
-                    paymentInfo.method == PaymentMethod.cash
-                        ? Iconsax.money
-                        : Iconsax.bank,
-                    size: 64,
-                    color: MBETheme.brandBlack,
-                  ),
-                  const SizedBox(height: MBESpacing.lg),
-                  Text(
-                    _getPaymentMessage(context, paymentInfo.method),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: MBESpacing.sm),
-                  Text(
-                    _getPaymentDescription(context, paymentInfo.method),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
 
         const SizedBox(height: MBESpacing.lg),
 
@@ -283,7 +225,7 @@ class Step5Payment extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Monto a pagar',
+                      AppLocalizations.of(context)!.printOrderAmountToPay,
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: Colors.white70,
                       ),
@@ -312,10 +254,12 @@ class Step5Payment extends ConsumerWidget {
                         color: Colors.white,
                       ),
                       const SizedBox(width: MBESpacing.sm),
-                      Text(
-                        _getPaymentMethodName(context, paymentInfo.method),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.white,
+                      Expanded(
+                        child: Text(
+                          '${AppLocalizations.of(context)!.printOrderPaymentMethodLabel}: ${_getPaymentMethodName(context, paymentInfo.method)}',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ],
@@ -349,7 +293,9 @@ class Step5Payment extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       processorState.errorMessage ??
-                          'Error al procesar el pedido',
+                          AppLocalizations.of(
+                            context,
+                          )!.printOrderErrorProcessing,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: MBETheme.brandRed,
                       ),
@@ -399,18 +345,6 @@ class Step5Payment extends ConsumerWidget {
     );
   }
 
-  String _getPaymentMessage(BuildContext context, PaymentMethod method) {
-    final l10n = AppLocalizations.of(context)!;
-    switch (method) {
-      case PaymentMethod.cash:
-        return l10n.printOrderCashPayment;
-      case PaymentMethod.transfer:
-        return l10n.printOrderTransferPayment;
-      case PaymentMethod.card:
-        return l10n.printOrderCardPayment;
-    }
-  }
-
   String _getPaymentDescription(BuildContext context, PaymentMethod method) {
     final l10n = AppLocalizations.of(context)!;
     switch (method) {
@@ -444,288 +378,5 @@ class Step5Payment extends ConsumerWidget {
       case PaymentMethod.card:
         return Iconsax.card;
     }
-  }
-}
-
-// 🎴 Vista previa simple de la tarjeta
-class _CardPreview extends StatelessWidget {
-  final PaymentInfo paymentInfo;
-
-  const _CardPreview({required this.paymentInfo});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.all(MBESpacing.xl),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            MBETheme.brandBlack,
-            MBETheme.brandBlack.withValues(alpha: 0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(MBERadius.large),
-        boxShadow: MBETheme.shadowLg,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(
-                Iconsax.card,
-                size: 40,
-                color: Colors.white.withValues(alpha: 0.8),
-              ),
-              Text(
-                'VISA',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          Text(
-            paymentInfo.cardNumber?.isEmpty ?? true
-                ? '•••• •••• •••• ••••'
-                : _formatCardNumber(paymentInfo.cardNumber ?? ''),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: Colors.white,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'TITULAR',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 10,
-                    ),
-                  ),
-                  Text(
-                    paymentInfo.cardHolder?.isEmpty ?? true
-                        ? 'NOMBRE APELLIDO'
-                        : paymentInfo.cardHolder!.toUpperCase(),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'VÁLIDO HASTA',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 10,
-                    ),
-                  ),
-                  Text(
-                    paymentInfo.expiryDate?.isEmpty ?? true
-                        ? 'MM/AA'
-                        : paymentInfo.expiryDate!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatCardNumber(String number) {
-    final cleaned = number.replaceAll(' ', '');
-    if (cleaned.length <= 4) return cleaned;
-
-    final buffer = StringBuffer();
-    for (int i = 0; i < cleaned.length; i++) {
-      if (i > 0 && i % 4 == 0) buffer.write(' ');
-      buffer.write(i < cleaned.length - 4 ? '•' : cleaned[i]);
-    }
-    return buffer.toString();
-  }
-}
-
-// 📝 Campos personalizados simples
-class _CardNumberField extends StatelessWidget {
-  final String initialValue;
-  final ValueChanged<String> onChanged;
-
-  const _CardNumberField({required this.initialValue, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      initialValue: initialValue,
-      decoration: InputDecoration(
-        labelText: 'Número de Tarjeta',
-        hintText: '1234 5678 9012 3456',
-        prefixIcon: const Icon(Iconsax.card),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(MBERadius.large),
-        ),
-      ),
-      keyboardType: TextInputType.number,
-      inputFormatters: [
-        FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(16),
-        _CardNumberFormatter(),
-      ],
-      onChanged: onChanged,
-    );
-  }
-}
-
-class _CardHolderField extends StatelessWidget {
-  final String initialValue;
-  final ValueChanged<String> onChanged;
-
-  const _CardHolderField({required this.initialValue, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      initialValue: initialValue,
-      decoration: InputDecoration(
-        labelText: AppLocalizations.of(context)!.printOrderCardHolder,
-        hintText: AppLocalizations.of(context)!.printOrderCardHolderHint,
-        prefixIcon: const Icon(Iconsax.user),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(MBERadius.large),
-        ),
-      ),
-      textCapitalization: TextCapitalization.words,
-      onChanged: onChanged,
-    );
-  }
-}
-
-class _ExpiryDateField extends StatelessWidget {
-  final String initialValue;
-  final ValueChanged<String> onChanged;
-
-  const _ExpiryDateField({required this.initialValue, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      initialValue: initialValue,
-      decoration: InputDecoration(
-        labelText: AppLocalizations.of(context)!.printOrderExpiry,
-        hintText: AppLocalizations.of(context)!.printOrderExpiryHint,
-        prefixIcon: const Icon(Iconsax.calendar),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(MBERadius.large),
-        ),
-      ),
-      keyboardType: TextInputType.number,
-      inputFormatters: [
-        FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(4),
-        _ExpiryDateFormatter(),
-      ],
-      onChanged: onChanged,
-    );
-  }
-}
-
-class _CVVField extends StatelessWidget {
-  final String initialValue;
-  final ValueChanged<String> onChanged;
-
-  const _CVVField({required this.initialValue, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      initialValue: initialValue,
-      decoration: InputDecoration(
-        labelText: 'CVV',
-        hintText: '123',
-        prefixIcon: const Icon(Iconsax.lock),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(MBERadius.large),
-        ),
-      ),
-      keyboardType: TextInputType.number,
-      obscureText: true,
-      inputFormatters: [
-        FilteringTextInputFormatter.digitsOnly,
-        LengthLimitingTextInputFormatter(4),
-      ],
-      onChanged: onChanged,
-    );
-  }
-}
-
-// 🔧 Formateadores
-class _CardNumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text;
-    if (text.isEmpty) return newValue;
-
-    final buffer = StringBuffer();
-    for (int i = 0; i < text.length; i++) {
-      buffer.write(text[i]);
-      final nonZeroIndex = i + 1;
-      if (nonZeroIndex % 4 == 0 && nonZeroIndex != text.length) {
-        buffer.write(' ');
-      }
-    }
-
-    final string = buffer.toString();
-    return newValue.copyWith(
-      text: string,
-      selection: TextSelection.collapsed(offset: string.length),
-    );
-  }
-}
-
-class _ExpiryDateFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text;
-    if (text.isEmpty) return newValue;
-
-    final buffer = StringBuffer();
-    for (int i = 0; i < text.length; i++) {
-      buffer.write(text[i]);
-      if (i == 1) buffer.write('/');
-    }
-
-    final string = buffer.toString();
-    return newValue.copyWith(
-      text: string,
-      selection: TextSelection.collapsed(offset: string.length),
-    );
   }
 }

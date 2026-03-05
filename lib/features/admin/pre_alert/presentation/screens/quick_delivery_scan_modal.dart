@@ -944,9 +944,10 @@ class _QuickDeliveryScanModalState
         return;
       }
 
-      // Validar que el paquete esté en estado "Lista para Retiro" o "Confirmada Recolección"
-      if (package.status != PackageStatus.listaRetiro &&
-          package.status != PackageStatus.confirmadaRecoleccion) {
+      // Validar: solicitud_recoleccion (operador va a recoger), confirmada_recoleccion o en_ruta (operador ya tiene el paquete)
+      if (package.status != PackageStatus.solicitudRecoleccion &&
+          package.status != PackageStatus.confirmadaRecoleccion &&
+          package.status != PackageStatus.enRuta) {
         HapticFeedback.vibrate();
         if (mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();

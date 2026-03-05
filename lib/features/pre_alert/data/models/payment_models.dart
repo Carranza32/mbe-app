@@ -1,14 +1,15 @@
-/// Modelos para el sistema de pago (transferencia, efectivo, futuro Cybersource)
+/// Modelos para el sistema de pago (transferencia, efectivo, tarjeta CyberSource)
 
 class PaymentInitResponse {
   final bool success;
   final int paymentId;
   final String referenceNumber;
-  final String redirectUrl;
+  /// URL para abrir en WebView (tarjeta). Null en efectivo.
+  final String? redirectUrl;
   final double amount;
   final String currency;
   final String status;
-  final String gateway; // 'transfer' | 'cash' | 'cybersource'
+  final String gateway; // 'transfer' | 'cash' | 'cybersource' | 'card'
   final String? cybersourceUrl;
   final Map<String, dynamic>? cybersourceParams;
 
@@ -16,7 +17,7 @@ class PaymentInitResponse {
     required this.success,
     required this.paymentId,
     required this.referenceNumber,
-    required this.redirectUrl,
+    this.redirectUrl,
     this.amount = 0.0,
     this.currency = 'USD',
     this.status = 'pending',
@@ -26,19 +27,24 @@ class PaymentInitResponse {
   });
 
   factory PaymentInitResponse.fromJson(Map<String, dynamic> json) {
+    final id = (json['payment_id'] as num?)?.toInt() ?? 0;
     return PaymentInitResponse(
-      success: json['success'] ?? false,
-      paymentId: json['payment_id'] ?? 0,
-      referenceNumber: json['reference_number'] ?? '',
-      redirectUrl: json['redirect_url'] ?? '',
+      success: id > 0,
+      paymentId: id,
+      referenceNumber: json['reference_number']?.toString() ?? '',
+      redirectUrl: json['redirect_url']?.toString(),
       amount: (json['amount'] ?? 0.0).toDouble(),
-      currency: json['currency'] ?? 'USD',
-      status: json['status'] ?? 'pending',
-      gateway: json['gateway'] ?? 'cash',
-      cybersourceUrl: json['cybersource_url'],
-      cybersourceParams: json['cybersource_params'],
+      currency: json['currency']?.toString() ?? 'USD',
+      status: json['status']?.toString() ?? 'pending',
+      gateway: json['gateway']?.toString() ?? 'cash',
+      cybersourceUrl: json['cybersource_url']?.toString(),
+      cybersourceParams: json['cybersource_params'] as Map<String, dynamic>?,
     );
   }
+
+  /// True si hay URL para abrir el hosted checkout (tarjeta).
+  bool get hasRedirectUrl =>
+      redirectUrl != null && redirectUrl!.trim().isNotEmpty;
 }
 
 class PaymentStatusResponse {
@@ -53,14 +59,22 @@ class PaymentStatusResponse {
   });
 
   factory PaymentStatusResponse.fromJson(Map<String, dynamic> json) {
+    final payment = json['payment'];
     return PaymentStatusResponse(
-      success: json['success'] ?? false,
-      payment: PaymentStatus.fromJson(json['payment'] ?? {}),
+      success: payment != null,
+      payment: PaymentStatus.fromJson(
+        payment is Map<String, dynamic> ? payment : {},
+      ),
       payable: json['payable'] != null
-          ? PayableInfo.fromJson(json['payable'])
+          ? PayableInfo.fromJson(json['payable'] as Map<String, dynamic>)
           : null,
     );
   }
+
+  /// Atajo: pago completado con éxito.
+  bool get isCompleted => payment.isCompleted;
+  /// Atajo: pago fallido o rechazado.
+  bool get isFailed => payment.isFailed;
 }
 
 class PaymentStatus {
@@ -92,18 +106,18 @@ class PaymentStatus {
 
   factory PaymentStatus.fromJson(Map<String, dynamic> json) {
     return PaymentStatus(
-      id: json['id'] ?? 0,
-      status: json['status'] ?? '',
-      referenceNumber: json['reference_number'] ?? '',
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      status: json['status']?.toString() ?? '',
+      referenceNumber: json['reference_number']?.toString() ?? '',
       amount: (json['amount'] ?? 0.0).toDouble(),
-      currency: json['currency'] ?? 'USD',
-      isCompleted: json['is_completed'] ?? false,
-      isFailed: json['is_failed'] ?? false,
-      isPending: json['is_pending'] ?? false,
-      transactionId: json['transaction_id'],
-      reasonMessage: json['reason_message'],
+      currency: json['currency']?.toString() ?? 'USD',
+      isCompleted: json['is_completed'] == true,
+      isFailed: json['is_failed'] == true,
+      isPending: json['is_pending'] == true,
+      transactionId: json['transaction_id']?.toString(),
+      reasonMessage: json['reason_message']?.toString(),
       completedAt: json['completed_at'] != null
-          ? DateTime.parse(json['completed_at'])
+          ? DateTime.tryParse(json['completed_at'].toString())
           : null,
     );
   }
@@ -120,8 +134,26 @@ class PayableInfo {
 
   factory PayableInfo.fromJson(Map<String, dynamic> json) {
     return PayableInfo(
-      id: json['id'] ?? 0,
-      type: json['type'] ?? '',
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      type: json['type']?.toString() ?? '',
+    );
+  }
+}
+
+/// Respuesta de GET /api/v1/payments/{id}/redirect-url (opcional).
+class PaymentRedirectUrlResponse {
+  final String redirectUrl;
+  final String method;
+
+  PaymentRedirectUrlResponse({
+    required this.redirectUrl,
+    this.method = 'GET',
+  });
+
+  factory PaymentRedirectUrlResponse.fromJson(Map<String, dynamic> json) {
+    return PaymentRedirectUrlResponse(
+      redirectUrl: json['redirect_url']?.toString() ?? '',
+      method: json['method']?.toString() ?? 'GET',
     );
   }
 }

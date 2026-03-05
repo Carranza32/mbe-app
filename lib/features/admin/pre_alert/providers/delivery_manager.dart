@@ -12,9 +12,13 @@ class DeliveryManager extends _$DeliveryManager {
   /// Procesar entrega pickup (cliente retira en tienda)
   Future<bool> processPickupDelivery({
     required List<String> packageIds,
-    required String signaturePath,
+    required String signature,
     required String deliveredTo,
     required DateTime deliveredAt,
+    bool isDifferentReceiver = false,
+    String? receiverName,
+    String? receiverEmail,
+    String? receiverPhone,
   }) async {
     state = const AsyncLoading();
 
@@ -22,9 +26,13 @@ class DeliveryManager extends _$DeliveryManager {
       final repository = ref.read(adminPreAlertsRepositoryProvider);
       await repository.processPickupDelivery(
         packageIds: packageIds,
-        signaturePath: signaturePath,
+        signature: signature,
         deliveredTo: deliveredTo,
         deliveredAt: deliveredAt,
+        isDifferentReceiver: isDifferentReceiver,
+        receiverName: receiverName,
+        receiverEmail: receiverEmail,
+        receiverPhone: receiverPhone,
       );
 
       _safeUpdateAfterAsync(() {
@@ -43,8 +51,7 @@ class DeliveryManager extends _$DeliveryManager {
   /// Procesar entrega delivery (despacho a domicilio)
   Future<bool> processDeliveryDispatch({
     required List<String> packageIds,
-    required int shippingProviderId,
-    String? providerTrackingNumber,
+    String? signatureBase64,
   }) async {
     state = const AsyncLoading();
 
@@ -52,8 +59,7 @@ class DeliveryManager extends _$DeliveryManager {
       final repository = ref.read(adminPreAlertsRepositoryProvider);
       await repository.processDeliveryDispatch(
         packageIds: packageIds,
-        shippingProviderId: shippingProviderId,
-        providerTrackingNumber: providerTrackingNumber,
+        signatureBase64: signatureBase64,
       );
 
       _safeUpdateAfterAsync(() {
@@ -79,4 +85,3 @@ class DeliveryManager extends _$DeliveryManager {
     }
   }
 }
-

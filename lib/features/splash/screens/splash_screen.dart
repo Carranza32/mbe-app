@@ -26,8 +26,13 @@ class SplashScreen extends HookConsumerWidget {
       next.whenData((user) {
         print('🔔 [SPLASH] authProvider data: user=${user?.email ?? "null"}');
         Future.microtask(
-          () =>
-              SplashScreen._redirectFromSplash(context, router, deepLink, user),
+          () => SplashScreen._redirectFromSplash(
+            context,
+            ref,
+            router,
+            deepLink,
+            user,
+          ),
         );
       });
       next.whenOrNull(
@@ -36,6 +41,7 @@ class SplashScreen extends HookConsumerWidget {
           Future.microtask(
             () => SplashScreen._redirectFromSplash(
               context,
+              ref,
               router,
               deepLink,
               null,
@@ -54,14 +60,26 @@ class SplashScreen extends HookConsumerWidget {
     return authState.when(
       data: (user) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          SplashScreen._redirectFromSplash(context, router, deepLink, user);
+          SplashScreen._redirectFromSplash(
+            context,
+            ref,
+            router,
+            deepLink,
+            user,
+          );
         });
         return _buildSplashContent(context);
       },
       loading: () => _buildSplashContent(context),
       error: (error, stackTrace) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          SplashScreen._redirectFromSplash(context, router, deepLink, null);
+          SplashScreen._redirectFromSplash(
+            context,
+            ref,
+            router,
+            deepLink,
+            null,
+          );
         });
         return _buildSplashContent(context);
       },
@@ -72,6 +90,7 @@ class SplashScreen extends HookConsumerWidget {
   /// Usa router.go() en vez de context.go() porque context puede desmontarse durante await.
   static Future<void> _redirectFromSplash(
     BuildContext context,
+    WidgetRef ref,
     GoRouter router,
     DeepLinkService deepLink,
     User? user,
@@ -105,8 +124,30 @@ class SplashScreen extends HookConsumerWidget {
       }
 
       if (user != null) {
-        print('📍 [SPLASH] Navegando a welcome-back (user existe)');
-        router.go('/auth/welcome-back');
+        // Verificar expiración de sesión: admin 1 día, usuario 15 días
+        // Si no hay timestamp (usuarios anteriores a esta versión), se considera sesión válida
+        final loginAt = await getLoginTimestamp();
+        final sessionDuration =
+            user.isAdmin ? const Duration(days: 1) : const Duration(days: 15);
+        final isExpired = loginAt != null &&
+            DateTime.now().difference(loginAt) > sessionDuration;
+
+        if (isExpired) {
+          print('📍 [SPLASH] Sesión expirada, redirigiendo a login');
+          await ref.read(authProvider.notifier).logout();
+          router.go('/auth/login');
+          return;
+        }
+
+        // Sesión vigente: verificar preferencia biométrica
+        final biometricEnabled = await getBiometricLoginEnabled();
+        if (biometricEnabled) {
+          print('📍 [SPLASH] Navegando a welcome-back (biométrico activado)');
+          router.go('/auth/welcome-back');
+        } else {
+          print('📍 [SPLASH] Navegando a home (biométrico desactivado, sesión vigente)');
+          router.go('/');
+        }
         return;
       }
 

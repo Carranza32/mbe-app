@@ -71,6 +71,7 @@ class AddressModel {
   }
 
   /// Convertir a JSON para enviar a la API
+  /// POST/PUT /admin/customers/{id}/addresses espera todos estos campos
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{
       'name': name,
@@ -83,10 +84,11 @@ class AddressModel {
       'address': address,
       'phone': phone,
       'is_default': isDefault,
+      // Siempre enviar locality (nivel 3 / distrito) - backend lo espera
+      'locality_code': localityCode,
+      'locality': locality,
     };
 
-    if (localityCode != null) json['locality_code'] = localityCode;
-    if (locality != null) json['locality'] = locality;
     if (references != null) json['references'] = references;
     if (latitude != null) json['latitude'] = latitude;
     if (longitude != null) json['longitude'] = longitude;

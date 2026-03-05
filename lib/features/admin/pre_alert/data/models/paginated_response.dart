@@ -82,7 +82,7 @@ class PaginatedPreAlertsResponse {
               total: 0.0,
               productCount: 0,
               store: 'N/A',
-              status: PackageStatus.ingresada,
+              status: PackageStatus.enTransito,
               createdAt: DateTime.now(),
             );
             parsedData.add(safePackage);

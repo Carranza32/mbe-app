@@ -3,8 +3,8 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   // Base URL - Cambiar según tu entorno
-  static const String baseUrl = 'https://sistema.mbeelsalvador.com/api/v1';
-  //   static const String baseUrl = 'http://192.168.31.229:8000/api/v1';
+  // static const String baseUrl = 'https://sistema.mbeelsalvador.com/api/v1';
+  static const String baseUrl = 'http://192.168.31.154:8000/api/v1';
   // static const String baseUrl = 'https://127.0.0.1:8000/api/v1';
 
   // Auth endpoints
@@ -31,6 +31,9 @@ class ApiEndpoints {
   static String updateOrder(String id) => '/orders/$id';
   static String deleteOrder(String id) => '/orders/$id';
   static String orderStatus(String id) => '/orders/$id/status';
+  /// Iniciar pago con tarjeta (CyberSource) para una orden de impresión ya creada.
+  static String initiatePrintOrderPayment(String orderId) =>
+      '/print-orders/$orderId/payment';
 
   // Pre-alerts endpoints (customer)
   static const String preAlerts = '/pre-alerts';
@@ -54,6 +57,8 @@ class ApiEndpoints {
   // Pre-alerts endpoints (admin)
   static const String adminPreAlerts = '/admin/pre-alerts';
   static String getPreAlertById(String id) => '/admin/pre-alerts/$id';
+  static const String customerByLockerCode =
+      '/admin/pre-alerts/customer/by-locker-code';
   static String updatePreAlertStatus(String id) =>
       '/admin/pre-alerts/$id/status';
   static String bulkUpdatePreAlertStatus = '/admin/pre-alerts/bulk-status';
@@ -73,6 +78,15 @@ class ApiEndpoints {
   static const String searchPreAlerts = '/admin/pre-alerts/search';
   static String customerPendingCounts(int customerId) =>
       '/admin/pre-alerts/customer/$customerId/pending-counts';
+
+  // Buscar para entrega (paquete o cliente)
+  static const String searchForDelivery =
+      '/admin/pre-alerts/search-for-delivery';
+  static const String findForShipment = '/admin/pre-alerts/find-for-shipment';
+  static const String findForDispatch = '/admin/pre-alerts/find-for-dispatch';
+  static const String confirmShipmentGroup =
+      '/admin/pre-alerts/confirm-shipment-group';
+  static const String exportPreAlertsExcel = '/admin/pre-alerts/export-excel';
 
   // Admin stores (listar tiendas para selector)
   static const String adminStores = '/admin/stores';
@@ -119,6 +133,12 @@ class ApiEndpoints {
   static String addressById(String id) => '/addresses/$id';
   static String setDefaultAddress(String id) => '/addresses/$id/set-default';
 
+  // Admin: direcciones de cliente (para completar información)
+  static String customerAddresses(int customerId) =>
+      '/admin/customers/$customerId/addresses';
+  static String customerAddressById(int customerId, int addressId) =>
+      '/admin/customers/$customerId/addresses/$addressId';
+
   // Document configs endpoints
   static const String documentConfigs = '/document-configs';
 
@@ -131,6 +151,11 @@ class ApiEndpoints {
     String regionCode,
     String cityCode,
   ) => '/geo/adm3/$countryCode/$regionCode/$cityCode';
+
+  /// Estados/departamentos Boxful (incluye Cities) para completar información - método casillero
+  static const String boxfulStates = '/boxful/states';
+  /// Casilleros Boxful por ciudad (city_id = boxful_city_id de MongoDB)
+  static const String boxfulLockers = '/boxful/lockers';
 
   // Trends (productos en tendencia - no requiere auth)
   static const String trends = '/trends';

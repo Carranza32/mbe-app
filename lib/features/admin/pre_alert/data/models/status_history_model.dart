@@ -1,3 +1,12 @@
+/// Helper para parsear int desde JSON (puede venir como int, num o String)
+int _parseInt(dynamic value) {
+  if (value == null) return 0;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
 /// Modelo para la información de un estado
 class StatusInfo {
   final int id;
@@ -14,7 +23,7 @@ class StatusInfo {
 
   factory StatusInfo.fromJson(Map<String, dynamic> json) {
     return StatusInfo(
-      id: json['id'] as int,
+      id: _parseInt(json['id']),
       name: json['name'] as String,
       label: json['label'] as String,
       color: json['color'] as String?,
@@ -22,12 +31,7 @@ class StatusInfo {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'label': label,
-      'color': color,
-    };
+    return {'id': id, 'name': name, 'label': label, 'color': color};
   }
 }
 
@@ -45,18 +49,14 @@ class PreviousStatusInfo {
 
   factory PreviousStatusInfo.fromJson(Map<String, dynamic> json) {
     return PreviousStatusInfo(
-      id: json['id'] as int,
+      id: _parseInt(json['id']),
       name: json['name'] as String,
       label: json['label'] as String,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'label': label,
-    };
+    return {'id': id, 'name': name, 'label': label};
   }
 }
 
@@ -66,26 +66,18 @@ class ChangedByInfo {
   final String name;
   final String email;
 
-  ChangedByInfo({
-    required this.id,
-    required this.name,
-    required this.email,
-  });
+  ChangedByInfo({required this.id, required this.name, required this.email});
 
   factory ChangedByInfo.fromJson(Map<String, dynamic> json) {
     return ChangedByInfo(
-      id: json['id'] as int,
+      id: _parseInt(json['id']),
       name: json['name'] as String,
       email: json['email'] as String,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'email': email,
-    };
+    return {'id': id, 'name': name, 'email': email};
   }
 }
 
@@ -111,16 +103,18 @@ class StatusHistoryItem {
 
   factory StatusHistoryItem.fromJson(Map<String, dynamic> json) {
     return StatusHistoryItem(
-      id: json['id'] as int,
+      id: _parseInt(json['id']),
       status: StatusInfo.fromJson(json['status'] as Map<String, dynamic>),
       previousStatus: json['previous_status'] != null
           ? PreviousStatusInfo.fromJson(
-              json['previous_status'] as Map<String, dynamic>)
+              json['previous_status'] as Map<String, dynamic>,
+            )
           : null,
       changedBy: ChangedByInfo.fromJson(
-          json['changed_by'] as Map<String, dynamic>),
+        json['changed_by'] as Map<String, dynamic>,
+      ),
       notes: json['notes'] as String?,
-      metadata: json['metadata'] != null
+      metadata: json['metadata'] is Map<String, dynamic>
           ? json['metadata'] as Map<String, dynamic>
           : null,
       changedAt: DateTime.parse(json['changed_at'] as String),
@@ -157,7 +151,9 @@ class StatusHistoryResponse {
       status: json['status'] as bool,
       message: json['message'] as String,
       data: (json['data'] as List)
-          .map((item) => StatusHistoryItem.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) => StatusHistoryItem.fromJson(item as Map<String, dynamic>),
+          )
           .toList(),
     );
   }
@@ -170,4 +166,3 @@ class StatusHistoryResponse {
     };
   }
 }
-

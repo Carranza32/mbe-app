@@ -56,15 +56,6 @@ class ApiService {
   /// [fromJson] - Función para convertir la respuesta JSON a tu modelo
   ///
   /// Retorna directamente el tipo T o lanza ApiException si hay error
-  ///
-  /// Ejemplo de uso:
-  /// ```dart
-  /// final newOrder = await apiService.post<Order>(
-  ///   endpoint: ApiEndpoints.createOrder,
-  ///   data: orderData,
-  ///   fromJson: (json) => Order.fromJson(json),
-  /// );
-  /// ```
   Future<T> post<T>({
     required String endpoint,
     required dynamic data,
@@ -79,6 +70,42 @@ class ApiService {
       );
 
       return _processResponse<T>(response, fromJson);
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(message: 'Error inesperado: ${e.toString()}');
+    }
+  }
+
+  /// POST que retorna el cuerpo de la respuesta como bytes (ej. export Excel).
+  /// Útil cuando el servidor devuelve un archivo binario.
+  Future<List<int>> postBytes({
+    required String endpoint,
+    required Map<String, dynamic> data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    try {
+      final response = await _dio.post<List<int>>(
+        endpoint,
+        data: data,
+        queryParameters: queryParameters,
+        options: Options(responseType: ResponseType.bytes),
+      );
+
+      final statusCode = response.statusCode ?? 0;
+      if (statusCode >= 200 && statusCode < 300) {
+        final body = response.data;
+        if (body == null) return <int>[];
+        return List<int>.from(body as List);
+      }
+
+      String message = 'Error en la petición';
+      if (response.data is Map) {
+        final map = response.data as Map;
+        message = map['message'] as String? ?? message;
+      }
+      throw ApiException(message: message, statusCode: statusCode);
     } on DioException catch (e) {
       throw ApiException.fromDioException(e);
     } catch (e) {

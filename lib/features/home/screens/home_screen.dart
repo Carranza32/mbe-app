@@ -44,62 +44,67 @@ class HomeScreen extends HookConsumerWidget {
             ),
 
             // Botón igual a "Crear casillero" (abre WebView registro), debajo de la tarjeta — para reunión; luego se puede esconder
-            if (!isAdmin &&
-                ((customer?.lockerCode ?? '').trim().isNotEmpty))
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                sliver: SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (context) => ExternalUrlWebView(
-                                url: _lockerRegistrationUrl,
-                                title: l10n.homeLockerRegistrationTitle,
-                                scrollToBottomOnLoad: true,
-                              ),
-                            ),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 12, horizontal: 16),
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                                color: const Color(0xFF1A1A2E).withOpacity(0.3)),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Iconsax.box_add,
-                                color: Color(0xFF1A1A2E),
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                l10n.homeCreateLocker,
-                                style: TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            // if (!isAdmin && ((customer?.lockerCode ?? '').trim().isNotEmpty))
+            //   SliverPadding(
+            //     padding: const EdgeInsets.symmetric(
+            //       horizontal: 20,
+            //       vertical: 0,
+            //     ),
+            //     sliver: SliverToBoxAdapter(
+            //       child: Padding(
+            //         padding: const EdgeInsets.only(top: 4),
+            //         child: Material(
+            //           color: Colors.transparent,
+            //           child: InkWell(
+            //             onTap: () {
+            //               Navigator.of(context).push(
+            //                 MaterialPageRoute<void>(
+            //                   builder: (context) => ExternalUrlWebView(
+            //                     url: _lockerRegistrationUrl,
+            //                     title: l10n.homeLockerRegistrationTitle,
+            //                     scrollToBottomOnLoad: true,
+            //                   ),
+            //                 ),
+            //               );
+            //             },
+            //             borderRadius: BorderRadius.circular(12),
+            //             child: Container(
+            //               width: double.infinity,
+            //               padding: const EdgeInsets.symmetric(
+            //                 vertical: 12,
+            //                 horizontal: 16,
+            //               ),
+            //               decoration: BoxDecoration(
+            //                 border: Border.all(
+            //                   color: const Color(0xFF1A1A2E).withOpacity(0.3),
+            //                 ),
+            //                 borderRadius: BorderRadius.circular(12),
+            //               ),
+            //               child: Row(
+            //                 mainAxisAlignment: MainAxisAlignment.center,
+            //                 children: [
+            //                   const Icon(
+            //                     Iconsax.box_add,
+            //                     color: Color(0xFF1A1A2E),
+            //                     size: 18,
+            //                   ),
+            //                   const SizedBox(width: 8),
+            //                   Text(
+            //                     l10n.homeCreateLocker,
+            //                     style: TextStyle(
+            //                       color: AppColors.textPrimary,
+            //                       fontSize: 14,
+            //                       fontWeight: FontWeight.w600,
+            //                     ),
+            //                   ),
+            //                 ],
+            //               ),
+            //             ),
+            //           ),
+            //         ),
+            //       ),
+            //     ),
+            //   ),
 
             // 3. Título de Sección
             SliverToBoxAdapter(
@@ -367,7 +372,11 @@ class HomeScreen extends HookConsumerWidget {
                     ),
                   );
                 },
-                icon: const Icon(Iconsax.box_add, color: Colors.white, size: 20),
+                icon: const Icon(
+                  Iconsax.box_add,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 label: Text(
                   l10n.homeCreateLocker,
                   style: TextStyle(
@@ -392,8 +401,7 @@ class HomeScreen extends HookConsumerWidget {
 
     // Con casillero: tarjeta actual
     final tierName = customer?.tierName;
-    final hasTier =
-        tierName != null && tierName.toString().trim().isNotEmpty;
+    final hasTier = tierName != null && tierName.toString().trim().isNotEmpty;
 
     return Container(
       width: double.infinity,

@@ -1,5 +1,6 @@
 // lib/features/print_orders/providers/order_processor_provider.dart
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import '../data/models/create_order_request.dart';
 import '../data/repositories/print_order_repository.dart';
 import 'create_order_provider.dart'; // ✅ CAMBIO: Usa el provider centralizado
@@ -41,11 +42,13 @@ class OrderProcessor extends _$OrderProcessor {
   }
 
   /// Procesar y enviar la orden
+  /// [l10n] para mensajes de error traducidos (ej: AppLocalizations.of(context)!)
   Future<bool> processOrder({
     String? cardNumber,
     String? cardHolder,
     String? expiryDate,
     String? cvv,
+    required AppLocalizations l10n,
   }) async {
     try {
       // Cambiar estado a procesando
@@ -59,7 +62,7 @@ class OrderProcessor extends _$OrderProcessor {
       if (request == null) {
         state = OrderProcessingState(
           status: OrderProcessingStatus.error,
-          errorMessage: 'Faltan datos del pedido',
+          errorMessage: l10n.printOrderMissingOrderData,
         );
         return false;
       }
@@ -67,7 +70,7 @@ class OrderProcessor extends _$OrderProcessor {
       if (orderState.uploadedFiles.isEmpty) {
         state = OrderProcessingState(
           status: OrderProcessingStatus.error,
-          errorMessage: 'No hay archivos para imprimir',
+          errorMessage: l10n.printOrderNoFilesToPrint,
         );
         return false;
       }
@@ -76,7 +79,7 @@ class OrderProcessor extends _$OrderProcessor {
       if (!_isCustomerValid(request.customerInfo)) {
         state = OrderProcessingState(
           status: OrderProcessingStatus.error,
-          errorMessage: 'Información de contacto incompleta',
+          errorMessage: l10n.printOrderContactInfoIncomplete,
         );
         return false;
       }
@@ -85,25 +88,25 @@ class OrderProcessor extends _$OrderProcessor {
       if (!_isDeliveryValid(request.deliveryInfo)) {
         state = OrderProcessingState(
           status: OrderProcessingStatus.error,
-          errorMessage: 'Información de entrega incompleta',
+          errorMessage: l10n.printOrderDeliveryInfoIncomplete,
         );
         return false;
       }
 
-      // Validar método de pago: solo efectivo y transferencia; en transferencia exige comprobante
+      // Validar método de pago: transferencia exige comprobante; tarjeta se paga en WebView después de crear la orden
       final paymentInfo = orderState.paymentInfo;
       if (paymentInfo.method == PaymentMethod.transfer) {
         if (paymentInfo.transferProofPath == null ||
             paymentInfo.transferProofPath!.isEmpty) {
           state = OrderProcessingState(
             status: OrderProcessingStatus.error,
-            errorMessage: 'Sube el comprobante de transferencia',
+            errorMessage: l10n.preAlertUploadTransferProof,
           );
           return false;
         }
       }
 
-      // Enviar al backend (incluye comprobante si es transferencia)
+      // Crear orden (para tarjeta no enviamos comprobante; el pago se inicia después con redirect_url)
       final repository = ref.read(printOrderRepositoryProvider);
       final response = await repository.createOrder(
         request,
@@ -123,7 +126,7 @@ class OrderProcessor extends _$OrderProcessor {
       // Manejar error
       state = OrderProcessingState(
         status: OrderProcessingStatus.error,
-        errorMessage: 'Error al procesar el pedido: $e',
+        errorMessage: '${l10n.printOrderErrorProcessing}: $e',
       );
       return false;
     }

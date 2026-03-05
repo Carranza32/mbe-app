@@ -4,21 +4,19 @@ import 'package:iconsax/iconsax.dart';
 import '../../../../../core/design_system/ds_buttons.dart';
 import '../../../../../config/theme/mbe_theme.dart';
 import '../../data/models/admin_pre_alert_model.dart';
-import '../../data/models/package_status.dart';
 import '../../providers/admin_pre_alerts_provider.dart';
 import '../../providers/context_counts_provider.dart';
 import '../../providers/package_selection_provider.dart';
-import '../../providers/package_status_provider.dart';
 import '../widgets/context_filter_segmented.dart';
 import '../widgets/package_list_item.dart';
 import '../widgets/package_list_shimmer.dart';
 import '../widgets/package_edit_modal.dart';
-import '../widgets/package_location_edit_modal.dart';
+import '../widgets/complete_delivery_info_modal.dart';
 import '../widgets/pickup_delivery_modal.dart';
 import '../widgets/delivery_dispatch_sheet.dart';
 import 'scan_packages_modal.dart';
-import 'quick_delivery_scan_modal.dart';
-import 'search_pre_alerts_screen.dart';
+import '../widgets/confirm_shipment_group_sheet.dart';
+import '../widgets/confirm_delivery_dispatch_sheet.dart';
 
 class AdminPreAlertsListScreen extends ConsumerStatefulWidget {
   const AdminPreAlertsListScreen({super.key});
@@ -31,7 +29,8 @@ class AdminPreAlertsListScreen extends ConsumerStatefulWidget {
 class _AdminPreAlertsListScreenState
     extends ConsumerState<AdminPreAlertsListScreen> {
   PackageContext _selectedContext = PackageContext.porRecibir;
-  PackageStatus? selectedFilter; // Para filtros secundarios
+  DeliveryMethodSubContext _selectedDeliveryMethodSub =
+      DeliveryMethodSubContext.domicilio;
   bool _showOnlyWithoutLocation = false;
   final ScrollController _scrollController = ScrollController();
   bool _showFilters = true; // Controla la visibilidad de los filtros
@@ -43,9 +42,13 @@ class _AdminPreAlertsListScreenState
     _scrollController.addListener(_onScroll);
     // Aplicar el filtro inicial cuando se carga la pantalla
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(adminPreAlertsProvider.notifier)
-          .filterByContext(_selectedContext);
+      ref.read(adminPreAlertsProvider.notifier).filterByContext(
+            _selectedContext,
+            deliveryMethodSub:
+                ContextFilterSegmented.hasSubPills(_selectedContext)
+                ? _selectedDeliveryMethodSub
+                : null,
+          );
     });
   }
 
@@ -93,8 +96,29 @@ class _AdminPreAlertsListScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Resetear header y scroll cuando vuelven datos tras recarga (p. ej. después de completar acción)
+    ref.listen(adminPreAlertsProvider, (previous, next) {
+      if (previous?.isLoading == true && next.hasValue && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          setState(() {
+            _showFilters = true;
+            _lastScrollOffset = 0;
+          });
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(0);
+          }
+        });
+      }
+    });
+
     final alertsState = ref.watch(adminPreAlertsProvider);
     final countsState = ref.watch(contextCountsProvider);
+    final solicitudEnvioSubCountsState =
+        ref.watch(solicitudEnvioSubCountsProvider);
+    final confirmacionesSubCountsState =
+        ref.watch(confirmacionesSubCountsProvider);
+    final enCaminoSubCountsState = ref.watch(enCaminoSubCountsProvider);
 
     return Scaffold(
       backgroundColor: MBETheme.lightGray,
@@ -152,7 +176,6 @@ class _AdminPreAlertsListScreenState
 
       body: Column(
         children: [
-          // Segmented Control para contextos principales (con animación)
           AnimatedSlide(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
@@ -166,20 +189,52 @@ class _AdminPreAlertsListScreenState
                       onContextChanged: (context) {
                         setState(() {
                           _selectedContext = context;
-                          selectedFilter = null; // Reset filtros secundarios
+                          if (ContextFilterSegmented.hasSubPills(context)) {
+                            _selectedDeliveryMethodSub =
+                                DeliveryMethodSubContext.domicilio;
+                          }
                         });
-                        // Aplicar filtro en el provider
-                        ref
-                            .read(adminPreAlertsProvider.notifier)
-                            .filterByContext(context);
+                        ref.read(adminPreAlertsProvider.notifier).filterByContext(
+                              context,
+                              deliveryMethodSub:
+                                  ContextFilterSegmented.hasSubPills(context)
+                                  ? _selectedDeliveryMethodSub
+                                  : null,
+                            );
+                        ref.invalidate(contextCountsProvider);
+                        ref.invalidate(solicitudEnvioSubCountsProvider);
+                        ref.invalidate(confirmacionesSubCountsProvider);
+                        ref.invalidate(enCaminoSubCountsProvider);
                       },
-                      counts:
-                          countsState.value ??
-                          {
-                            PackageContext.porRecibir: 0,
-                            PackageContext.enBodega: 0,
-                            PackageContext.paraEntregar: 0,
-                          },
+                      counts: countsState.value ??
+                          {for (final c in PackageContext.values) c: 0},
+                      selectedSubContext:
+                          ContextFilterSegmented.hasSubPills(_selectedContext)
+                          ? _selectedDeliveryMethodSub
+                          : null,
+                      onSubContextChanged:
+                          ContextFilterSegmented.hasSubPills(_selectedContext)
+                          ? (sub) {
+                              setState(() =>
+                                  _selectedDeliveryMethodSub = sub);
+                              ref
+                                  .read(adminPreAlertsProvider.notifier)
+                                  .filterByContext(
+                                    _selectedContext,
+                                    deliveryMethodSub: sub,
+                                  );
+                            }
+                          : null,
+                      subCounts: ContextFilterSegmented.hasSubPills(
+                              _selectedContext)
+                          ? (_selectedContext ==
+                                  PackageContext.solicitudEnvio
+                              ? solicitudEnvioSubCountsState.value
+                              : _selectedContext ==
+                                      PackageContext.confirmacionesDeEnvio
+                              ? confirmacionesSubCountsState.value
+                              : enCaminoSubCountsState.value)
+                          : null,
                     )
                   : const SizedBox.shrink(),
             ),
@@ -224,7 +279,7 @@ class _AdminPreAlertsListScreenState
                 }
                 final filteredAlerts =
                     (_showOnlyWithoutLocation &&
-                        _selectedContext == PackageContext.enBodega)
+                        _selectedContext == PackageContext.disponibles)
                     ? alerts
                           .where(
                             (alert) =>
@@ -279,10 +334,11 @@ class _AdminPreAlertsListScreenState
                 }
                 return RefreshIndicator.adaptive(
                   onRefresh: () async {
-                    // Refrescar la lista de pre-alerts
                     await ref.read(adminPreAlertsProvider.notifier).refresh();
-                    // También refrescar los contadores
                     ref.invalidate(contextCountsProvider);
+                    ref.invalidate(solicitudEnvioSubCountsProvider);
+                    ref.invalidate(confirmacionesSubCountsProvider);
+                    ref.invalidate(enCaminoSubCountsProvider);
                   },
                   child: ListView.builder(
                     controller: _scrollController,
@@ -304,6 +360,13 @@ class _AdminPreAlertsListScreenState
                           context,
                           filteredAlerts.elementAt(index),
                         ),
+                        onCompleteDeliveryInfo:
+                            _selectedContext == PackageContext.disponibles
+                            ? () => _showCompleteDeliveryInfo(
+                                context,
+                                filteredAlerts.elementAt(index),
+                              )
+                            : null,
                       );
                     },
                   ),
@@ -352,37 +415,52 @@ class _AdminPreAlertsListScreenState
       backgroundColor: Colors.transparent,
       useSafeArea: true,
       builder: (context) => ScanPackagesModal(mode: _selectedContext),
-    );
+    ).then((result) {
+      // Siempre refrescar después de escanear (puede haber cambios)
+      ref.invalidate(adminPreAlertsProvider);
+      ref.invalidate(contextCountsProvider);
+      ref.invalidate(solicitudEnvioSubCountsProvider);
+      ref.invalidate(confirmacionesSubCountsProvider);
+      ref.invalidate(enCaminoSubCountsProvider);
+    });
   }
 
   void _showEditModal(BuildContext context, AdminPreAlert package) {
-    // Si estamos en "En Bodega", usar modal de ubicación
-    if (_selectedContext == PackageContext.enBodega) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => PackageLocationEditModal(package: package),
-      ).then((result) {
-        if (result == true) {
-          ref.invalidate(adminPreAlertsProvider);
-          ref.invalidate(contextCountsProvider);
-        }
-      });
-    } else {
-      // Para otras secciones, usar modal de edición normal
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => PackageEditModal(package: package),
-      ).then((result) {
-        if (result == true) {
-          ref.invalidate(adminPreAlertsProvider);
-          ref.invalidate(contextCountsProvider);
-        }
-      });
-    }
+    // Al tocar la tarjeta: siempre abrir detalle (edición). En Disponibles, "Completar información" se abre desde el botón de la tarjeta.
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => PackageEditModal(package: package),
+    ).then((result) {
+      if (result == true) {
+        ref.invalidate(adminPreAlertsProvider);
+        ref.invalidate(contextCountsProvider);
+        ref.invalidate(solicitudEnvioSubCountsProvider);
+        ref.invalidate(confirmacionesSubCountsProvider);
+        ref.invalidate(enCaminoSubCountsProvider);
+      }
+    });
+  }
+
+  void _showCompleteDeliveryInfo(BuildContext context, AdminPreAlert package) {
+    Navigator.of(context)
+        .push<bool>(
+          MaterialPageRoute(
+            builder: (context) => Scaffold(
+              body: SafeArea(
+                child: CompleteDeliveryInfoModal(package: package, asPage: true),
+              ),
+            ),
+          ),
+        )
+        .then((result) {
+      if (result == true) {
+        ref.invalidate(adminPreAlertsProvider);
+        ref.invalidate(contextCountsProvider);
+        ref.invalidate(solicitudEnvioSubCountsProvider);
+      }
+    });
   }
 
   /// FAB contextual que cambia según el contexto activo
@@ -415,23 +493,12 @@ class _AdminPreAlertsListScreenState
           ),
         );
 
-      case PackageContext.enBodega:
-        // return FloatingActionButton.extended(
-        //   onPressed: () {
-        //     // Abrir modal de asignación de rack
-        //     // Por ahora usamos el scan modal, pero se puede cambiar
-        //     _showScanModal(context, ref);
-        //   },
-        //   backgroundColor: MBETheme.brandBlack,
-        //   icon: const Icon(Iconsax.location, color: Colors.white),
-        //   label: const Text(
-        //     "Asignar Rack",
-        //     style: TextStyle(color: Colors.white),
-        //   ),
-        // );
+      case PackageContext.disponibles:
+      case PackageContext.enCamino:
+      case PackageContext.entregado:
         return const SizedBox.shrink();
 
-      case PackageContext.paraEntregar:
+      case PackageContext.solicitudEnvio:
         return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(30),
@@ -447,12 +514,39 @@ class _AdminPreAlertsListScreenState
             ],
           ),
           child: FloatingActionButton.extended(
-            onPressed: () => _showQuickDeliveryScan(context),
+            onPressed: () => _showConfirmShipmentGroup(context),
             backgroundColor: Colors.transparent,
             elevation: 0,
             icon: const Icon(Iconsax.scan_barcode, color: Colors.white),
             label: const Text(
-              "Escanear retiro",
+              'Confirmar envío',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        );
+
+      case PackageContext.confirmacionesDeEnvio:
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFED1C24), Color(0xFFB91419)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFED1C24).withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: FloatingActionButton.extended(
+            onPressed: () => _showConfirmDeliveryDispatch(context),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            icon: const Icon(Iconsax.scan_barcode, color: Colors.white),
+            label: const Text(
+              'Entregar paquetes',
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -460,20 +554,42 @@ class _AdminPreAlertsListScreenState
     }
   }
 
-  /// Mostrar modal de escaneo rápido para entregas
-  void _showQuickDeliveryScan(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const QuickDeliveryScanModal(),
-    ).then((result) {
+  /// Mostrar pantalla "Procesar Envío" (Pendiente de confirmar: escanear, Boxful/otro, confirmar grupo)
+  void _showConfirmShipmentGroup(BuildContext context) {
+    Navigator.of(context)
+        .push<bool>(
+          MaterialPageRoute(
+            builder: (context) => const ConfirmShipmentGroupSheet(),
+          ),
+        )
+        .then((result) {
       if (result == true) {
         ref.invalidate(adminPreAlertsProvider);
         ref.invalidate(contextCountsProvider);
+        ref.invalidate(solicitudEnvioSubCountsProvider);
+        ref.invalidate(confirmacionesSubCountsProvider);
+        ref.invalidate(enCaminoSubCountsProvider);
       }
     });
+  }
+
+  /// Mostrar pantalla "Confirmar salida" (Listos para salir: escanear find-for-dispatch, proveedor, firma, confirmar)
+  void _showConfirmDeliveryDispatch(BuildContext context) {
+    Navigator.of(context)
+        .push<bool>(
+          MaterialPageRoute(
+            builder: (context) => const ConfirmDeliveryDispatchSheet(),
+          ),
+        )
+        .then((result) {
+          if (result == true) {
+            ref.invalidate(adminPreAlertsProvider);
+            ref.invalidate(contextCountsProvider);
+            ref.invalidate(solicitudEnvioSubCountsProvider);
+            ref.invalidate(confirmacionesSubCountsProvider);
+            ref.invalidate(enCaminoSubCountsProvider);
+          }
+        });
   }
 
   /// Procesar entrega directamente desde la lista principal (legacy - mantener por si acaso)

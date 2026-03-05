@@ -168,8 +168,11 @@ class CreateOrderResponse {
 
   factory CreateOrderResponse.fromJson(Map<String, dynamic> json) {
     return CreateOrderResponse(
-      orderId: json['order_id'] ?? json['orderId'] ?? '',
-      message: json['message'] ?? '',
+      orderId: json['order_number']?.toString() ??
+          json['order_id']?.toString() ??
+          json['orderId']?.toString() ??
+          '',
+      message: json['message']?.toString() ?? '',
     );
   }
 }

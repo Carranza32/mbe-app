@@ -54,7 +54,7 @@ class Step3DeliveryMethod extends HookConsumerWidget {
             ),
           if (isFreeDeliveryPromo) ...[
             Text(
-              'Desde \$${pricing.deliveryBaseCost.toStringAsFixed(2)}',
+              '${l10n.preAlertFrom} \$${pricing.deliveryBaseCost.toStringAsFixed(2)}',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
                 decoration: TextDecoration.lineThrough,
@@ -68,9 +68,9 @@ class Step3DeliveryMethod extends HookConsumerWidget {
       );
     } else {
       deliveryBadge = pricing.isFreeDelivery
-          ? DSBadge.success(label: '¡Envío gratis!')
+          ? DSBadge.success(label: l10n.printOrderFreeShipping)
           : DSBadge.info(
-              label: 'Desde \$${pricing.deliveryBaseCost.toStringAsFixed(2)}',
+              label: '${l10n.preAlertFrom} \$${pricing.deliveryBaseCost.toStringAsFixed(2)}',
             );
     }
 
@@ -220,6 +220,7 @@ class _PickupContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     final storesAsync = ref.watch(mbeStoresProvider);
 
     return storesAsync.when(
@@ -234,10 +235,10 @@ class _PickupContent extends ConsumerWidget {
           children: [
             const Icon(Iconsax.warning_2, size: 48, color: MBETheme.brandRed),
             const SizedBox(height: MBESpacing.lg),
-            const Text('Error al cargar tiendas'),
+            Text(l10n.preAlertErrorLoadingStores),
             TextButton(
               onPressed: () => ref.invalidate(mbeStoresProvider),
-              child: const Text('Reintentar'),
+              child: Text(l10n.preAlertRetry),
             ),
           ],
         ),
@@ -250,7 +251,7 @@ class _PickupContent extends ConsumerWidget {
                 const Icon(Iconsax.location, size: 48),
                 const SizedBox(height: MBESpacing.lg),
                 Text(
-                  'No hay tiendas disponibles',
+                  l10n.preAlertNoStores,
                   style: theme.textTheme.titleMedium,
                 ),
               ],
@@ -272,7 +273,7 @@ class _PickupContent extends ConsumerWidget {
                   ),
                   const SizedBox(width: MBESpacing.sm),
                   Text(
-                    'Selecciona una tienda',
+                    l10n.preAlertSelectStoreTitle,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -286,7 +287,7 @@ class _PickupContent extends ConsumerWidget {
               final dsLocation = DSLocation(
                 id: store.id.toString(),
                 name: store.name,
-                address: store.address ?? 'Sin dirección',
+                address: store.address ?? l10n.preAlertNoAddress,
                 zone: store.zone ?? '',
                 hours: null,
                 phone: store.phone ?? '',
@@ -340,6 +341,7 @@ class _DeliveryContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     final addressesAsync = ref.watch(userAddressesProvider);
 
     return addressesAsync.when(
@@ -354,10 +356,10 @@ class _DeliveryContent extends ConsumerWidget {
           children: [
             const Icon(Iconsax.warning_2, size: 48, color: MBETheme.brandRed),
             const SizedBox(height: MBESpacing.lg),
-            const Text('Error al cargar direcciones'),
+            Text(l10n.preAlertErrorLoadingAddresses),
             TextButton(
               onPressed: () => ref.invalidate(userAddressesProvider),
-              child: const Text('Reintentar'),
+              child: Text(l10n.preAlertRetry),
             ),
           ],
         ),
@@ -373,12 +375,12 @@ class _DeliveryContent extends ConsumerWidget {
                     const Icon(Iconsax.location, size: 48),
                     const SizedBox(height: MBESpacing.lg),
                     Text(
-                      'No tienes direcciones guardadas',
+                      l10n.preAlertNoAddresses,
                       style: theme.textTheme.titleMedium,
                     ),
                     const SizedBox(height: MBESpacing.md),
                     Text(
-                      'Ingresa la dirección y teléfono abajo',
+                      l10n.printOrderEnterAddressBelow,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -407,7 +409,7 @@ class _DeliveryContent extends ConsumerWidget {
                     ),
                     const SizedBox(width: MBESpacing.sm),
                     Text(
-                      'Selecciona una dirección',
+                      l10n.preAlertSelectAddress,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -435,8 +437,8 @@ class _DeliveryContent extends ConsumerWidget {
               }),
               const SizedBox(height: MBESpacing.lg),
               DSInput.textArea(
-                label: 'Notas Adicionales (opcional)',
-                hint: 'Horario preferido, instrucciones especiales...',
+                label: l10n.printOrderAdditionalNotesOptional,
+                hint: l10n.printOrderAdditionalNotesHint,
                 value: notes,
                 onChanged: onNotesChanged,
                 maxLines: 2,
@@ -478,8 +480,8 @@ class _DeliveryContent extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         pricing.isFreeDelivery
-                            ? '¡Envío gratis! (pedido mayor a \$${pricing.freeDeliveryMinimum.toStringAsFixed(2)})'
-                            : 'Costo de envío: \$${pricing.deliveryCost.toStringAsFixed(2)}',
+                            ? l10n.printOrderFreeShippingOverAmount('\$${pricing.freeDeliveryMinimum.toStringAsFixed(2)}')
+                            : l10n.printOrderShippingCostAmount('\$${pricing.deliveryCost.toStringAsFixed(2)}'),
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: pricing.isFreeDelivery 
@@ -496,7 +498,7 @@ class _DeliveryContent extends ConsumerWidget {
 
                   _InfoRow(
                     icon: Iconsax.dollar_circle,
-                    label: 'Costo base',
+                    label: l10n.preAlertBaseCost,
                     value: '\$${pricing.deliveryBaseCost.toStringAsFixed(2)}',
                     iconColor: const Color(0xFF10B981),
                   ),
@@ -505,7 +507,7 @@ class _DeliveryContent extends ConsumerWidget {
 
                   _InfoRow(
                     icon: Iconsax.receipt_2,
-                    label: 'Envío gratis en pedidos mayores a',
+                    label: l10n.printOrderFreeShippingOver,
                     value: '\$${pricing.freeDeliveryMinimum.toStringAsFixed(2)}',
                     iconColor: const Color(0xFF3B82F6),
                   ),
@@ -515,8 +517,8 @@ class _DeliveryContent extends ConsumerWidget {
 
                 _InfoRow(
                   icon: Iconsax.clock,
-                  label: 'Tiempo estimado',
-                  value: '1-2 días hábiles',
+                  label: l10n.preAlertEstimatedTime,
+                  value: l10n.printOrderEstimatedTimeValue,
                   iconColor: const Color(0xFFF59E0B),
                 ),
               ],
@@ -545,7 +547,7 @@ class _DeliveryContent extends ConsumerWidget {
                     ),
                     const SizedBox(width: MBESpacing.sm),
                     Text(
-                      'Consejos para tu entrega',
+                      l10n.printOrderDeliveryTips,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -553,17 +555,11 @@ class _DeliveryContent extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: MBESpacing.md),
-                const _TipItem(
-                  '• Asegúrate de incluir referencias claras de tu ubicación',
-                ),
+                _TipItem(l10n.printOrderTipLocationRefs),
                 const SizedBox(height: MBESpacing.xs),
-                const _TipItem(
-                  '• Verifica que tu teléfono esté disponible durante la entrega',
-                ),
+                _TipItem(l10n.printOrderTipPhoneAvailable),
                 const SizedBox(height: MBESpacing.xs),
-                const _TipItem(
-                  '• Puedes agregar un horario preferido en las notas',
-                ),
+                _TipItem(l10n.printOrderTipPreferredSchedule),
               ],
             ),
               ),
@@ -595,6 +591,7 @@ class _DeliveryFormSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(MBESpacing.lg),
       decoration: MBECardDecoration.card(),
@@ -602,8 +599,8 @@ class _DeliveryFormSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DSInput.textArea(
-            label: 'Dirección de Entrega',
-            hint: 'Calle, número, colonia, municipio...',
+            label: l10n.printOrderDeliveryAddress,
+            hint: l10n.printOrderAddressHint,
             value: address,
             onChanged: onAddressChanged,
             required: true,
@@ -611,16 +608,16 @@ class _DeliveryFormSection extends StatelessWidget {
           ),
           const SizedBox(height: MBESpacing.lg),
           DSInput.phone(
-            label: 'Teléfono de Contacto',
-            hint: '2222-2222 o 7777-7777',
+            label: l10n.printOrderContactPhone,
+            hint: l10n.printOrderPhoneHint,
             value: phone,
             onChanged: onPhoneChanged,
             required: true,
           ),
           const SizedBox(height: MBESpacing.lg),
           DSInput.textArea(
-            label: 'Notas (opcional)',
-            hint: 'Horario preferido, referencias...',
+            label: l10n.preAlertNotesOptionalLabel,
+            hint: l10n.printOrderDeliveryNotesHint,
             value: notes,
             onChanged: onNotesChanged,
             maxLines: 2,
@@ -647,6 +644,7 @@ class _AddressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -715,7 +713,7 @@ class _AddressCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(MBERadius.small),
                             ),
                             child: Text(
-                              'Predeterminada',
+                              l10n.preAlertDefault,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: const Color(0xFF10B981),
                                 fontWeight: FontWeight.w600,

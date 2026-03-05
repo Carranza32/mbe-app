@@ -82,7 +82,11 @@ class _AddressesSectionState extends ConsumerState<AddressesSection> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.profileErrorSavingAddress(e.toString())),
+            content: Text(
+              AppLocalizations.of(
+                context,
+              )!.profileErrorSavingAddress(e.toString()),
+            ),
             backgroundColor: MBETheme.brandRed,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),
@@ -103,11 +107,18 @@ class _AddressesSectionState extends ConsumerState<AddressesSection> {
           AppLocalizations.of(context)!.profileDeleteAddressTitle,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        content: Text(AppLocalizations.of(context)!.profileDeleteAddressConfirm(address.name)),
+        content: Text(
+          AppLocalizations.of(
+            context,
+          )!.profileDeleteAddressConfirm(address.name),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(AppLocalizations.of(context)!.authCancel, style: const TextStyle(color: Colors.grey)),
+            child: Text(
+              AppLocalizations.of(context)!.authCancel,
+              style: const TextStyle(color: Colors.grey),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -336,7 +347,11 @@ class _ModernAddressCard extends StatelessWidget {
                                 children: [
                                   const Icon(Iconsax.tick_circle, size: 18),
                                   const SizedBox(width: 12),
-                                  Text(AppLocalizations.of(context)!.profileMakeDefault),
+                                  Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.profileMakeDefault,
+                                  ),
                                 ],
                               ),
                             ),
@@ -352,7 +367,9 @@ class _ModernAddressCard extends StatelessWidget {
                                 const SizedBox(width: 12),
                                 Text(
                                   AppLocalizations.of(context)!.profileDelete,
-                                  style: const TextStyle(color: Color(0xFFED1C24)),
+                                  style: const TextStyle(
+                                    color: Color(0xFFED1C24),
+                                  ),
                                 ),
                               ],
                             ),

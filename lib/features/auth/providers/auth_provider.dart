@@ -87,7 +87,8 @@ class Auth extends _$Auth {
 
       // Marcar que ya usó la app en este dispositivo (para no mostrar portero tras logout)
       await setHasUsedAppOnThisDevice(true);
-      
+      await setLoginTimestamp(DateTime.now());
+
       // Verificar nuevamente antes de retornar
       if (!ref.mounted) {
         throw Exception('Provider disposed during login');
@@ -115,6 +116,7 @@ class Auth extends _$Auth {
     }
 
     await setHasUsedAppOnThisDevice(true);
+    await setLoginTimestamp(DateTime.now());
 
     // Si storage fue pasado, ref puede estar disposed: no actualizar state.
     // El caller debe invalidar authProvider para que reconstruya leyendo del storage.
@@ -161,6 +163,7 @@ class Auth extends _$Auth {
     await storage.delete(key: 'auth_token');
     await storage.delete(key: 'user');
     await storage.delete(key: 'customer');
+    await clearLoginTimestamp();
     
     // 3. Solo usar ref tras awaits si el provider sigue montado (evita UnmountedRefException)
     if (!ref.mounted) return;

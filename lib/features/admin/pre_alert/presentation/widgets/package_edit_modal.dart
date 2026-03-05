@@ -8,13 +8,13 @@ import 'package:intl/intl.dart';
 import '../../../../../core/design_system/ds_buttons.dart';
 import '../../../../../config/theme/mbe_theme.dart';
 import '../../data/models/admin_pre_alert_model.dart';
+import '../../data/models/package_status.dart';
 import '../../data/models/product_category_model.dart';
 import '../../data/models/product_item_model.dart';
 import '../../data/models/status_history_model.dart';
 import '../../data/repositories/admin_pre_alerts_repository.dart';
 import '../../providers/package_edit_manager.dart';
 import '../../providers/product_categories_provider.dart';
-import '../../providers/status_history_provider.dart';
 
 class PackageEditModal extends ConsumerStatefulWidget {
   final AdminPreAlert package;
@@ -49,6 +49,14 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
   String? _selectedFile;
   File? _selectedFileObject;
   List<ProductItem> _products = [];
+  AdminPreAlert? _currentPackage;
+  List<StatusHistoryItem>? _statusHistory;
+
+  /// Solo permite editar todo el paquete cuando está en lista_para_recepcionar.
+  /// Siempre permite editar: nombre, email, teléfono, notas y archivo.
+  bool get _canEditAll =>
+      (_currentPackage ?? widget.package).status ==
+      PackageStatus.listaParaRecepcionar;
 
   @override
   void initState() {
@@ -59,13 +67,9 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
   }
 
   void _initializeControllers(AdminPreAlert package) {
-    _trackingController = TextEditingController(
-      text: package.trackingNumber,
-    );
+    _trackingController = TextEditingController(text: package.trackingNumber);
     _eboxController = TextEditingController(text: package.eboxCode);
-    _clientNameController = TextEditingController(
-      text: package.clientName,
-    );
+    _clientNameController = TextEditingController(text: package.clientName);
     _totalController = TextEditingController(
       text: package.total.toStringAsFixed(2),
     );
@@ -94,11 +98,11 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
       text: package.receiverPhone ?? '',
     );
     _selectedDeliveryMethod = package.deliveryMethod;
-    
+
     // Inicializar productos si vienen en el paquete
     _initializeProducts(package);
   }
-  
+
   void _initializeProducts(AdminPreAlert package) {
     // Inicializar con productos vacíos basados en productCount
     _products = List.generate(
@@ -106,27 +110,31 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
       (index) => ProductItem(quantity: 0, price: 0.0),
     );
   }
-  
+
   void _loadProductsFromPackage(AdminPreAlert package) {
     // Cargar productos reales si vienen en el paquete
     if (package.products != null && package.products!.isNotEmpty) {
       setState(() {
-        _products = package.products!.map((p) => ProductItem(
-          productCategoryId: p.productCategoryId,
-          productCategoryName: p.productCategoryName,
-          quantity: p.quantity,
-          price: p.price,
-          description: p.description,
-          weight: p.weight,
-          // Si el producto no tiene weightType, usar el del paquete general
-          weightType: p.weightType ?? package.weightType,
-        )).toList();
+        _products = package.products!
+            .map(
+              (p) => ProductItem(
+                productCategoryId: p.productCategoryId,
+                productCategoryName: p.productCategoryName,
+                quantity: p.quantity,
+                price: p.price,
+                description: p.description,
+                weight: p.weight,
+                // Si el producto no tiene weightType, usar el del paquete general
+                weightType: p.weightType ?? package.weightType,
+              ),
+            )
+            .toList();
       });
     } else {
       // Si no hay productos, inicializar basado en productCount
       final currentCount = _products.length;
       final packageCount = package.productCount;
-      
+
       if (packageCount > currentCount) {
         _products.addAll(
           List.generate(
@@ -139,10 +147,10 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
       }
     }
   }
-  
+
   void _updateProductCount(int newCount) {
     if (newCount < 0) return;
-    
+
     setState(() {
       if (newCount > _products.length) {
         // Agregar productos vacíos
@@ -162,15 +170,22 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
   Future<void> _loadFullPackage() async {
     if (!mounted) return;
     setState(() => _isLoadingPackage = true);
-    
+
     try {
       final repository = ref.read(adminPreAlertsRepositoryProvider);
-      final fullPackage = await repository.getPreAlertById(widget.package.id);
-      
+      final results = await Future.wait([
+        repository.getPreAlertById(widget.package.id),
+        repository.getStatusHistory(widget.package.id),
+      ]);
+      final fullPackage = results[0] as AdminPreAlert;
+      final history = results[1] as List<StatusHistoryItem>;
+
       if (!mounted) return;
-      
+
       setState(() {
         _isLoadingPackage = false;
+        _currentPackage = fullPackage;
+        _statusHistory = history;
         // Actualizar controllers con datos completos
         // Disposing old controllers first
         _trackingController.dispose();
@@ -289,152 +304,190 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
           Expanded(
             child: _isLoadingPackage
                 ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // --- Sección: Info Básica ---
-                    _buildSectionHeader('Información Básica'),
-                    _buildModernInput(
-                      controller: _trackingController,
-                      label: 'Tracking Number',
-                      icon: Iconsax.barcode,
-                      isRequired: true,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildModernInput(
-                      controller: _eboxController,
-                      label: 'Código Ebox',
-                      icon: Iconsax.box,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildModernInput(
-                      controller: _clientNameController,
-                      label: 'Cliente',
-                      icon: Iconsax.user,
-                      isRequired: true,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildModernInput(
-                            controller: _totalController,
-                            label: 'Total (\$)',
-                            icon: Iconsax.dollar_circle,
-                            keyboardType: TextInputType.number,
-                            isRequired: true,
-                          ),
+                : GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // --- Sección: Info Básica ---
+                            _buildSectionHeader('Información Básica'),
+                            _buildModernInput(
+                              controller: _trackingController,
+                              label: 'Tracking Number',
+                              icon: Iconsax.barcode,
+                              isRequired: true,
+                              readOnly: !_canEditAll,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildModernInput(
+                              controller: _eboxController,
+                              label: 'Código Ebox',
+                              icon: Iconsax.box,
+                              readOnly: !_canEditAll,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildModernInput(
+                              controller: _clientNameController,
+                              label: 'Cliente',
+                              icon: Iconsax.user,
+                              isRequired: true,
+                              readOnly: !_canEditAll,
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildModernInput(
+                                    controller: _totalController,
+                                    label: 'Total (\$)',
+                                    icon: Iconsax.dollar_circle,
+                                    keyboardType: TextInputType.number,
+                                    isRequired: true,
+                                    readOnly: !_canEditAll,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildModernInput(
+                                    controller: _productCountController,
+                                    label: 'Cant. Items',
+                                    icon: Iconsax.box_1,
+                                    keyboardType: TextInputType.number,
+                                    isRequired: true,
+                                    readOnly: !_canEditAll,
+                                    onChanged: _canEditAll
+                                        ? (value) {
+                                            final count =
+                                                int.tryParse(value) ?? 0;
+                                            _updateProductCount(count);
+                                          }
+                                        : null,
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // --- Sección: Productos ---
+                            _buildSectionHeader('Productos'),
+                            AbsorbPointer(
+                              absorbing: !_canEditAll,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: _buildProductFields(),
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // --- Sección: Entrega ---
+                            _buildSectionHeader('Método de Entrega'),
+                            AbsorbPointer(
+                              absorbing: !_canEditAll,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F5F7),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: DropdownButtonFormField<String>(
+                                  value:
+                                      _selectedDeliveryMethod != null &&
+                                          const [
+                                            'pickup',
+                                            'delivery',
+                                            'locker',
+                                          ].contains(_selectedDeliveryMethod)
+                                      ? _selectedDeliveryMethod
+                                      : null,
+                                  decoration: const InputDecoration(
+                                    border: InputBorder.none,
+                                    icon: Icon(
+                                      Iconsax.truck,
+                                      color: Colors.blueAccent,
+                                    ),
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'pickup',
+                                      child: Text('Pickup (Tienda)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'delivery',
+                                      child: Text('Delivery (Domicilio)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'locker',
+                                      child: Text('Casillero'),
+                                    ),
+                                  ],
+                                  onChanged: (value) => setState(
+                                    () => _selectedDeliveryMethod = value,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // --- Sección: Contacto ---
+                            _buildSectionHeader('Contacto & Notas'),
+                            _buildModernInput(
+                              controller: _contactNameController,
+                              label: 'Nombre Contacto',
+                              icon: Iconsax.user_tag,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildModernInput(
+                              controller: _contactEmailController,
+                              label: 'Email',
+                              icon: Iconsax.sms,
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildModernInput(
+                              controller: _contactPhoneController,
+                              label: 'Teléfono',
+                              icon: Iconsax.call,
+                              keyboardType: TextInputType.phone,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildModernInput(
+                              controller: _contactNotesController,
+                              label: 'Notas internas',
+                              icon: Iconsax.note,
+                              maxLines: 3,
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // --- Sección: Historial de Estados ---
+                            _buildSectionHeader('Historial de Estados'),
+                            _buildStatusHistory(),
+
+                            const SizedBox(height: 24),
+
+                            // --- Sección: Documentos ---
+                            _buildSectionHeader('Adjuntos'),
+                            _buildFilePicker(),
+
+                            // Espacio extra al final para que no quede pegado
+                            const SizedBox(height: 40),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildModernInput(
-                            controller: _productCountController,
-                            label: 'Cant. Items',
-                            icon: Iconsax.box_1,
-                            keyboardType: TextInputType.number,
-                            isRequired: true,
-                            onChanged: (value) {
-                              final count = int.tryParse(value) ?? 0;
-                              _updateProductCount(count);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-                    
-                    // --- Sección: Productos ---
-                    _buildSectionHeader('Productos'),
-                    ..._buildProductFields(),
-
-                    const SizedBox(height: 24),
-
-                    // --- Sección: Entrega ---
-                    _buildSectionHeader('Método de Entrega'),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F5F7),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedDeliveryMethod,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          icon: Icon(Iconsax.truck, color: Colors.blueAccent),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'pickup',
-                            child: Text('Pickup (Tienda)'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'delivery',
-                            child: Text('Delivery (Domicilio)'),
-                          ),
-                        ],
-                        onChanged: (value) =>
-                            setState(() => _selectedDeliveryMethod = value),
                       ),
                     ),
-
-                    const SizedBox(height: 24),
-
-                    // --- Sección: Contacto ---
-                    _buildSectionHeader('Contacto & Notas'),
-                    _buildModernInput(
-                      controller: _contactNameController,
-                      label: 'Nombre Contacto',
-                      icon: Iconsax.user_tag,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildModernInput(
-                      controller: _contactEmailController,
-                      label: 'Email',
-                      icon: Iconsax.sms,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildModernInput(
-                      controller: _contactPhoneController,
-                      label: 'Teléfono',
-                      icon: Iconsax.call,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildModernInput(
-                      controller: _contactNotesController,
-                      label: 'Notas internas',
-                      icon: Iconsax.note,
-                      maxLines: 3,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // --- Sección: Historial de Estados ---
-                    _buildSectionHeader('Historial de Estados'),
-                    _buildStatusHistory(),
-
-                    const SizedBox(height: 24),
-
-                    // --- Sección: Documentos ---
-                    _buildSectionHeader('Adjuntos'),
-                    _buildFilePicker(),
-
-                    // Espacio extra al final para que no quede pegado
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
-            ),
+                  ),
           ),
 
           // 4. BOTÓN DE ACCIÓN (FLOTANTE SOBRE TECLADO)
@@ -490,6 +543,7 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
     TextInputType? keyboardType,
     int maxLines = 1,
     bool isRequired = false,
+    bool readOnly = false,
     ValueChanged<String>? onChanged,
   }) {
     return Container(
@@ -500,6 +554,7 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: TextFormField(
         controller: controller,
+        readOnly: readOnly,
         keyboardType: keyboardType,
         maxLines: maxLines,
         onChanged: onChanged,
@@ -610,10 +665,7 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
               Expanded(
                 child: Text(
                   'Ingresa la cantidad de productos para agregar los campos',
-                  style: TextStyle(
-                    color: MBETheme.neutralGray,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: MBETheme.neutralGray, fontSize: 13),
                 ),
               ),
             ],
@@ -651,7 +703,10 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: MBETheme.brandBlack.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -672,7 +727,8 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
                   onPressed: () {
                     setState(() {
                       _products.removeAt(index);
-                      _productCountController.text = _products.length.toString();
+                      _productCountController.text = _products.length
+                          .toString();
                     });
                   },
                 ),
@@ -680,16 +736,15 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
           ),
           const SizedBox(height: 12),
           // Selector de categoría de producto
-          _buildProductCategorySelector(
-            index,
-            product.productCategoryId,
-          ),
+          _buildProductCategorySelector(index, product.productCategoryId),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: _buildProductInput(
-                  initialValue: product.quantity > 0 ? product.quantity.toString() : '',
+                  initialValue: product.quantity > 0
+                      ? product.quantity.toString()
+                      : '',
                   label: 'Cantidad',
                   icon: Iconsax.box_1,
                   keyboardType: TextInputType.number,
@@ -705,7 +760,9 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildProductInput(
-                  initialValue: product.price > 0 ? product.price.toStringAsFixed(2) : '',
+                  initialValue: product.price > 0
+                      ? product.price.toStringAsFixed(2)
+                      : '',
                   label: 'Precio (\$)',
                   icon: Iconsax.dollar_circle,
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
@@ -737,7 +794,9 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
             children: [
               Expanded(
                 child: _buildProductInput(
-                  initialValue: product.weight != null ? product.weight!.toStringAsFixed(2) : '',
+                  initialValue: product.weight != null
+                      ? product.weight!.toStringAsFixed(2)
+                      : '',
                   label: 'Peso',
                   icon: Iconsax.weight,
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
@@ -756,13 +815,23 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
                     color: const Color(0xFFF5F5F7),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   child: DropdownButtonFormField<String>(
                     value: product.weightType,
                     decoration: InputDecoration(
                       labelText: 'Tipo de Peso',
-                      labelStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-                      icon: const Icon(Iconsax.ruler, color: Colors.black87, size: 20),
+                      labelStyle: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 14,
+                      ),
+                      icon: const Icon(
+                        Iconsax.ruler,
+                        color: Colors.black87,
+                        size: 20,
+                      ),
                       border: InputBorder.none,
                     ),
                     items: const [
@@ -847,18 +916,26 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
                 dropdownDecoratorProps: DropDownDecoratorProps(
                   dropdownSearchDecoration: InputDecoration(
                     labelText: 'Producto *',
-                    labelStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-                    icon: const Icon(Iconsax.box, color: Colors.black87, size: 20),
+                    labelStyle: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 14,
+                    ),
+                    icon: const Icon(
+                      Iconsax.box,
+                      color: Colors.black87,
+                      size: 20,
+                    ),
                     border: InputBorder.none,
                   ),
                 ),
                 onChanged: (category) {
                   if (category != null) {
                     setState(() {
-                      _products[productIndex] = _products[productIndex].copyWith(
-                        productCategoryId: category.id,
-                        productCategoryName: category.name,
-                      );
+                      _products[productIndex] = _products[productIndex]
+                          .copyWith(
+                            productCategoryId: category.id,
+                            productCategoryName: category.name,
+                          );
                     });
                   }
                 },
@@ -947,92 +1024,63 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
   // --- WIDGETS DE UI ---
 
   Widget _buildStatusHistory() {
-    return Consumer(
-      builder: (context, ref, child) {
-        final historyState = ref.watch(statusHistoryProvider(widget.package.id));
+    if (_isLoadingPackage) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: MBETheme.lightGray,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text('Cargando historial...'),
+          ],
+        ),
+      );
+    }
 
-        return historyState.when(
-          data: (history) {
-            if (history.isEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: MBETheme.lightGray,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Iconsax.info_circle,
-                        color: MBETheme.neutralGray, size: 20),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'No hay historial de estados disponible',
-                        style: TextStyle(
-                          color: MBETheme.neutralGray,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
+    final history = _statusHistory ?? [];
+    if (history.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: MBETheme.lightGray,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Iconsax.info_circle, color: MBETheme.neutralGray, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'No hay historial de estados disponible',
+                style: TextStyle(color: MBETheme.neutralGray, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
-            return Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[300]!, width: 1),
-              ),
-              child: Column(
-                children: List.generate(history.length, (index) {
-                  final item = history[index];
-                  final isLast = index == history.length - 1;
-                  return _buildHistoryItem(item, isLast);
-                }),
-              ),
-            );
-          },
-          loading: () => Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: MBETheme.lightGray,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Row(
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 12),
-                Text('Cargando historial...'),
-              ],
-            ),
-          ),
-          error: (error, stack) => Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.red[50],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Iconsax.danger, color: Colors.red, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Error al cargar historial',
-                    style: TextStyle(color: Colors.red[700], fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[300]!, width: 1),
+      ),
+      child: Column(
+        children: List.generate(history.length, (index) {
+          final item = history[index];
+          final isLast = index == history.length - 1;
+          return _buildHistoryItem(item, isLast);
+        }),
+      ),
     );
   }
 
@@ -1042,26 +1090,36 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
 
     // Determinar el color del badge según el color del estado
     Color badgeColor = MBETheme.brandBlack;
-    if (item.status.color != null) {
-      switch (item.status.color) {
-        case 'success':
-          badgeColor = Colors.green;
-          break;
-        case 'warning':
-          badgeColor = Colors.orange;
-          break;
-        case 'error':
-        case 'danger':
-          badgeColor = MBETheme.brandRed;
-          break;
-        case 'info':
-          badgeColor = Colors.blue;
-          break;
-        case 'primary':
+    if (item.status.color != null && item.status.color!.isNotEmpty) {
+      // El backend puede enviar colores hex (#3b82f6) o nombres (success, warning, etc.)
+      if (item.status.color!.startsWith('#')) {
+        try {
+          final hex = item.status.color!.replaceFirst('#', '');
+          badgeColor = Color(0xFF000000 | int.parse(hex, radix: 16));
+        } catch (_) {
           badgeColor = MBETheme.brandBlack;
-          break;
-        default:
-          badgeColor = MBETheme.brandBlack;
+        }
+      } else {
+        switch (item.status.color) {
+          case 'success':
+            badgeColor = Colors.green;
+            break;
+          case 'warning':
+            badgeColor = Colors.orange;
+            break;
+          case 'error':
+          case 'danger':
+            badgeColor = MBETheme.brandRed;
+            break;
+          case 'info':
+            badgeColor = Colors.blue;
+            break;
+          case 'primary':
+            badgeColor = MBETheme.brandBlack;
+            break;
+          default:
+            badgeColor = MBETheme.brandBlack;
+        }
       }
     }
 
@@ -1070,9 +1128,7 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
       decoration: BoxDecoration(
         border: isLast
             ? null
-            : Border(
-                bottom: BorderSide(color: Colors.grey[200]!, width: 1),
-              ),
+            : Border(bottom: BorderSide(color: Colors.grey[200]!, width: 1)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1090,11 +1146,7 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
                 ),
               ),
               if (!isLast)
-                Container(
-                  width: 2,
-                  height: 60,
-                  color: Colors.grey[300],
-                ),
+                Container(width: 2, height: 60, color: Colors.grey[300]),
             ],
           ),
           const SizedBox(width: 12),
@@ -1110,7 +1162,9 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: badgeColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(6),
@@ -1159,8 +1213,11 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Iconsax.note_text,
-                            size: 14, color: MBETheme.neutralGray),
+                        Icon(
+                          Iconsax.note_text,
+                          size: 14,
+                          color: MBETheme.neutralGray,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
@@ -1179,8 +1236,7 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Iconsax.user,
-                        size: 12, color: MBETheme.neutralGray),
+                    Icon(Iconsax.user, size: 12, color: MBETheme.neutralGray),
                     const SizedBox(width: 4),
                     Text(
                       '${item.changedBy.name} (${item.changedBy.email})',
@@ -1220,18 +1276,11 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
     if (!mounted) return;
-    
+
     setState(() => _isLoading = true);
 
     try {
       final updates = <String, dynamic>{
-        'track_number': _trackingController.text.trim(),
-        'package_code': _eboxController.text.trim().isEmpty
-            ? null
-            : _eboxController.text.trim(),
-        'total': double.tryParse(_totalController.text.trim()) ?? 0.0,
-        'product_count': int.tryParse(_productCountController.text.trim()) ?? 0,
-        'delivery_method': _selectedDeliveryMethod,
         'contact_name': _contactNameController.text.trim().isEmpty
             ? null
             : _contactNameController.text.trim(),
@@ -1244,23 +1293,33 @@ class _PackageEditModalState extends ConsumerState<PackageEditModal> {
         'contact_notes': _contactNotesController.text.trim().isEmpty
             ? null
             : _contactNotesController.text.trim(),
-        'receiver_name': _receiverNameController.text.trim().isEmpty
+      };
+
+      if (_canEditAll) {
+        updates['track_number'] = _trackingController.text.trim();
+        updates['package_code'] = _eboxController.text.trim().isEmpty
             ? null
-            : _receiverNameController.text.trim(),
-        'receiver_email': _receiverEmailController.text.trim().isEmpty
+            : _eboxController.text.trim();
+        updates['total'] = double.tryParse(_totalController.text.trim()) ?? 0.0;
+        updates['product_count'] =
+            int.tryParse(_productCountController.text.trim()) ?? 0;
+        updates['delivery_method'] = _selectedDeliveryMethod;
+        updates['receiver_name'] = _receiverNameController.text.trim().isEmpty
             ? null
-            : _receiverEmailController.text.trim(),
-        'receiver_phone': _receiverPhoneController.text.trim().isEmpty
+            : _receiverNameController.text.trim();
+        updates['receiver_email'] = _receiverEmailController.text.trim().isEmpty
             ? null
-            : _receiverPhoneController.text.trim(),
-        'is_different_receiver': _receiverNameController.text.trim().isNotEmpty
-            ? 1
-            : 0,
-        'products': _products
+            : _receiverEmailController.text.trim();
+        updates['receiver_phone'] = _receiverPhoneController.text.trim().isEmpty
+            ? null
+            : _receiverPhoneController.text.trim();
+        updates['is_different_receiver'] =
+            _receiverNameController.text.trim().isNotEmpty ? 1 : 0;
+        updates['products'] = _products
             .where((p) => p.productCategoryId != null && p.quantity > 0)
             .map((p) => p.toJson())
-            .toList(),
-      };
+            .toList();
+      }
 
       if (!mounted) return;
       final editManager = ref.read(packageEditManagerProvider.notifier);

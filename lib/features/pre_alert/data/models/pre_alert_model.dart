@@ -92,7 +92,7 @@ class PreAlert {
   }
 
   String get statusLabel {
-    switch (status.toLowerCase()) {
+    switch (status.toLowerCase().replaceAll('á', 'a').replaceAll('í', 'i')) {
       case 'pending':
       case 'pendiente':
         return 'Pendiente';
@@ -105,28 +105,31 @@ class PreAlert {
       case 'ready':
       case 'listo':
         return 'Listo';
+      case 'en_transito':
       case 'ingresada':
-        return 'Ingresada';
+        return 'En Tránsito';
+      case 'lista_para_recepcionar':
       case 'lista_para_recibir':
-        return 'Lista para recibir';
+        return 'Lista para Recepcionar';
+      case 'disponible_para_retiro':
       case 'en_tienda':
-        return 'En tienda';
+      case 'lista_retiro':
+        return 'Disponible para Retiro';
       case 'solicitud_recoleccion':
-        return 'Solicitud de recolección';
+        return 'Solicitud de Recolección';
       case 'confirmada_recoleccion':
-        return 'Recolección confirmada';
+        return 'Recolección Confirmada';
       case 'en_ruta':
-        return 'En ruta';
+        return 'En Ruta';
+      case 'entregado':
       case 'entregada':
-        return 'Entregada';
+      case 'completada':
+        return 'Entregado';
       case 'retornada':
         return 'Retornada';
-      case 'lista_retiro':
-        return 'Lista para retiro';
-      case 'completada':
-        return 'Completada';
+      case 'cancelado':
       case 'cancelada':
-        return 'Cancelada';
+        return 'Cancelado';
       default:
         // Intentar capitalizar el status
         return status
@@ -141,33 +144,42 @@ class PreAlert {
   }
 
   String get statusColor {
-    switch (status.toLowerCase()) {
+    final normalized = status.toLowerCase().replaceAll('á', 'a').replaceAll('í', 'i');
+    switch (normalized) {
       case 'pending':
       case 'pendiente':
         return '#EAB308'; // Yellow
       case 'received':
       case 'recibido':
-      case 'en_tienda':
         return '#3B82F6'; // Blue
       case 'processing':
       case 'procesando':
         return '#8B5CF6'; // Purple
       case 'ready':
       case 'listo':
-      case 'lista_para_recibir':
-      case 'lista_retiro':
         return '#10B981'; // Green
+      case 'en_transito':
       case 'ingresada':
         return '#3B82F6'; // Blue (info)
+      case 'lista_para_recepcionar':
+      case 'lista_para_recibir':
+        return '#6B7280'; // Gray
+      case 'disponible_para_retiro':
+      case 'en_tienda':
+      case 'lista_retiro':
+        return '#3B82F6'; // Primary/Blue
       case 'solicitud_recoleccion':
         return '#3B82F6'; // Blue (info)
       case 'confirmada_recoleccion':
-      case 'completada':
-      case 'entregada':
-        return '#10B981'; // Green (success)
+        return '#F59E0B'; // Orange (warning)
       case 'en_ruta':
         return '#F59E0B'; // Orange (warning)
+      case 'entregado':
+      case 'entregada':
+      case 'completada':
+        return '#10B981'; // Green (success)
       case 'retornada':
+      case 'cancelado':
       case 'cancelada':
         return '#EF4444'; // Red (error)
       default:
@@ -176,9 +188,11 @@ class PreAlert {
   }
 
   // Verificar si esta pre-alerta requiere acción (puede realizar el pago)
-  // Requiere acción si está en_tienda y no tiene método de entrega
+  // Requiere acción si está disponible_para_retiro y no tiene método de entrega
   bool get requiresAction {
-    return status.toLowerCase() == 'en_tienda' && deliveryMethod == null;
+    final normalized = status.toLowerCase().replaceAll('á', 'a').replaceAll('í', 'i');
+    return (normalized == 'disponible_para_retiro' || normalized == 'en_tienda') &&
+        deliveryMethod == null;
   }
 }
 

@@ -1,5 +1,6 @@
 // lib/features/print_orders/providers/create_order_provider.dart
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:mbe_orders_app/l10n/app_localizations.dart';
 import '../data/models/create_order_request.dart';
 import '../data/models/uploaded_file_model.dart';
 import '../data/models/file_upload_config.dart';
@@ -273,13 +274,17 @@ class CreateOrder extends _$CreateOrder {
   }
 
   /// Agregar archivos
-  void addFiles(List<UploadedFile> newFiles) {
+  void addFiles(
+    List<UploadedFile> newFiles, {
+    AppLocalizations? l10n,
+  }) {
     final currentFiles = state.uploadedFiles;
     final availableSlots = state.availableSlots;
 
     if (availableSlots == 0) {
       state = state.copyWith(
-        error: 'Máximo ${state.config.maxFilesPerOrder} archivos permitidos',
+        error: l10n?.printOrderMaxFilesAllowed(state.config.maxFilesPerOrder) ??
+            'Máximo ${state.config.maxFilesPerOrder} archivos permitidos',
       );
       _clearErrorAfterDelay();
       return;
@@ -296,7 +301,8 @@ class CreateOrder extends _$CreateOrder {
 
     if (newFiles.length > availableSlots) {
       state = state.copyWith(
-        error: 'Solo se pueden agregar $availableSlots archivos más',
+        error: l10n?.printOrderOnlyAddMoreFiles(availableSlots) ??
+            'Solo se pueden agregar $availableSlots archivos más',
       );
       _clearErrorAfterDelay();
     }
@@ -321,14 +327,18 @@ class CreateOrder extends _$CreateOrder {
   }
 
   /// Analizar archivos y obtener total de páginas
-  Future<bool> analyzeFiles() async {
+  Future<bool> analyzeFiles({AppLocalizations? l10n}) async {
     if (state.uploadedFiles.isEmpty) {
-      state = state.copyWith(error: 'Debes subir al menos un archivo');
+      state = state.copyWith(
+        error: l10n?.printOrderUploadAtLeastOne ?? 'Debes subir al menos un archivo',
+      );
       return false;
     }
 
     if (state.hasFileErrors) {
-      state = state.copyWith(error: 'Algunos archivos tienen errores');
+      state = state.copyWith(
+        error: l10n?.printOrderSomeFilesHaveErrors ?? 'Algunos archivos tienen errores',
+      );
       return false;
     }
 
@@ -355,7 +365,8 @@ class CreateOrder extends _$CreateOrder {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: 'Error al analizar archivos: $e',
+        error: l10n?.printOrderAnalyzeFilesError(e.toString()) ??
+            'Error al analizar archivos: $e',
       );
       return false;
     }

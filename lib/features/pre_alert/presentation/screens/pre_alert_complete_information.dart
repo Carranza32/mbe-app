@@ -416,7 +416,6 @@ class PreAlertCompleteInformationScreen extends HookConsumerWidget {
 
   Future<void> _processCardPayment(BuildContext context, WidgetRef ref) async {
     try {
-      // Mostrar loading
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -425,19 +424,33 @@ class PreAlertCompleteInformationScreen extends HookConsumerWidget {
 
       final paymentRepository = ref.read(paymentRepositoryProvider);
 
-      // Iniciar el pago
-      final paymentInit = await paymentRepository.initiatePayment(preAlert.id);
+      // Iniciar pago con tarjeta (CyberSource). gateway "card", total obligatorio.
+      final paymentInit = await paymentRepository.initiatePaymentCard(
+        preAlert.id,
+        total: preAlert.totalValue,
+      );
 
       if (!context.mounted) return;
-
-      // Cerrar loading
       Navigator.pop(context);
 
-      // Abrir WebView con el formulario de pago
+      if (!paymentInit.hasRedirectUrl) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.preAlertPaymentInitError(
+                'No se recibió URL de pago. Intenta de nuevo.',
+              ),
+            ),
+            backgroundColor: MBETheme.brandRed,
+          ),
+        );
+        return;
+      }
+
       final result = await Navigator.of(context).push<PaymentResult>(
         MaterialPageRoute(
           builder: (context) => PaymentWebView(
-            redirectUrl: paymentInit.redirectUrl,
+            redirectUrl: paymentInit.redirectUrl!,
             paymentId: paymentInit.paymentId,
             onPaymentComplete: (result) {
               Navigator.of(context).pop(result);
@@ -446,9 +459,8 @@ class PreAlertCompleteInformationScreen extends HookConsumerWidget {
         ),
       );
 
-      // Cuando se cierra el WebView, usar el resultado que devuelve el WebView
       if (result != null && !result.cancelled) {
-        _handlePaymentResultFromWebView(context, ref, result);
+        await _handlePaymentResultFromWebView(context, ref, result);
       } else if (result != null && result.cancelled) {
         _showCancelDialog(context);
       }
@@ -459,30 +471,83 @@ class PreAlertCompleteInformationScreen extends HookConsumerWidget {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context)!.preAlertPaymentInitError(e.toString())),
+          content: Text(
+            AppLocalizations.of(context)!.preAlertPaymentInitError(e.toString()),
+          ),
           backgroundColor: MBETheme.brandRed,
         ),
       );
     }
   }
 
-  /// Usado cuando el WebView se cierra con un resultado (sin polling al backend).
-  void _handlePaymentResultFromWebView(
+  /// Tras cerrar el WebView: consulta GET /payments/{id}/status y muestra éxito o error según is_completed / is_failed.
+  Future<void> _handlePaymentResultFromWebView(
     BuildContext context,
     WidgetRef ref,
     PaymentResult result,
-  ) {
-    if (result.success) {
-      _showSuccessDialog(
-        context,
-        ref,
-        AppLocalizations.of(context)!.preAlertPaymentSuccessMessage,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    if (result.cancelled) {
+      _showCancelDialog(context);
+      return;
+    }
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => Center(
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(l10n.preAlertProcessingPayment),
+                ],
+              ),
+            ),
+          ),
+        ),
       );
-    } else {
-      _showErrorDialog(
-        context,
-        AppLocalizations.of(context)!.preAlertPaymentFailedMessage,
-      );
+      final statusResponse = await ref
+          .read(paymentRepositoryProvider)
+          .getPaymentStatus(result.paymentId.toString());
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      if (statusResponse.isCompleted) {
+        _showSuccessDialog(
+          context,
+          ref,
+          l10n.preAlertPaymentSuccessMessage,
+        );
+      } else if (statusResponse.isFailed) {
+        _showErrorDialog(
+          context,
+          statusResponse.payment.reasonMessage?.isNotEmpty == true
+              ? statusResponse.payment.reasonMessage!
+              : l10n.preAlertPaymentFailedMessage,
+        );
+      } else {
+        _showSuccessDialog(
+          context,
+          ref,
+          l10n.preAlertPaymentSuccessMessage,
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      if (result.success) {
+        _showSuccessDialog(
+          context,
+          ref,
+          l10n.preAlertPaymentSuccessMessage,
+        );
+      } else {
+        _showErrorDialog(context, l10n.preAlertPaymentFailedMessage);
+      }
     }
   }
 

@@ -938,6 +938,18 @@ abstract class AppLocalizations {
   /// **'English (EN)'**
   String get settingsLanguageSubtitleEn;
 
+  /// No description provided for @settingsBiometricLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Biometric login'**
+  String get settingsBiometricLogin;
+
+  /// No description provided for @settingsBiometricLoginSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use fingerprint or Face ID when opening the app'**
+  String get settingsBiometricLoginSubtitle;
+
   /// No description provided for @settingsAccount.
   ///
   /// In en, this message translates to:
@@ -1169,13 +1181,13 @@ abstract class AppLocalizations {
   /// No description provided for @homeNavRetrieval.
   ///
   /// In en, this message translates to:
-  /// **'Retrieval'**
+  /// **'Lockers'**
   String get homeNavRetrieval;
 
   /// No description provided for @homeNavSearch.
   ///
   /// In en, this message translates to:
-  /// **'Search'**
+  /// **'Pickup'**
   String get homeNavSearch;
 
   /// No description provided for @homeNavProfile.
@@ -3056,6 +3068,18 @@ abstract class AppLocalizations {
   /// **'Pay securely with your card'**
   String get printOrderCardPaymentDesc;
 
+  /// No description provided for @printOrderCardStepDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When you tap Finalize, the secure payment window will open to complete the payment with your card.'**
+  String get printOrderCardStepDescription;
+
+  /// No description provided for @printOrderPaymentMethodSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment method selected'**
+  String get printOrderPaymentMethodSelected;
+
   /// No description provided for @printOrderCardNumber.
   ///
   /// In en, this message translates to:
@@ -3331,6 +3355,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Eco'**
   String get printOrderEco;
+
+  /// No description provided for @printOrderContactInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Information'**
+  String get printOrderContactInfo;
+
+  /// No description provided for @printOrderSelectImageOrPdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Select image or PDF'**
+  String get printOrderSelectImageOrPdf;
+
+  /// No description provided for @printOrderUploadAtLeastOne.
+  ///
+  /// In en, this message translates to:
+  /// **'You must upload at least one file'**
+  String get printOrderUploadAtLeastOne;
+
+  /// No description provided for @printOrderSomeFilesHaveErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'Some files have errors'**
+  String get printOrderSomeFilesHaveErrors;
+
+  /// No description provided for @printOrderMissingOrderData.
+  ///
+  /// In en, this message translates to:
+  /// **'Order data is missing'**
+  String get printOrderMissingOrderData;
+
+  /// No description provided for @printOrderNoFilesToPrint.
+  ///
+  /// In en, this message translates to:
+  /// **'No files to print'**
+  String get printOrderNoFilesToPrint;
+
+  /// No description provided for @printOrderContactInfoIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact information is incomplete'**
+  String get printOrderContactInfoIncomplete;
+
+  /// No description provided for @printOrderDeliveryInfoIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery information is incomplete'**
+  String get printOrderDeliveryInfoIncomplete;
+
+  /// No description provided for @printOrderEnterAddressBelow.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter address and phone below'**
+  String get printOrderEnterAddressBelow;
+
+  /// No description provided for @printOrderFreeShippingOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Free shipping on orders over'**
+  String get printOrderFreeShippingOver;
+
+  /// No description provided for @printOrderDeliveryTips.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery tips'**
+  String get printOrderDeliveryTips;
+
+  /// No description provided for @printOrderDeliveryAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery Address'**
+  String get printOrderDeliveryAddress;
+
+  /// No description provided for @printOrderContactPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Phone'**
+  String get printOrderContactPhone;
+
+  /// No description provided for @printOrderCardHolderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'CARDHOLDER'**
+  String get printOrderCardHolderLabel;
+
+  /// No description provided for @printOrderCardHolderNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'FULL NAME'**
+  String get printOrderCardHolderNameHint;
+
+  /// No description provided for @printOrderValidUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'VALID UNTIL'**
+  String get printOrderValidUntil;
+
+  /// No description provided for @printOrderBaseCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Base cost'**
+  String get printOrderBaseCost;
+
+  /// No description provided for @printOrderEstimatedTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated time'**
+  String get printOrderEstimatedTime;
+
+  /// No description provided for @printOrderAddressHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Street, number, neighborhood, municipality...'**
+  String get printOrderAddressHint;
+
+  /// No description provided for @printOrderAdditionalNotesOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional Notes (optional)'**
+  String get printOrderAdditionalNotesOptional;
+
+  /// No description provided for @printOrderAdditionalNotesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred schedule, special instructions...'**
+  String get printOrderAdditionalNotesHint;
+
+  /// No description provided for @printOrderDeliveryNotesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred schedule, references...'**
+  String get printOrderDeliveryNotesHint;
+
+  /// No description provided for @printOrderPhoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'2222-2222 or 7777-7777'**
+  String get printOrderPhoneHint;
+
+  /// No description provided for @printOrderFreeShippingOverAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Free shipping! (order over {amount})'**
+  String printOrderFreeShippingOverAmount(String amount);
+
+  /// No description provided for @printOrderShippingCostAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping cost: {amount}'**
+  String printOrderShippingCostAmount(String amount);
+
+  /// No description provided for @printOrderEstimatedTimeValue.
+  ///
+  /// In en, this message translates to:
+  /// **'1-2 business days'**
+  String get printOrderEstimatedTimeValue;
+
+  /// No description provided for @printOrderTipLocationRefs.
+  ///
+  /// In en, this message translates to:
+  /// **'• Make sure to include clear references for your location'**
+  String get printOrderTipLocationRefs;
+
+  /// No description provided for @printOrderTipPhoneAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'• Verify your phone is available during delivery'**
+  String get printOrderTipPhoneAvailable;
+
+  /// No description provided for @printOrderTipPreferredSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'• You can add a preferred schedule in the notes'**
+  String get printOrderTipPreferredSchedule;
+
+  /// No description provided for @printOrderTransferUploadSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agricultural Bank, BAC, etc. Upload your proof.'**
+  String get printOrderTransferUploadSubtitle;
+
+  /// No description provided for @printOrderCvv.
+  ///
+  /// In en, this message translates to:
+  /// **'CVV'**
+  String get printOrderCvv;
+
+  /// No description provided for @printOrderCvvHint.
+  ///
+  /// In en, this message translates to:
+  /// **'3 or 4 digits'**
+  String get printOrderCvvHint;
+
+  /// No description provided for @printOrderMaxFilesAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum {max} files allowed'**
+  String printOrderMaxFilesAllowed(int max);
+
+  /// No description provided for @printOrderOnlyAddMoreFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Only {count} more files can be added'**
+  String printOrderOnlyAddMoreFiles(int count);
+
+  /// No description provided for @printOrderAnalyzeFilesError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error analyzing files: {error}'**
+  String printOrderAnalyzeFilesError(String error);
 
   /// No description provided for @profileMyProfile.
   ///
